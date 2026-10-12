@@ -73,7 +73,10 @@ fun DashboardScreen(
     onStart: (WorkoutDay) -> Unit,
     onSaveSteps: (Int) -> Unit,
     onToggleRest: () -> Unit,
-    onOpenPlan: () -> Unit
+    onOpenPlan: () -> Unit,
+    backupStatus: String,
+    onExportBackup: () -> Unit,
+    onImportBackup: () -> Unit
 ) {
     val today = LocalDate.now()
     val summary = remember(today, wellness, history) {
@@ -436,6 +439,37 @@ fun DashboardScreen(
                     Spacer(Modifier.weight(1f))
                     Icon(Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null, tint = PulseColors.Accent)
+                }
+            }
+        }
+
+        item {
+            DashboardSectionTitle("I tuoi dati", "Tieni al sicuro allenamenti e progressi")
+            Spacer(Modifier.height(12.dp))
+            WidgetCard {
+                Text("Backup degli allenamenti", color = PulseColors.Foreground,
+                    fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(6.dp))
+                Text("Prima di disinstallare o cambiare firma dell'APK, esporta il backup. " +
+                    "Il file rimane sul tuo telefono e non viene caricato online.",
+                    color = PulseColors.Muted, fontSize = 12.sp)
+                Spacer(Modifier.height(13.dp))
+                Button(onClick = onExportBackup, modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)) {
+                    Text("Esporta backup in JSON", color = Color.White,
+                        fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = onImportBackup, modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, PulseColors.Border)) {
+                    Text("Ripristina un backup", color = PulseColors.Accent,
+                        fontWeight = FontWeight.Bold)
+                }
+                if (backupStatus.isNotBlank()) {
+                    Spacer(Modifier.height(9.dp))
+                    Text(backupStatus, color = PulseColors.Accent, fontSize = 11.sp)
                 }
             }
         }
