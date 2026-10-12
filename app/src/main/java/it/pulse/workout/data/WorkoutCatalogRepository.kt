@@ -16,6 +16,13 @@ class WorkoutCatalogRepository(context: Context) {
         const val SOURCE_URL = "https://raw.githubusercontent.com/ButtiGit/ButtiGoGym/main/workouts/plan.json"
         private const val MAX_JSON_BYTES = 256 * 1024
 
+        private fun readMuscles(obj: JSONObject, key: String): List<String> {
+            val arr = obj.optJSONArray(key) ?: return emptyList()
+            return (0 until arr.length()).mapNotNull { index ->
+                arr.optString(index).takeIf { it in MuscleGroup.ids }
+            }.distinct().take(5)
+        }
+
         fun parseDay(data: JSONObject): WorkoutDay {
             val exercises = data.getJSONArray("exercises")
             require(exercises.length() in 1..30) { "Numero esercizi non valido" }
@@ -36,7 +43,9 @@ class WorkoutCatalogRepository(context: Context) {
                     alternative = obj.optString("alternative", ""),
                     gifUrl = obj.optString("gifUrl", "").takeIf {
                         it.startsWith("https://") && it.length <= 500
-                    }.orEmpty()
+                    }.orEmpty(),
+                    primaryMuscles = readMuscles(obj, "primaryMuscles"),
+                    secondaryMuscles = readMuscles(obj, "secondaryMuscles")
                 )
             }
             require(items.map { it.id }.distinct().size == items.size)
@@ -66,6 +75,8 @@ class WorkoutCatalogRepository(context: Context) {
                         put("restSeconds", ex.restSeconds); put("equipment", ex.equipment)
                         put("rir", ex.rir); put("note", ex.note)
                         put("alternative", ex.alternative); put("gifUrl", ex.gifUrl)
+                        put("primaryMuscles", JSONArray(ex.primaryMuscles))
+                        put("secondaryMuscles", JSONArray(ex.secondaryMuscles))
                     })
                 }
             })

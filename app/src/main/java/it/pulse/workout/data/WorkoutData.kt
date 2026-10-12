@@ -13,7 +13,9 @@ data class Exercise(
     val rir: String = "1–3",
     val note: String = "",
     val alternative: String = "",
-    val gifUrl: String = ""
+    val gifUrl: String = "",
+    val primaryMuscles: List<String> = emptyList(),
+    val secondaryMuscles: List<String> = emptyList()
 )
 
 data class WorkoutDay(
