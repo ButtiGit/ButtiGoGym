@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-10-12.1",
+  "revision": "2026-10-12.2",
   "title": "ButtiGoGym · Crescita muscolare",
   "goal": "Massa graduale, senza taglio calorico aggressivo",
   "gym": "Revolution Fitness Club — Cuneo",
@@ -36,7 +36,14 @@
           "note": "Schiena in appoggio, non inarcare la zona lombare",
           "alternative": "Shoulder press con manubri",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/67n3r98.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/67n3r98.gif",
+          "primaryMuscles": [
+            "shoulders"
+          ],
+          "secondaryMuscles": [
+            "triceps",
+            "traps"
+          ]
         },
         {
           "id": "leg_press",
@@ -50,7 +57,15 @@
           "note": "Scendi senza staccare il bacino",
           "alternative": "Hack squat o goblet squat",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/10Z2DXU.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/10Z2DXU.gif",
+          "primaryMuscles": [
+            "quads",
+            "glutes"
+          ],
+          "secondaryMuscles": [
+            "hamstrings",
+            "calves"
+          ]
         },
         {
           "id": "incline",
@@ -64,7 +79,14 @@
           "note": "Inclinazione moderata e discesa controllata",
           "alternative": "Chest press inclinata",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ns0SIbU.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ns0SIbU.gif",
+          "primaryMuscles": [
+            "chest"
+          ],
+          "secondaryMuscles": [
+            "shoulders",
+            "triceps"
+          ]
         },
         {
           "id": "pulldown",
@@ -78,7 +100,14 @@
           "note": "Tira al petto senza slanci",
           "alternative": "Lat machine presa larga",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/LEprlgG.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/LEprlgG.gif",
+          "primaryMuscles": [
+            "lats"
+          ],
+          "secondaryMuscles": [
+            "biceps",
+            "upper_back"
+          ]
         },
         {
           "id": "lateral_raise",
@@ -92,7 +121,13 @@
           "note": "Gomiti morbidi, spalle basse",
           "alternative": "Alzate laterali con manubri",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/goJ6ezq.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/goJ6ezq.gif",
+          "primaryMuscles": [
+            "shoulders"
+          ],
+          "secondaryMuscles": [
+            "traps"
+          ]
         },
         {
           "id": "tricep_pushdown",
@@ -106,7 +141,11 @@
           "note": "Gomiti fissi vicino al corpo",
           "alternative": "Pushdown con barra",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/dU605di.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/dU605di.gif",
+          "primaryMuscles": [
+            "triceps"
+          ],
+          "secondaryMuscles": []
         },
         {
           "id": "bicep_curl",
@@ -120,7 +159,13 @@
           "note": "Niente slancio, negativa lenta",
           "alternative": "Curl ai cavi",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ae9UoXQ.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ae9UoXQ.gif",
+          "primaryMuscles": [
+            "biceps"
+          ],
+          "secondaryMuscles": [
+            "forearms"
+          ]
         }
       ]
     },
@@ -144,7 +189,15 @@
           "note": "Piedi stabili e ginocchia allineate",
           "alternative": "Hack squat",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/10Z2DXU.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/10Z2DXU.gif",
+          "primaryMuscles": [
+            "quads",
+            "glutes"
+          ],
+          "secondaryMuscles": [
+            "hamstrings",
+            "calves"
+          ]
         },
         {
           "id": "rdl",
@@ -158,7 +211,14 @@
           "note": "Bacino indietro, schiena neutra",
           "alternative": "Stacco rumeno con bilanciere",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/rR0LJzx.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/rR0LJzx.gif",
+          "primaryMuscles": [
+            "hamstrings",
+            "glutes"
+          ],
+          "secondaryMuscles": [
+            "lower_back"
+          ]
         },
         {
           "id": "leg_curl",
@@ -172,7 +232,11 @@
           "note": "Fermo breve in chiusura",
           "alternative": "Leg curl sdraiato",
           "rir": "1–3",
-          "gifUrl": ""
+          "gifUrl": "",
+          "primaryMuscles": [
+            "hamstrings"
+          ],
+          "secondaryMuscles": []
         },
         {
           "id": "leg_extension",
@@ -186,7 +250,11 @@
           "note": "Non rimbalzare, corsa controllata",
           "alternative": "Split squat",
           "rir": "1–3",
-          "gifUrl": ""
+          "gifUrl": "",
+          "primaryMuscles": [
+            "quads"
+          ],
+          "secondaryMuscles": []
         },
         {
           "id": "seated_row",
@@ -200,7 +268,14 @@
           "note": "Tira con i gomiti senza oscillare",
           "alternative": "Rematore macchina supporto petto",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/fUBheHs.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/fUBheHs.gif",
+          "primaryMuscles": [
+            "upper_back",
+            "lats"
+          ],
+          "secondaryMuscles": [
+            "biceps"
+          ]
         },
         {
           "id": "calf_raise",
@@ -214,7 +289,11 @@
           "note": "Pausa in allungamento e contrazione",
           "alternative": "Calf raise alla leg press",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ykUOVze.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ykUOVze.gif",
+          "primaryMuscles": [
+            "calves"
+          ],
+          "secondaryMuscles": []
         },
         {
           "id": "crunch",
@@ -228,7 +307,13 @@
           "note": "Avvicina sterno e bacino",
           "alternative": "Crunch a terra",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/WW95auq.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/WW95auq.gif",
+          "primaryMuscles": [
+            "abs"
+          ],
+          "secondaryMuscles": [
+            "obliques"
+          ]
         }
       ]
     },
@@ -252,7 +337,14 @@
           "note": "Scapole stabili, spinta completa",
           "alternative": "Panca piana con manubri",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/wDN97Ca.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/wDN97Ca.gif",
+          "primaryMuscles": [
+            "chest"
+          ],
+          "secondaryMuscles": [
+            "triceps",
+            "shoulders"
+          ]
         },
         {
           "id": "row_chest",
@@ -266,7 +358,14 @@
           "note": "Non staccare il petto dal supporto",
           "alternative": "Rematore manubri su panca",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/7I6LNUG.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/7I6LNUG.gif",
+          "primaryMuscles": [
+            "upper_back",
+            "lats"
+          ],
+          "secondaryMuscles": [
+            "biceps"
+          ]
         },
         {
           "id": "incline",
@@ -280,7 +379,14 @@
           "note": "Due serie di qualità, senza massimali",
           "alternative": "Chest press inclinata",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ns0SIbU.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ns0SIbU.gif",
+          "primaryMuscles": [
+            "chest"
+          ],
+          "secondaryMuscles": [
+            "shoulders",
+            "triceps"
+          ]
         },
         {
           "id": "pulldown",
@@ -294,7 +400,14 @@
           "note": "Controlla l'allungamento, niente slancio",
           "alternative": "Trazioni assistite",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/LEprlgG.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/LEprlgG.gif",
+          "primaryMuscles": [
+            "lats"
+          ],
+          "secondaryMuscles": [
+            "biceps",
+            "upper_back"
+          ]
         },
         {
           "id": "split_squat",
@@ -308,7 +421,14 @@
           "note": "Riduci carico se perdi equilibrio",
           "alternative": "Affondi indietro",
           "rir": "1–3",
-          "gifUrl": ""
+          "gifUrl": "",
+          "primaryMuscles": [
+            "quads",
+            "glutes"
+          ],
+          "secondaryMuscles": [
+            "hamstrings"
+          ]
         },
         {
           "id": "reverse_fly",
@@ -322,7 +442,14 @@
           "note": "Apri con i gomiti senza inarcare",
           "alternative": "Alzate posteriori ai cavi",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/myfUsKf.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/myfUsKf.gif",
+          "primaryMuscles": [
+            "rear_delts",
+            "upper_back"
+          ],
+          "secondaryMuscles": [
+            "traps"
+          ]
         },
         {
           "id": "lateral_raise_db",
@@ -336,7 +463,13 @@
           "note": "Controlla movimento senza slanci",
           "alternative": "Alzate laterali al cavo",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/DsgkuIt.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/DsgkuIt.gif",
+          "primaryMuscles": [
+            "shoulders"
+          ],
+          "secondaryMuscles": [
+            "traps"
+          ]
         },
         {
           "id": "triceps_overhead",
@@ -350,7 +483,11 @@
           "note": "Gomiti stabili; cambia se fastidio",
           "alternative": "Pushdown con corda",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/2IxROQ1.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/2IxROQ1.gif",
+          "primaryMuscles": [
+            "triceps"
+          ],
+          "secondaryMuscles": []
         }
       ]
     },
@@ -374,7 +511,13 @@
           "note": "Controllato, non a cedimento",
           "alternative": "Manubri",
           "rir": "2–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/goJ6ezq.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/goJ6ezq.gif",
+          "primaryMuscles": [
+            "shoulders"
+          ],
+          "secondaryMuscles": [
+            "traps"
+          ]
         },
         {
           "id": "bonus_hammer",
@@ -388,7 +531,12 @@
           "note": "Gomiti fermi, polso neutro",
           "alternative": "Hammer curl ai cavi",
           "rir": "2–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/slDvUAU.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/slDvUAU.gif",
+          "primaryMuscles": [
+            "biceps",
+            "forearms"
+          ],
+          "secondaryMuscles": []
         },
         {
           "id": "bonus_pushdown",
@@ -402,7 +550,11 @@
           "note": "Controlla la salita",
           "alternative": "Estensioni ai cavi",
           "rir": "2–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/dU605di.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/dU605di.gif",
+          "primaryMuscles": [
+            "triceps"
+          ],
+          "secondaryMuscles": []
         },
         {
           "id": "bonus_calf",
@@ -416,7 +568,11 @@
           "note": "Movimento completo",
           "alternative": "Calf alla leg press",
           "rir": "2–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ykUOVze.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ykUOVze.gif",
+          "primaryMuscles": [
+            "calves"
+          ],
+          "secondaryMuscles": []
         },
         {
           "id": "bonus_knee",
@@ -430,7 +586,13 @@
           "note": "Evita di dondolare, raccogli il bacino",
           "alternative": "Reverse crunch",
           "rir": "2–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/03lzqwk.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/03lzqwk.gif",
+          "primaryMuscles": [
+            "abs"
+          ],
+          "secondaryMuscles": [
+            "obliques"
+          ]
         }
       ]
     }
