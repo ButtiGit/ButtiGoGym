@@ -239,3 +239,22 @@ restano implementati in Kotlin con dati locali.
 Myself v0.7.1 rende neutre (scala di grigi) le immagini base del template:
 i colori verde/arancione sono applicati esclusivamente ai muscoli secondo
 i dati reali di allenamento e recupero.
+
+## Fix v0.7.2 — visualizzazione Myself su Android
+
+La V0.7.1 caricava un'intera pagina HTML in WebView, che su alcuni
+dispositivi risultava vuota nonostante gli asset fossero nell'APK.
+
+La V0.7.2 **non usa più WebView/JavaScript per la mappa**: il rendering è
+nativo in Jetpack Compose/Android Canvas. Il codice carica le immagini
+male-front e male-back dalle risorse offline dell'APK, visualizzandole in
+scala di grigi, e applica sopra i **tracciati anatomici originali del
+template MIT Jsplice/MuscleMap**, senza ridisegnarli manualmente.
+La mappa geometrica `muscle-map.json` è generata dal progetto
+upstream con `tools/build_muscle_map.py`.
+
+Ogni tracciato ha un'area sensibile al tocco, che seleziona il muscolo
+corrispondente nel pannello con livelli, streak e recupero. In caso di
+errore nel caricamento, appare un messaggio leggibile anziché un riquadro
+bianco. La pipeline controlla che entrambe le viste contengano almeno
+20 tracciati validi.
