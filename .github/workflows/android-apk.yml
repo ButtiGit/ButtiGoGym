@@ -2,7 +2,7 @@ name: ButtiGoGym Android APK
 
 on:
   push:
-    branches: [main, feature/session-photo-recap-v010]
+    branches: [main, feature/clean-ui-workout-notifications]
   workflow_dispatch:
 
 permissions:
@@ -68,6 +68,14 @@ jobs:
               assert all(item['muscle'] and item['path'].startswith(('M', 'm')) for item in maps[side])
           print('Verified native anatomy:', {k: len(v) for k, v in maps.items()})
           PY
+
+      - name: Verify ongoing session notification
+        shell: bash
+        run: |
+          test -s app/src/main/java/it/pulse/workout/WorkoutTimerService.kt
+          test -s app/src/main/res/drawable/ic_workout_notification.xml
+          grep -q 'foregroundServiceType="specialUse"' app/src/main/AndroidManifest.xml
+          grep -q 'permission.POST_NOTIFICATIONS' app/src/main/AndroidManifest.xml
 
       - name: Verify photo capture and recap resources
         shell: bash

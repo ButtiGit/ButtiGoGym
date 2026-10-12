@@ -165,6 +165,20 @@ private fun PulseApp() {
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> stepPermissionGranted = granted }
+    var notificationsAllowed by remember {
+        mutableStateOf(Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED)
+    }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> notificationsAllowed = granted }
+
+    fun requestTimerNotifications() {
+        if (Build.VERSION.SDK_INT >= 33 && !notificationsAllowed) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     LaunchedEffect(Unit) {
         if (tracker.available && !stepPermissionGranted &&
@@ -214,6 +228,22 @@ private fun PulseApp() {
             store.saveDraft(draft)
         }
         sessionVisible = true
+        requestTimerNotifications()
+    }
+
+    // Il servizio mantiene la notifica cronometro e il timer riposo
+    // anche quando l'utente esce dalla schermata o passa ad altre app.
+    LaunchedEffect(draft) {
+        val current = draft
+        if (current == null) {
+            WorkoutTimerService.stop(context)
+        } else {
+            val day = current.daySnapshot ?: catalog.days.firstOrNull { it.id == current.dayId }
+            if (day != null) {
+                runCatching { WorkoutTimerService.sync(context, current, day) }
+                    .onFailure { android.util.Log.w("ButtiGoGym/Timer", "Timer notification unavailable", it) }
+            }
+        }
     }
 
     val currentDay = draft?.daySnapshot ?: catalog.days.firstOrNull { it.id == draft?.dayId }

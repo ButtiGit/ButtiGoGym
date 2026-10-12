@@ -141,7 +141,7 @@ class WorkoutTimerService : Service() {
             .setWhen(if (resting) restEnd else sessionStart)
             .setUsesChronometer(true)
             .setChronometerCountDown(resting)
-            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()
     }
