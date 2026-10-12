@@ -131,3 +131,45 @@ effettiva in secondi e si possono vedere i risultati nello storico.
 Le serie già registrate e lo storico precedente restano disponibili. Nella
 prima versione guidata la schermata modifica il percorso una serie alla volta;
 la modifica retroattiva delle singole serie è prevista in un secondo passaggio.
+
+## V0.5 — Passi da Samsung Health tramite Health Connect
+
+La schermata **Oggi → Movimento quotidiano** può collegarsi a Health Connect
+e leggere, con il permesso `android.permission.health.READ_STEPS`, i passi
+giornalieri provenienti da **Samsung Health**, Galaxy Watch e altre sorgenti
+consentite dall'utente. Non richiediamo alcun permesso di scrittura.
+
+### Collegare Samsung Health
+
+1. Aggiorna Samsung Health (e Health Connect, se il telefono lo richiede).
+2. Apri **Samsung Health → Impostazioni → Health Connect**, completa la
+   configurazione e concedi a Samsung Health **Scrivi passi**.
+3. Apri **ButtiGoGym → Oggi → Collega Health Connect** e autorizza
+   **Leggi passi**. Le autorizzazioni di Samsung Health e ButtiGoGym sono separate.
+4. Torna alla dashboard e usa **Aggiorna passi da Health Connect** se vuoi
+   forzare una rilettura. L'app sincronizza anche all'avvio, alla ripresa e
+   ogni circa 60 secondi mentre è in primo piano.
+
+Se i passi del Galaxy Watch non appaiono, riapri o sincronizza Samsung Health
+sul telefono; gli aggiornamenti del Watch possono arrivare con ritardo.
+
+### Accuratezza e compatibilità
+
+- Si usa `StepsRecord.COUNT_TOTAL` con `aggregateGroupByPeriod` della libreria
+  AndroidX Health Connect **1.1.0**. Health Connect applica le priorità delle
+  sorgenti ed evita il conteggio duplicato di telefono e Watch.
+- Il totale letto da Health Connect **sostituisce, non si somma** al totale
+  del sensore `TYPE_STEP_COUNTER` o a quello inserito manualmente.
+- Vengono sincronizzati oggi e i 27 giorni precedenti, senza permessi
+  di lettura storica aggiuntivi; ciò aggiorna anche lo streak passi.
+- Se Health Connect manca o il permesso non è concesso, l'app continua
+  a usare il sensore locale o il conteggio manuale.
+- Revocando il permesso, la cache Health Connect viene rimossa al successivo
+  rilevamento nell'app. I dati dei tuoi allenamenti non sono toccati.
+- **I dati di salute restano sul dispositivo**, senza invii a GitHub,
+  server o terze parti. L'app usa Internet soltanto per la scheda remota
+  e per caricare le GIF, non per inviare i passi.
+
+Health Connect è integrato nel sistema Android 14+; su Android 13 o inferiori
+potrebbe essere necessario installare l'app Health Connect. Alcuni telefoni
+o versioni potrebbero non supportarlo.
