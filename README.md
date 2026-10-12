@@ -66,3 +66,25 @@ Figma: https://www.figma.com/design/hJMXltGv34gI2cVSTpTKqV
 La palestra Revolution Fitness Club Cuneo dichiara un'ampia sala pesi e numerosi
 macchinari, ma l'inventario aggiornato delle specifiche postazioni non è pubblico.
 Per questo la scheda propone attrezzatura comune con alternative da verificare in sede.
+
+## Dashboard V0.3 · Widget style bianco/verde
+
+Palette chiara con accento **#106119**, quattro metriche streak e monitoraggio locale:
+
+- **Generale (giorni):** 6.000 passi e (allenamento registrato oppure riposo confermato) nello stesso giorno.
+- **Allenamenti (settimane):** tre sedute obbligatorie distinte (ID `mon`, `wed`, `fri`) nella stessa settimana; il bonus non conta. La settimana ancora in corso non azzera la precedente.
+- **Riposo (giorni):** giorni segnati come recupero consecutivo; le giornate di allenamento sono ignorate, non interrompono la serie.
+- **Passi (giorni):** minimo **6.000** passi giornalieri. Non viene perso lo streak appena ci si sveglia: se oggi è incompleto viene considerato ieri.
+
+I contatori usano soltanto i dati reali registrati nel dispositivo. I passi
+sono **inseriti manualmente come totale della giornata** (0–200.000), per ora
+senza Health Connect o lettura del contapassi Android. Il bottone riposo è
+reversibile. I dati sono salvati localmente in SharedPreferences e limitati
+a due anni per contenere le dimensioni.
+
+Gli streak NON sono salvati come numeri precompilati: vengono ricalcolati
+da allenamenti, passi e riposo. I test automatizzati si trovano in
+`app/src/test/java/it/pulse/workout/data/StreakCalculatorTest.kt`.
+
+Il nuovo design è ispirato alle superfici arrotondate e ai riquadri di iOS:
+non aggiunge ancora widget alla schermata Home del launcher Android.
