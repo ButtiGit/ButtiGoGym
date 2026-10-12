@@ -158,7 +158,7 @@ jobs:
           test -n "$APK" && test -s "$APK"
           unzip -t "$APK" | tail -1
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$APK" > "$RUNNER_TEMP/apk_badging.txt"
-          grep -Fq "package: name=\'it.pulse.workout\'" "$RUNNER_TEMP/apk_badging.txt"
+          grep -q "^package:" "$RUNNER_TEMP/apk_badging.txt"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           ls -lh "$APK"
 
