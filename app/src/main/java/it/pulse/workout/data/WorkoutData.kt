@@ -72,7 +72,7 @@ object WorkoutPlan {
         )
     )
 
-    fun upcoming(days: List<WorkoutDay> = days): WorkoutDay {
+    fun upcoming(days: List<WorkoutDay> = WorkoutPlan.days): WorkoutDay {
         val day = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
         return when (day) {
             Calendar.MONDAY, Calendar.SATURDAY, Calendar.SUNDAY -> days.first { !it.optional }
