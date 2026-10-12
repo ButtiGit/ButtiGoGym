@@ -68,7 +68,8 @@
           "secondaryMuscles": [
             "traps"
           ],
-          "group": "Spalle"
+          "group": "Spalle",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/goJ6ezq.gif"
         },
         {
           "id": "reverse_fly",
@@ -129,7 +130,8 @@
             "forearms"
           ],
           "secondaryMuscles": [],
-          "group": "Bicipiti"
+          "group": "Bicipiti",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/slDvUAU.gif"
         },
         {
           "id": "tricep_pushdown",
@@ -166,7 +168,8 @@
             "triceps"
           ],
           "secondaryMuscles": [],
-          "group": "Tricipiti"
+          "group": "Tricipiti",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/2IxROQ1.gif"
         },
         {
           "id": "reverse_curl_ez",
@@ -186,7 +189,8 @@
           "secondaryMuscles": [
             "biceps"
           ],
-          "group": "Avambracci"
+          "group": "Avambracci",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/G8dXpNG.gif"
         },
         {
           "id": "wrist_curl",
@@ -204,7 +208,8 @@
             "forearms"
           ],
           "secondaryMuscles": [],
-          "group": "Avambracci"
+          "group": "Avambracci",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/vUTfFHw.gif"
         },
         {
           "id": "mon_chest_recall",
@@ -226,7 +231,8 @@
             "shoulders"
           ],
           "optional": true,
-          "group": "Richiamo facoltativo"
+          "group": "Richiamo facoltativo",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/WbNq5Xu.gif"
         }
       ]
     },
@@ -397,7 +403,8 @@
           "secondaryMuscles": [
             "obliques"
           ],
-          "group": "Addominali"
+          "group": "Addominali",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/03lzqwk.gif"
         }
       ]
     },
@@ -429,7 +436,8 @@
             "shoulders",
             "triceps"
           ],
-          "group": "Petto"
+          "group": "Petto",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/wDN97Ca.gif"
         },
         {
           "id": "bench",
@@ -450,7 +458,8 @@
             "triceps",
             "shoulders"
           ],
-          "group": "Petto"
+          "group": "Petto",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/wDN97Ca.gif"
         },
         {
           "id": "pec_deck",
@@ -533,7 +542,8 @@
           "secondaryMuscles": [
             "biceps"
           ],
-          "group": "Schiena"
+          "group": "Schiena",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/aaXr7ld.gif"
         },
         {
           "id": "reverse_wrist_curl",
@@ -551,7 +561,8 @@
             "forearms"
           ],
           "secondaryMuscles": [],
-          "group": "Avambracci"
+          "group": "Avambracci",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/Ezpnw9d.gif"
         },
         {
           "id": "farmers_walk",
@@ -593,7 +604,8 @@
             "traps"
           ],
           "optional": true,
-          "group": "Richiamo facoltativo"
+          "group": "Richiamo facoltativo",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/goJ6ezq.gif"
         }
       ]
     },
@@ -625,7 +637,8 @@
           "secondaryMuscles": [
             "hamstrings"
           ],
-          "group": "Gambe"
+          "group": "Gambe",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/10Z2DXU.gif"
         },
         {
           "id": "bonus_leg_curl",
@@ -643,7 +656,8 @@
             "hamstrings"
           ],
           "secondaryMuscles": [],
-          "group": "Gambe"
+          "group": "Gambe",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/Hgs6Nl1.gif"
         },
         {
           "id": "bonus_calf",
@@ -661,7 +675,8 @@
             "calves"
           ],
           "secondaryMuscles": [],
-          "group": "Polpacci"
+          "group": "Polpacci",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ykUOVze.gif"
         },
         {
           "id": "bonus_crunch",
@@ -681,7 +696,8 @@
           "secondaryMuscles": [
             "obliques"
           ],
-          "group": "Addominali"
+          "group": "Addominali",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/q2ADGqV.gif"
         }
       ]
     }
