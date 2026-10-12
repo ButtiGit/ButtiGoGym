@@ -413,3 +413,29 @@ l'app. Per l'aggiornamento normale invece i file privati si conservano.
 `versionCode=14`, `versionName=0.9.2`. Il workflow usa il certificato
 permanente dai Secrets GitHub: deve corrispondere alla firma della v0.9.1
 STABLE già installata.
+
+## V0.9.3 — Interfaccia essenziale e timer notifiche
+
+- Dashboard semplificata: meno descrizioni duplicate, streak compatte,
+  card avanzate "Backup" e indicazioni Health Connect espandibili.
+- Scheda: aggiornamento rapido e linee guida espandibili, senza testi lunghi
+  subito visibili; interfaccia coerente con il logo.
+- Sessione guidata: meno testo, timer principale e recupero più immediati.
+- **Notifica persistente soltanto quando una sessione è in corso**:
+  il cronometro nativo conta il tempo trascorso anche con lo schermo bloccato.
+  Durante un intervallo di riposo mostra invece il conto alla rovescia.
+  Quando il recupero termina compare una notifica di avviso separata.
+  Toccando la notifica torni all'allenamento.
+- Richiede `POST_NOTIFICATIONS` su Android 13+; il permesso viene chiesto
+  alla prima sessione, non all'apertura dell'app. Negandolo, Android potrebbe
+  nascondere la notifica dalla tendina pur mostrando il servizio in Gestione
+  attività. Si può abilitarlo in Impostazioni > App > ButtiGoGym > Notifiche.
+- Su Android 14+ il servizio foreground usa il tipo `specialUse` per
+  cronometro e recupero di una sessione avviata dall'utente. Si arresta
+  automaticamente al salvataggio dell'allenamento.
+- Il cambio dell'APK usa lo stesso certificato permanente dei Secrets
+  (non un certificato debug), `versionCode=15`.
+- Gli avvisi di fine riposo sono notifiche normalmente temporizzate dal
+  servizio in foreground. Alcune ottimizzazioni aggressive della batteria
+  del produttore possono ritardarli: non garantire precisione al secondo
+  in sospensione profonda.

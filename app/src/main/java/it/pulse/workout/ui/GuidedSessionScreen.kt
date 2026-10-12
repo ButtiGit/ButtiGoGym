@@ -88,8 +88,8 @@ fun GuidedSessionScreen(
                     contentDescription = "Torna alla dashboard", tint = PulseColors.Foreground)
             }
             Column(Modifier.weight(1f)) {
-                Text("SESSIONE GUIDATA", color = PulseColors.Accent, fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
+                Text("IN ALLENAMENTO", color = PulseColors.Accent, fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                 Text(day.name, color = PulseColors.Foreground, fontWeight = FontWeight.Bold,
                     fontSize = 16.sp, maxLines = 1)
             }
@@ -113,9 +113,8 @@ fun GuidedSessionScreen(
                 color = PulseColors.Accent, trackColor = PulseColors.SoftGreen
             )
             Spacer(Modifier.height(7.dp))
-            Text("$mainCompleted / ${day.setCount} serie principali" +
-                    (if (day.optionalSetCount > 0) " · $optionalCompleted richiami eseguiti" else "") +
-                    " · ${day.exercises.size} esercizi",
+            Text("$mainCompleted / ${day.setCount} serie" +
+                    (if (optionalCompleted > 0) " · +$optionalCompleted extra" else ""),
                 color = PulseColors.Muted, fontSize = 11.sp)
         }
 
@@ -241,8 +240,8 @@ fun GuidedSessionScreen(
                                     color = PulseColors.Accent, letterSpacing = (-2).sp)
                             }
                             Spacer(Modifier.height(4.dp))
-                            Text("Recupera prima della prossima serie. Il timer continua anche se lasci questa schermata.",
-                                color = PulseColors.Muted, fontSize = 13.sp)
+                            Text("Timer attivo anche nelle notifiche",
+                                color = PulseColors.Muted, fontSize = 12.sp)
                             Spacer(Modifier.height(19.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                                 OutlinedButton(
@@ -300,8 +299,6 @@ fun GuidedSessionScreen(
                 }
             }
             item {
-                Text("La durata viene salvata alla fine. Uscendo e rientrando puoi riprendere la sessione.",
-                    color = PulseColors.Muted, fontSize = 11.sp)
                 if (day.cooldown.isNotBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Text("Fine allenamento: ${day.cooldown}",

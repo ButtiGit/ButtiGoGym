@@ -80,15 +80,13 @@ fun MyselfScreen(
                     modifier = Modifier.size(60.dp).clip(RoundedCornerShape(18.dp)))
                 Spacer(Modifier.width(13.dp))
                 Column {
-                    Text("BUTTIGOGYM / PROGRESSI", color = PulseColors.Accent,
+                    Text("I TUOI PROGRESSI", color = PulseColors.Accent,
                         fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
                     Text("Myself", color = PulseColors.Foreground,
                         fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.3).sp)
                 }
             }
-            Spacer(Modifier.height(4.dp))
-            Text("La mappa dei tuoi allenamenti. Tocca un muscolo per esplorare i progressi.",
-                fontSize = 12.sp, color = PulseColors.Muted)
+            // Tocca i muscoli sulla mappa per aprire direttamente i progressi.
         }
         item {
             MyselfCard {
@@ -257,11 +255,11 @@ fun MyselfScreen(
             }
         }
         item {
-            Text("Il recupero è una stima (36–72 h, secondo il gruppo muscolare e il ruolo nell’esercizio): non misura quanto sei realmente recuperato. I livelli sono punti di allenamento gamificati calcolati dalle serie registrate (kg, ripetizioni e muscoli coinvolti), non misure cliniche di forza o crescita.",
+            Text("Recupero stimato (36–72 h) e livelli gamificati: non sono misure mediche.",
                 color = PulseColors.Muted, fontSize = 10.sp, lineHeight = 15.sp)
             if (active != null) {
                 Spacer(Modifier.height(8.dp))
-                Text("La sessione attualmente in corso verrà conteggiata quando la salvi nello storico.",
+                Text("Il workout in corso conta dopo il salvataggio.",
                     color = PulseColors.Muted, fontSize = 10.sp)
             }
         }

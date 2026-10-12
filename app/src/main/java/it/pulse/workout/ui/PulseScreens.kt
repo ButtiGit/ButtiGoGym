@@ -59,12 +59,8 @@ private fun BrandHeader() {
                 contentDescription = "Logo ButtiGoGym",
                 modifier = Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)))
             Spacer(Modifier.width(11.dp))
-            Column {
-                Text("ButtiGoGym", color = PulseColors.Accent,
-                    fontWeight = FontWeight.Black, fontSize = 18.sp)
-                Text("PROGRESS IS PERSONAL", color = PulseColors.Muted,
-                    fontSize = 9.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
-            }
+            Text("ButtiGoGym", color = PulseColors.Accent,
+                fontWeight = FontWeight.Black, fontSize = 19.sp)
         }
     }
 }
@@ -232,25 +228,28 @@ fun PlanScreen(
     onRefresh: () -> Unit,
     onStart: (WorkoutDay) -> Unit
 ) {
+    var showGuidelines by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = pagePad, end = pagePad, bottom = 30.dp)
     ) {
         item {
             BrandHeader()
-            Eyebrow("IL TUO PROGRAMMA")
+            Eyebrow("SCHEDA")
             Spacer(Modifier.height(12.dp))
-            PageTitle("Allenati al\ntuo ritmo.")
-            Spacer(Modifier.height(10.dp))
-            Text("3 sedute fisse + 1 bonus quando sei recuperato.", color = PulseColors.Muted, fontSize = 13.sp)
-            Spacer(Modifier.height(14.dp))
-            Text("Versione $version", color = PulseColors.Accent, fontSize = 12.sp)
-            Text(refreshState, color = PulseColors.Muted, fontSize = 12.sp)
-            Spacer(Modifier.height(10.dp))
-            OutlinedButton(onClick = onRefresh, enabled = !refreshing, modifier = Modifier.fillMaxWidth()) {
-                Text(if (refreshing) "Sincronizzo…" else "Aggiorna scheda da GitHub")
+            PageTitle("La tua scheda.")
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                LabelChip("3 GIORNI + BONUS")
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onRefresh, enabled = !refreshing) {
+                    Text(if (refreshing) "Sincronizzo…" else "↻ Aggiorna",
+                        color = PulseColors.Accent)
+                }
             }
-            Spacer(Modifier.height(26.dp))
+            if (refreshState.startsWith("Offline") || refreshState.startsWith("Aggiornamento"))
+                Text(refreshState, color = PulseColors.Muted, fontSize = 11.sp)
+            Spacer(Modifier.height(22.dp))
         }
         items(days, key = { it.id }) { day ->
             var expanded by remember(day.id) { mutableStateOf(false) }
@@ -268,16 +267,15 @@ fun PlanScreen(
                 Text(day.name, color = PulseColors.Foreground,
                     fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.height(7.dp))
-                Text(day.description, color = PulseColors.Muted, fontSize = 12.sp)
-                Spacer(Modifier.height(7.dp))
-                Text("Durata indicativa: ${day.duration}", color = PulseColors.Muted, fontSize = 12.sp)
+                Text("${day.exercises.size} esercizi · ${day.duration}",
+                    color = PulseColors.Muted, fontSize = 12.sp)
                 Spacer(Modifier.height(13.dp))
                 Eyebrow("${day.exercises.count { !it.optional }} ESERCIZI PRINCIPALI · ${day.setCount} SERIE" +
                     (if (day.optionalSetCount > 0) " · +${day.optionalSetCount} SERIE FACOLTATIVE" else ""),
                     PulseColors.Accent)
                 Spacer(Modifier.height(10.dp))
                 TextButton(onClick = { expanded = !expanded }) {
-                    Text(if (expanded) "Nascondi esercizi ↑" else "Mostra esercizi, serie e ripetizioni ↓",
+                    Text(if (expanded) "Chiudi ↑" else "Vedi esercizi ↓",
                         color = PulseColors.Accent, fontWeight = FontWeight.Bold)
                 }
                 if (expanded) {
@@ -317,12 +315,24 @@ fun PlanScreen(
             Spacer(Modifier.height(13.dp))
         }
         item {
-            Spacer(Modifier.height(15.dp))
-            Eyebrow("LINEE GUIDA")
-            Spacer(Modifier.height(10.dp))
-            guidelines.forEach { guideline ->
-                Text("• $guideline", color = PulseColors.Muted, fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 8.dp))
+            Spacer(Modifier.height(9.dp))
+            PulseCard(Modifier.fillMaxWidth()
+                .animateContentSize(animationSpec = tween(320))
+                .clickable { showGuidelines = !showGuidelines }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Note e progressione", fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold, color = PulseColors.Foreground)
+                    Spacer(Modifier.weight(1f))
+                    Icon(Icons.Default.ChevronRight, contentDescription = null,
+                        tint = PulseColors.Accent)
+                }
+                if (showGuidelines) {
+                    Spacer(Modifier.height(13.dp))
+                    guidelines.forEach { guideline ->
+                        Text("• $guideline", color = PulseColors.Muted, fontSize = 12.sp,
+                            modifier = Modifier.padding(bottom = 10.dp))
+                    }
+                }
             }
         }
     }
