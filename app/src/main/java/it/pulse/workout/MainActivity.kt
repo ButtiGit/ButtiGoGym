@@ -144,6 +144,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         }
     }
 
+    var notificationUiTick by remember { mutableIntStateOf(0) }
     val lifecycleOwner = LocalLifecycleOwner.current
     var inForeground by remember { mutableStateOf(true) }
     DisposableEffect(lifecycleOwner) {
@@ -182,7 +183,6 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> stepPermissionGranted = granted }
-    var notificationUiTick by remember { mutableIntStateOf(0) }
     var notificationsAllowed by remember {
         mutableStateOf(Build.VERSION.SDK_INT < 33 ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
