@@ -15,7 +15,12 @@ data class Exercise(
     val alternative: String = "",
     val gifUrl: String = "",
     val primaryMuscles: List<String> = emptyList(),
-    val secondaryMuscles: List<String> = emptyList()
+    val secondaryMuscles: List<String> = emptyList(),
+    /** Richiami facoltativi, non necessari per completare la seduta. */
+    val optional: Boolean = false,
+    /** Il valore inserito nel campo reps rappresenta secondi, non ripetizioni. */
+    val timeBased: Boolean = false,
+    val group: String = ""
 )
 
 data class WorkoutDay(
@@ -25,9 +30,13 @@ data class WorkoutDay(
     val description: String,
     val duration: String,
     val exercises: List<Exercise>,
-    val optional: Boolean = false
+    val optional: Boolean = false,
+    val cooldown: String = ""
 ) {
-    val setCount: Int get() = exercises.sumOf { it.sets }
+    /** Obiettivo principale: i richiami opzionali non riducono la percentuale di completamento. */
+    val setCount: Int get() = exercises.filterNot { it.optional }.sumOf { it.sets }
+    val optionalSetCount: Int get() = exercises.filter { it.optional }.sumOf { it.sets }
+    val allSetCount: Int get() = setCount + optionalSetCount
 }
 
 /** Scheda iniziale modificabile nel codice; nessun peso personale è inventato. */
@@ -108,6 +117,15 @@ data class WorkoutDraft(
     fun warmups(exercise: Exercise): List<SetEntry> =
         entries.entries.filter { it.key.startsWith("warmup:${exercise.id}:") && it.value.done }
             .sortedBy { it.value.completedAt }.map { it.value }
+
+    /** Salta un richiamo facoltativo senza registrare serie artificiali. */
+    fun skipOptionalExercise(day: WorkoutDay): WorkoutDraft {
+        require(day.exercises.getOrNull(guidedExerciseIndex)?.optional == true) {
+            "Non puoi saltare un esercizio principale"
+        }
+        return copy(guidedExerciseIndex = guidedExerciseIndex + 1, guidedWorkSet = 1,
+            restUntilMillis = 0L)
+    }
 
     fun recordSet(
         day: WorkoutDay,

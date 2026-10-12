@@ -161,8 +161,13 @@ object MuscleAnalytics {
                     val entry = record.entries[WorkoutDraft.key(exercise.id, setNumber)] ?: return@forEach
                     if (!entry.done || entry.warmup) return@forEach
                     val weight = entry.weight.replace(',', '.').toDoubleOrNull() ?: 0.0
-                    val reps = entry.reps.toIntOrNull() ?: return@forEach
-                    if (weight < 0 || !weight.isFinite() || reps <= 0) return@forEach
+                    val recorded = entry.reps.toIntOrNull() ?: return@forEach
+                    if (weight < 0 || !weight.isFinite() || recorded <= 0) return@forEach
+                    // Farmer's walk: recorded value is seconds. Normalize to
+                    // equivalent effort reps so a 40-second carry is not
+                    // rewarded as 40 lifting repetitions.
+                    val reps = if (exercise.timeBased) (recorded / 4).coerceIn(1, 25)
+                        else recorded
                     val timestamp = entry.completedAt.takeIf { it > 0L } ?: record.completedAt
                     if (timestamp > nowMillis + 60_000L) return@forEach
                     val date = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()

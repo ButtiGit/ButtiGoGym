@@ -106,13 +106,16 @@ class WorkoutStore(context: Context) {
         val completed = day.exercises.sumOf { ex ->
             (1..ex.sets).count { draft.entry(ex, it).done }
         }
+        val chosenOptionalSets = day.exercises.filter { it.optional }.sumOf { ex ->
+            (1..ex.sets).count { draft.entry(ex, it).done }
+        }
         val record = SessionRecord(
             id = end,
             dayId = day.id,
             completedAt = end,
             durationMinutes = ((end - draft.startedAt).coerceAtLeast(0L) / 60_000L).toInt(),
             completedSets = completed,
-            totalSets = day.setCount,
+            totalSets = day.setCount + chosenOptionalSets,
             durationSeconds = ((end - draft.startedAt).coerceAtLeast(0L) / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
             entries = draft.entries,
             daySnapshot = day

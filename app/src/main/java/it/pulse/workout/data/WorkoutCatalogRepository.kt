@@ -45,7 +45,10 @@ class WorkoutCatalogRepository(context: Context) {
                         it.startsWith("https://") && it.length <= 500
                     }.orEmpty(),
                     primaryMuscles = readMuscles(obj, "primaryMuscles"),
-                    secondaryMuscles = readMuscles(obj, "secondaryMuscles")
+                    secondaryMuscles = readMuscles(obj, "secondaryMuscles"),
+                    optional = obj.optBoolean("optional", false),
+                    timeBased = obj.optBoolean("timeBased", false),
+                    group = obj.optString("group", "").take(70)
                 )
             }
             require(items.map { it.id }.distinct().size == items.size)
@@ -56,7 +59,8 @@ class WorkoutCatalogRepository(context: Context) {
                 description = data.optString("description", ""),
                 duration = data.optString("duration", ""),
                 exercises = items,
-                optional = data.optBoolean("optional", false)
+                optional = data.optBoolean("optional", false),
+                cooldown = data.optString("cooldown", "").take(280)
             )
         }
 
@@ -67,6 +71,7 @@ class WorkoutCatalogRepository(context: Context) {
             put("description", day.description)
             put("duration", day.duration)
             put("optional", day.optional)
+            put("cooldown", day.cooldown)
             put("exercises", JSONArray().apply {
                 day.exercises.forEach { ex ->
                     put(JSONObject().apply {
@@ -77,6 +82,9 @@ class WorkoutCatalogRepository(context: Context) {
                         put("alternative", ex.alternative); put("gifUrl", ex.gifUrl)
                         put("primaryMuscles", JSONArray(ex.primaryMuscles))
                         put("secondaryMuscles", JSONArray(ex.secondaryMuscles))
+                        put("optional", ex.optional)
+                        put("timeBased", ex.timeBased)
+                        put("group", ex.group)
                     })
                 }
             })
