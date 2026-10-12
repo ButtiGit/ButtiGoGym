@@ -38,6 +38,7 @@ def main():
     plan = json.loads(PLAN_FILE.read_text(encoding="utf-8"))
     total = 0
     missing = []
+    rejected = []
     for day in plan["days"]:
         for exercise in day["exercises"]:
             query = exercise.get("gifQuery", "").strip()
@@ -48,7 +49,25 @@ def main():
                  if item.get("name") and item.get("gif")),
                 key=lambda v: v[0], reverse=True
             )
-            best_score, best = options[0]
+            # Reject close-looking but biomechanically different demonstrations.
+            label = exercise.get("id", "")
+            def compatible(name):
+                name = normalize(name)
+                if label == "leg_press": return "leg press" in name and "one leg" not in name and "single leg" not in name
+                if label == "leg_extension": return "leg extension" in name and "triceps" not in name
+                if label == "leg_curl": return "leg curl" in name and "seated" in name
+                if label == "crunch": return "crunch" in name and "side" not in name and "oblique" not in name
+                if label == "split_squat": return "bulgarian" in name and "step up" not in name
+                if label == "bench": return "chest press" in name and "standing" not in name
+                if label in ("tricep_pushdown", "bonus_pushdown"): return "pushdown" in name and "rope" in name
+                return True
+            candidates = [(v, item) for v, item in options if compatible(item.get("name", ""))]
+            print("Candidate GIFs for", day["id"], label,
+                  [(round(v, 2), item["name"]) for v, item in candidates[:3]])
+            if not candidates:
+                missing.append(query)
+                continue
+            best_score, best = candidates[0]
             print(f"{day['id']:>5} | {query:34} -> {best.get('name','')[:42]:42} | {best_score:.2f}")
             if best_score < 0.66:
                 missing.append(query)
