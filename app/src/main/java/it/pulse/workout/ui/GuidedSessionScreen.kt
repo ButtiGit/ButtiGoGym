@@ -14,6 +14,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
@@ -54,7 +57,14 @@ fun GuidedSessionScreen(
     draft: WorkoutDraft,
     onBack: () -> Unit,
     onUpdate: (WorkoutDraft) -> Unit,
-    onFinish: () -> Unit
+    onFinish: () -> Unit,
+    onReset: () -> Unit,
+    notificationsVisible: Boolean,
+    timerStatus: String,
+    onEnableNotifications: () -> Unit,
+    onNotificationSettings: () -> Unit,
+    onTestNotification: () -> Unit,
+    onRetryTimer: () -> Unit
 ) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(draft.startedAt) {
@@ -77,6 +87,7 @@ fun GuidedSessionScreen(
     val elapsed = ((now - draft.startedAt).coerceAtLeast(0L) / 1000L)
     val exercise = day.exercises.getOrNull(draft.guidedExerciseIndex)
     var finishDialog by remember { mutableStateOf(false) }
+    var resetDialog by remember { mutableStateOf(false) }
 
     Column(Modifier.fillMaxSize().background(PulseColors.Background)) {
         Row(
@@ -92,6 +103,12 @@ fun GuidedSessionScreen(
                     fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                 Text(day.name, color = PulseColors.Foreground, fontWeight = FontWeight.Bold,
                     fontSize = 16.sp, maxLines = 1)
+            }
+            TextButton(onClick = { resetDialog = true }) {
+                Icon(Icons.Default.RestartAlt, contentDescription = null,
+                    tint = PulseColors.Accent, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Reset", fontSize = 12.sp, color = PulseColors.Accent)
             }
             Surface(color = PulseColors.SoftGreen, shape = RoundedCornerShape(14.dp)) {
                 Row(
@@ -123,6 +140,61 @@ fun GuidedSessionScreen(
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            item {
+                Surface(
+                    color = if (notificationsVisible && timerStatus == "running")
+                        PulseColors.SoftGreen else PulseColors.Raised,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                if (notificationsVisible) Icons.Default.NotificationsActive
+                                else Icons.Default.NotificationsOff,
+                                contentDescription = null,
+                                tint = PulseColors.Accent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                when {
+                                    !notificationsVisible -> "Notifiche non attive"
+                                    timerStatus.startsWith("error:") -> "Errore timer in background"
+                                    timerStatus == "running" -> "Timer attivo nelle notifiche"
+                                    else -> "Avvio timer in background…"
+                                },
+                                color = PulseColors.Foreground,
+                                fontWeight = FontWeight.SemiBold, fontSize = 12.sp
+                            )
+                        }
+                        if (!notificationsVisible || timerStatus.startsWith("error:") ||
+                            timerStatus != "running") {
+                            Spacer(Modifier.height(6.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                TextButton(onClick = onEnableNotifications) {
+                                    Text("Abilita", color = PulseColors.Accent, fontSize = 11.sp)
+                                }
+                                TextButton(onClick = onNotificationSettings) {
+                                    Text("Impostazioni", color = PulseColors.Accent, fontSize = 11.sp)
+                                }
+                                TextButton(onClick = onRetryTimer) {
+                                    Text("Riprova", color = PulseColors.Accent, fontSize = 11.sp)
+                                }
+                            }
+                            if (timerStatus.startsWith("error:")) {
+                                Text(timerStatus.removePrefix("error:"),
+                                    color = PulseColors.Muted, fontSize = 10.sp)
+                            }
+                        } else {
+                            TextButton(onClick = onTestNotification) {
+                                Text("Invia notifica di prova",
+                                    color = PulseColors.Accent, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+            }
             if (allDone) {
                 item {
                     Panel {
@@ -312,6 +384,25 @@ fun GuidedSessionScreen(
                 }
             }
         }
+    }
+
+    if (resetDialog) {
+        AlertDialog(
+            onDismissRequest = { resetDialog = false },
+            title = { Text("Ricominciare da zero?") },
+            text = { Text("Cancellerà tutte le serie di questa sessione e riavvierà cronometro e recupero. Gli allenamenti già salvati nello storico non cambiano.") },
+            confirmButton = {
+                Button(
+                    onClick = { resetDialog = false; onReset() },
+                    colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
+                ) { Text("Reset allenamento", color = Color.White) }
+            },
+            dismissButton = {
+                TextButton(onClick = { resetDialog = false }) {
+                    Text("Annulla", color = PulseColors.Accent)
+                }
+            }
+        )
     }
 
     if (finishDialog) {
