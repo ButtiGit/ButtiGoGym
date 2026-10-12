@@ -12,13 +12,31 @@ android {
         applicationId = "it.pulse.workout"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "0.8.1"
+        versionCode = 12
+        versionName = "0.9.0"
     }
 
+    // Una chiave permanente resta nei GitHub Actions Secrets, mai nel repository.
+    // Il certificato debug preesistente NON può essere riutilizzato senza la sua chiave privata.
+    val signingPath = System.getenv("BUTTIGOGYM_SIGNING_FILE")
+    val signingReady = !signingPath.isNullOrBlank() &&
+        !System.getenv("BUTTIGOGYM_STORE_PASSWORD").isNullOrBlank() &&
+        !System.getenv("BUTTIGOGYM_KEY_ALIAS").isNullOrBlank() &&
+        !System.getenv("BUTTIGOGYM_KEY_PASSWORD").isNullOrBlank()
+    signingConfigs {
+        if (signingReady) {
+            create("stableRelease") {
+                storeFile = file(signingPath!!)
+                storePassword = System.getenv("BUTTIGOGYM_STORE_PASSWORD")
+                keyAlias = System.getenv("BUTTIGOGYM_KEY_ALIAS")
+                keyPassword = System.getenv("BUTTIGOGYM_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (signingReady) signingConfig = signingConfigs.getByName("stableRelease")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
