@@ -1,6 +1,11 @@
 package it.pulse.workout.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import it.pulse.workout.R
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -69,11 +74,18 @@ fun MyselfScreen(
         verticalArrangement = Arrangement.spacedBy(15.dp)
     ) {
         item {
-            Text("BUTTIGOGYM / PROFILE", color = PulseColors.Accent,
-                fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.6.sp)
-            Spacer(Modifier.height(8.dp))
-            Text("Myself", color = PulseColors.Foreground,
-                fontSize = 37.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.3).sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(painterResource(R.drawable.buttigogym_mascot),
+                    contentDescription = "Logo ButtiGoGym",
+                    modifier = Modifier.size(60.dp).clip(RoundedCornerShape(18.dp)))
+                Spacer(Modifier.width(13.dp))
+                Column {
+                    Text("BUTTIGOGYM / PROGRESSI", color = PulseColors.Accent,
+                        fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
+                    Text("Myself", color = PulseColors.Foreground,
+                        fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.3).sp)
+                }
+            }
             Spacer(Modifier.height(4.dp))
             Text("La mappa dei tuoi allenamenti. Tocca un muscolo per esplorare i progressi.",
                 fontSize = 12.sp, color = PulseColors.Muted)
@@ -285,8 +297,10 @@ private fun MyselfCard(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 private fun LevelTrack(progress: Float, height: androidx.compose.ui.unit.Dp = 9.dp) {
+    val animated by animateFloatAsState(progress.coerceIn(0f,1f),
+        animationSpec = tween(950), label = "Avanzamento livello")
     LinearProgressIndicator(
-        progress = { progress.coerceIn(0f,1f) },
+        progress = { animated },
         modifier = Modifier.fillMaxWidth().height(height).clip(CircleShape),
         color = PulseColors.Accent,
         trackColor = PulseColors.SoftGreen

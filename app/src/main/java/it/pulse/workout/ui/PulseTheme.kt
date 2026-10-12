@@ -13,6 +13,8 @@ object PulseColors {
     val Raised = Color(0xFFF1F5F2)
     val SoftGreen = Color(0xFFE9F3EA)
     val Accent = Color(0xFF106119)
+    val AccentDeep = Color(0xFF083C15)
+    val Rose = Color(0xFFF1A6B7)
     val Foreground = Color(0xFF1A2920)
     val Muted = Color(0xFF738276)
     val Border = Color(0xFFE5ECE6)

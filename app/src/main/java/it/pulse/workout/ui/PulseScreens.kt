@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import it.pulse.workout.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -50,12 +52,17 @@ private fun BrandHeader() {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("PULSE", color = PulseColors.Accent, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 3.sp)
-        Box(
-            modifier = Modifier.size(38.dp).background(PulseColors.Raised, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("B", color = PulseColors.Accent, fontWeight = FontWeight.Bold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(painterResource(R.drawable.buttigogym_mascot),
+                contentDescription = "Logo ButtiGoGym",
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)))
+            Spacer(Modifier.width(11.dp))
+            Column {
+                Text("ButtiGoGym", color = PulseColors.Accent,
+                    fontWeight = FontWeight.Black, fontSize = 18.sp)
+                Text("PROGRESS IS PERSONAL", color = PulseColors.Muted,
+                    fontSize = 9.sp, letterSpacing = 1.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
