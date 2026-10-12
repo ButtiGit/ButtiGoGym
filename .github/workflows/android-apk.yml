@@ -157,7 +157,7 @@ jobs:
           APK=$(find app/build/outputs/apk -name '*.apk' -type f | head -1)
           test -n "$APK" && test -s "$APK"
           unzip -t "$APK" | tail -1
-          unzip -Z1 "$APK" | grep -q "buttigogym_mascot"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$APK" | grep -q "package: name=\x27it.pulse.workout\x27"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           ls -lh "$APK"
 
