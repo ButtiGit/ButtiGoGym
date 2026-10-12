@@ -19,6 +19,8 @@ import androidx.core.content.ContextCompat
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -361,7 +363,9 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                     }
                 )
             } else {
-                when (tab) {
+                Crossfade(targetState = tab, animationSpec = tween(180),
+                    label = "Cambio schermata") { selectedTab ->
+                when (selectedTab) {
                     0 -> DashboardScreen(
                         upcoming = WorkoutPlan.upcoming(catalog.days),
                         days = catalog.days,
@@ -425,6 +429,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                             if (store.attachPhoto(id, filename)) history = store.history()
                         }
                     )
+                }
                 }
             }
         }
