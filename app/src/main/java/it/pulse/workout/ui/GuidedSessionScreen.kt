@@ -66,6 +66,11 @@ fun GuidedSessionScreen(
     val finishedSets = day.exercises.sumOf { ex ->
         (1..ex.sets).count { draft.entry(ex, it).done }
     }
+    val optionalCompleted = day.exercises.filter { it.optional }.sumOf { ex ->
+        (1..ex.sets).count { draft.entry(ex, it).done }
+    }
+    val mainCompleted = finishedSets - optionalCompleted
+    val progressTotal = day.setCount + optionalCompleted
     val allDone = draft.guidedExerciseIndex >= day.exercises.size
     val inRest = !allDone && draft.restUntilMillis > now
     val remainingSeconds = ((draft.restUntilMillis - now + 999L) / 1000L).coerceAtLeast(0)
@@ -103,12 +108,14 @@ fun GuidedSessionScreen(
         }
         Column(Modifier.padding(horizontal = 20.dp)) {
             LinearProgressIndicator(
-                progress = { (finishedSets.toFloat() / day.setCount.coerceAtLeast(1)).coerceIn(0f, 1f) },
+                progress = { (finishedSets.toFloat() / progressTotal.coerceAtLeast(1)).coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
                 color = PulseColors.Accent, trackColor = PulseColors.SoftGreen
             )
             Spacer(Modifier.height(7.dp))
-            Text("$finishedSets / ${day.setCount} serie allenanti · ${day.exercises.size} esercizi",
+            Text("$mainCompleted / ${day.setCount} serie principali" +
+                    (if (day.optionalSetCount > 0) " · $optionalCompleted richiami eseguiti" else "") +
+                    " · ${day.exercises.size} esercizi",
                 color = PulseColors.Muted, fontSize = 11.sp)
         }
 
@@ -131,6 +138,12 @@ fun GuidedSessionScreen(
                         Spacer(Modifier.height(8.dp))
                         Text("Hai registrato $finishedSets serie allenanti in ${formatDuration(elapsed)}. Salva la sessione per aggiungerla allo storico.",
                             color = PulseColors.Muted, fontSize = 14.sp)
+                        if (day.cooldown.isNotBlank()) {
+                            Spacer(Modifier.height(14.dp))
+                            Text("CAMMINATA FINALE", fontWeight = FontWeight.Bold,
+                                color = PulseColors.Accent, fontSize = 11.sp)
+                            Text(day.cooldown, color = PulseColors.Foreground, fontSize = 13.sp)
+                        }
                         Spacer(Modifier.height(22.dp))
                         SolidButton("Salva allenamento", onClick = { finishDialog = true })
                     }
@@ -153,10 +166,22 @@ fun GuidedSessionScreen(
                             }
                         }
                         Spacer(Modifier.height(16.dp))
+                        if (exercise.optional) {
+                            Text("RICHIAMO FACOLTATIVO · PUOI SALTARLO",
+                                color = PulseColors.Accent, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Spacer(Modifier.height(7.dp))
+                        }
+                        if (exercise.group.isNotBlank()) {
+                            Text(exercise.group.uppercase(Locale.ITALIAN),
+                                color = PulseColors.Accent, fontWeight = FontWeight.Bold, fontSize = 10.sp)
+                            Spacer(Modifier.height(5.dp))
+                        }
                         Text(exercise.name, color = PulseColors.Foreground,
                             fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 29.sp)
                         Spacer(Modifier.height(8.dp))
-                        Text("${exercise.sets} serie allenanti · ${exercise.target} rep · RIR ${exercise.rir}",
+                        Text("${exercise.sets} serie allenanti · ${exercise.target}" +
+                                (if (exercise.target.contains("sec")) "" else " rep") +
+                                " · RIR ${exercise.rir}",
                             color = PulseColors.Muted, fontSize = 13.sp)
                         if (exercise.note.isNotEmpty()) {
                             Spacer(Modifier.height(10.dp))
@@ -166,6 +191,15 @@ fun GuidedSessionScreen(
                             Spacer(Modifier.height(6.dp))
                             Text("Alternativa: ${exercise.alternative}",
                                 color = PulseColors.Muted, fontSize = 11.sp)
+                        }
+                        if (exercise.optional) {
+                            Spacer(Modifier.height(12.dp))
+                            OutlinedButton(
+                                onClick = { onUpdate(draft.skipOptionalExercise(day)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(14.dp),
+                                border = BorderStroke(1.dp, PulseColors.Border)
+                            ) { Text("Salta questo richiamo", color = PulseColors.Accent) }
                         }
                         if (exercise.gifUrl.isNotBlank()) {
                             var showGif by remember(exercise.id) { mutableStateOf(false) }
@@ -256,10 +290,10 @@ fun GuidedSessionScreen(
                             Text("REGISTRATE", color = PulseColors.Muted, fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                             warmups.forEachIndexed { index, it ->
-                                LoggedRow("Risc. ${index + 1}", it)
+                                LoggedRow("Risc. ${index + 1}", it, exercise.timeBased)
                             }
                             logged.forEach { (number, entry) ->
-                                LoggedRow("Serie $number", entry)
+                                LoggedRow("Serie $number", entry, exercise.timeBased)
                             }
                         }
                     }
@@ -268,6 +302,11 @@ fun GuidedSessionScreen(
             item {
                 Text("La durata viene salvata alla fine. Uscendo e rientrando puoi riprendere la sessione.",
                     color = PulseColors.Muted, fontSize = 11.sp)
+                if (day.cooldown.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text("Fine allenamento: ${day.cooldown}",
+                        color = PulseColors.Muted, fontSize = 11.sp)
+                }
                 if (!allDone && finishedSets > 0) {
                     Spacer(Modifier.height(8.dp))
                     TextButton(onClick = { finishDialog = true }) {
@@ -336,7 +375,7 @@ private fun GuidedSetForm(
                 },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
-                label = { Text("Ripetizioni") },
+                label = { Text(if (exercise.timeBased) "Secondi" else "Ripetizioni") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 shape = RoundedCornerShape(15.dp)
             )
@@ -369,14 +408,15 @@ private fun GuidedSetForm(
             enabled = valid, onClick = { onSave(weight, reps, warmup) })
         if (!valid) {
             Spacer(Modifier.height(8.dp))
-            Text("Indica il peso (anche 0 kg) e almeno una ripetizione.",
+            Text(if (exercise.timeBased) "Indica il peso (anche 0 kg) e la durata in secondi."
+                else "Indica il peso (anche 0 kg) e almeno una ripetizione.",
                 color = PulseColors.Muted, fontSize = 11.sp)
         }
     }
 }
 
 @Composable
-private fun LoggedRow(title: String, entry: SetEntry) {
+private fun LoggedRow(title: String, entry: SetEntry, timeBased: Boolean = false) {
     Spacer(Modifier.height(10.dp))
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Default.Check, null, tint = PulseColors.Accent,
@@ -384,7 +424,8 @@ private fun LoggedRow(title: String, entry: SetEntry) {
         Spacer(Modifier.width(8.dp))
         Text(title, color = PulseColors.Foreground, fontSize = 12.sp,
             modifier = Modifier.weight(1f))
-        Text("${entry.weight} kg  ×  ${entry.reps}", color = PulseColors.Accent,
+        Text(if (timeBased) "${entry.weight} kg · ${entry.reps} sec" else "${entry.weight} kg × ${entry.reps} rep",
+            color = PulseColors.Accent,
             fontWeight = FontWeight.Bold, fontSize = 12.sp)
     }
 }
