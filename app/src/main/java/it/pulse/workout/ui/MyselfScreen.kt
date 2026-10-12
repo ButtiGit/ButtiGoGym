@@ -1,10 +1,8 @@
 package it.pulse.workout.ui
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,16 +18,19 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import android.annotation.SuppressLint
+import android.webkit.JavascriptInterface
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.os.Handler
+import android.os.Looper
+import org.json.JSONObject
 import it.pulse.workout.data.*
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -41,7 +42,7 @@ private val trainedColor = Color(0xFF106119)
 private val readyColor = Color(0xFFA8D9B0)
 private val neverColor = Color(0xFFE1E8E2)
 
-/** La sagoma è originale e disegnata con Canvas; nessun asset ripreso da workout.cool. */
+/** Interfaccia Myself; la mappa anatomica è il template MIT Jsplice/MuscleMap. */
 @Composable
 fun MyselfScreen(
     history: List<SessionRecord>,
@@ -145,9 +146,12 @@ fun MyselfScreen(
                     MuscleFigure(
                         back = back, muscles = muscles, selected = selected,
                         onSelected = { selected = it },
-                        modifier = Modifier.width(260.dp).height(470.dp)
+                        modifier = Modifier.fillMaxWidth().height(505.dp)
                     )
                 }
+                Spacer(Modifier.height(7.dp))
+                Text("Anatomia MuscleMap · licenza MIT · Jsplice/MuscleMap",
+                    color = PulseColors.Muted, fontSize = 10.sp)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -328,66 +332,23 @@ private fun LegendDot(label: String, tint: Color) {
     }
 }
 
-/** Poligoni proprietari delle zone muscolari, in un sistema 260x500. */
-private data class AnatomyPatch(val id: String, val points: List<Offset>)
-private fun poly(id: String, vararg coords: Int) =
-    AnatomyPatch(id, coords.toList().chunked(2).map { Offset(it[0].toFloat(), it[1].toFloat()) })
-private fun mirror(p: AnatomyPatch) =
-    AnatomyPatch(p.id, p.points.map { Offset(260f - it.x, it.y) })
-private fun both(id: String, vararg coords: Int): List<AnatomyPatch> {
-    val p = poly(id, *coords)
-    return listOf(p, mirror(p))
-}
-private fun patches(back: Boolean): List<AnatomyPatch> = if (!back) buildList {
-    addAll(both("traps", 109,100, 119,91, 130,105, 107,124))
-    addAll(both("shoulders", 89,111, 108,119, 103,148, 84,155, 69,141, 74,121))
-    addAll(both("chest", 104,128, 129,126, 127,172, 108,177, 98,154))
-    addAll(both("biceps", 70,158, 89,162, 83,207, 60,207, 54,184))
-    addAll(both("triceps", 89,158, 97,160, 90,201, 83,207))
-    addAll(both("forearms", 58,212, 83,212, 70,276, 47,281, 40,259))
-    addAll(both("obliques", 99,184, 113,188, 111,261, 99,250))
-    // Addominali in porzioni distinte per evidenziare la separazione visiva.
-    listOf(190,212,234).forEach { top ->
-        addAll(both("abs", 115,top, 128,top, 127,top+20, 115,top+20))
-    }
-    addAll(both("quads", 102,281, 129,283, 126,383, 101,390, 92,339))
-    addAll(both("calves", 104,396, 128,397, 125,471, 113,482, 102,446))
-} else buildList {
-    addAll(both("traps", 119,99, 130,111, 125,142, 101,137, 106,115))
-    addAll(both("rear_delts", 93,116, 107,140, 96,160, 77,153, 70,137))
-    addAll(both("triceps", 69,157, 94,163, 83,211, 61,208, 54,185))
-    addAll(both("forearms", 57,211, 81,214, 70,277, 47,280, 41,255))
-    addAll(both("upper_back", 107,145, 129,153, 127,210, 111,202, 98,168))
-    addAll(both("lats", 107,204, 128,213, 127,269, 109,249, 98,215))
-    addAll(both("lower_back", 112,254, 129,263, 128,282, 107,279))
-    addAll(both("glutes", 103,286, 129,290, 129,338, 98,338, 94,315))
-    addAll(both("hamstrings", 101,343, 127,343, 125,393, 105,398, 94,364))
-    addAll(both("calves", 104,400, 127,400, 124,466, 113,483, 103,450))
-}
 
-private fun polygon(points: List<Offset>): Path = Path().apply {
-    if (points.isNotEmpty()) {
-        moveTo(points.first().x, points.first().y)
-        points.drop(1).forEach { lineTo(it.x, it.y) }
-        close()
+/** Android WebView mostra SVG anatomici tracciati dal template MIT e foto originali:
+ *  NON sono disegnati a mano nell'app. Tutti gli asset sono dentro l'APK.
+ *  JS bridge espone solo un ID muscolare pre-approvato, senza accesso a Internet.
+ */
+private class MuscleMapBridge(private val callback: (String) -> Unit) {
+    private val main = Handler(Looper.getMainLooper())
+
+    @JavascriptInterface
+    fun selectMuscle(muscleId: String) {
+        if (muscleId in MuscleGroup.ids) {
+            main.post { callback(muscleId) }
+        }
     }
 }
 
-/** Point-in-polygon per la selezione di ogni area anatomica. */
-private fun inside(point: Offset, points: List<Offset>): Boolean {
-    var result = false
-    var j = points.lastIndex
-    for (i in points.indices) {
-        val a = points[i]
-        val b = points[j]
-        if ((a.y > point.y) != (b.y > point.y) &&
-            point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x
-        ) result = !result
-        j = i
-    }
-    return result
-}
-
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun MuscleFigure(
     back: Boolean,
@@ -396,53 +357,60 @@ private fun MuscleFigure(
     onSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val areas = remember(back) { patches(back) }
-    val values = remember(muscles) { muscles.associateBy { it.group.id } }
-    Canvas(
-        modifier.pointerInput(back) {
-            detectTapGestures { tap ->
-                val normalized = Offset(tap.x / size.width * 260f, tap.y / size.height * 500f)
-                areas.asReversed().firstOrNull { inside(normalized, it.points) }?.let {
-                    onSelected(it.id)
-                }
+    val latestOnSelected by rememberUpdatedState(onSelected)
+    val lastCommand = remember { mutableStateOf("") }
+
+    val states = remember(muscles) {
+        JSONObject().apply {
+            muscles.forEach { item ->
+                put(item.group.id, item.state.name)
             }
-        }
-    ) {
-        val scaleX = size.width / 260f
-        val scaleY = size.height / 500f
-        with(drawContext.transform) {
-            scale(scaleX, scaleY, Offset.Zero)
-        }
-        val silhouette = Color(0xFFF0F3F0)
-        val outline = Color(0xFFD0DDD3)
-        // Head and neck
-        drawCircle(silhouette, 26f, Offset(130f,49f))
-        drawCircle(outline, 26f, Offset(130f,49f), style = Stroke(1.5f))
-        drawPath(polygon(listOf(
-            Offset(118f,72f), Offset(142f,72f), Offset(145f,99f),
-            Offset(115f,99f)
-        )), silhouette)
-        // Body background
-        val bodyParts = listOf(
-            poly("body", 101,101, 159,101, 188,113, 194,155, 175,226, 167,281, 175,292, 150,300, 130,286, 110,300, 85,292, 93,281, 85,226, 66,155, 72,113),
-            poly("arm", 69,124, 90,150, 83,207, 71,280, 49,302, 38,291, 40,259, 54,178),
-            poly("arm", 191,124, 170,150, 177,207, 189,280, 211,302, 222,291, 220,259, 206,178),
-            poly("leg", 101,280, 131,286, 128,393, 125,471, 135,491, 108,496, 99,471, 97,396, 91,347),
-            poly("leg", 159,280, 129,286, 132,393, 135,471, 125,491, 152,496, 161,471, 163,396, 169,347)
-        )
-        bodyParts.forEach {
-            val path = polygon(it.points)
-            drawPath(path, silhouette)
-            drawPath(path, outline, style = Stroke(1.1f))
-        }
-        areas.forEach { area ->
-            val model = values[area.id]
-            val tone = tintFor(model?.state ?: MuscleRecovery.NEVER)
-            val path = polygon(area.points)
-            drawPath(path, tone)
-            drawPath(path,
-                if (selected == area.id) Color(0xFF064A12) else Color.White.copy(alpha = .92f),
-                style = Stroke(if (selected == area.id) 2.5f else 1.5f, cap = StrokeCap.Round))
-        }
+        }.toString()
     }
+    val command = remember(states, selected, back) {
+        "window.updateMuscleMap(" + states + ", " + JSONObject.quote(selected) + ", " +
+            JSONObject.quote(if (back) "back" else "front") + ");"
+    }
+
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            WebView(context).apply {
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                setVerticalScrollBarEnabled(false)
+                setHorizontalScrollBarEnabled(false)
+                settings.javaScriptEnabled = true
+                settings.domStorageEnabled = false
+                settings.allowFileAccess = true
+                settings.allowContentAccess = false
+                settings.blockNetworkLoads = true
+                settings.setSupportZoom(false)
+                settings.javaScriptCanOpenWindowsAutomatically = false
+                addJavascriptInterface(
+                    MuscleMapBridge { id -> latestOnSelected(id) }, "AndroidMuscles"
+                )
+                webViewClient = object : WebViewClient() {
+                    override fun onPageFinished(view: WebView?, url: String?) {
+                        if (url?.startsWith("file:///android_asset/muscle-map.html") == true) {
+                            view?.evaluateJavascript(lastCommand.value, null)
+                        }
+                    }
+                    override fun shouldOverrideUrlLoading(
+                        view: WebView?,
+                        request: android.webkit.WebResourceRequest?
+                    ): Boolean = true
+                }
+                loadUrl("file:///android_asset/muscle-map.html")
+            }
+        },
+        update = { webView ->
+            lastCommand.value = command
+            webView.evaluateJavascript(command, null)
+        },
+        onRelease = { webView ->
+            webView.removeJavascriptInterface("AndroidMuscles")
+            webView.stopLoading()
+            webView.destroy()
+        }
+    )
 }
