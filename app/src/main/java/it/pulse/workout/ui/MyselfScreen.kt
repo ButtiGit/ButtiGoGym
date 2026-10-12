@@ -23,14 +23,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import android.annotation.SuppressLint
-import android.webkit.JavascriptInterface
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.os.Handler
-import android.os.Looper
-import org.json.JSONObject
 import it.pulse.workout.data.*
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -42,7 +34,7 @@ private val trainedColor = Color(0xFF106119)
 private val readyColor = Color(0xFFA8D9B0)
 private val neverColor = Color(0xFFE1E8E2)
 
-/** Interfaccia Myself; la mappa anatomica è il template MIT Jsplice/MuscleMap. */
+/** Interfaccia Myself: usa gli asset anatomici MIT con rendering Android nativo. */
 @Composable
 fun MyselfScreen(
     history: List<SessionRecord>,
@@ -332,85 +324,3 @@ private fun LegendDot(label: String, tint: Color) {
     }
 }
 
-
-/** Android WebView mostra SVG anatomici tracciati dal template MIT e foto originali:
- *  NON sono disegnati a mano nell'app. Tutti gli asset sono dentro l'APK.
- *  JS bridge espone solo un ID muscolare pre-approvato, senza accesso a Internet.
- */
-private class MuscleMapBridge(private val callback: (String) -> Unit) {
-    private val main = Handler(Looper.getMainLooper())
-
-    @JavascriptInterface
-    fun selectMuscle(muscleId: String) {
-        if (muscleId in MuscleGroup.ids) {
-            main.post { callback(muscleId) }
-        }
-    }
-}
-
-@SuppressLint("SetJavaScriptEnabled")
-@Composable
-private fun MuscleFigure(
-    back: Boolean,
-    muscles: List<MuscleProgress>,
-    selected: String,
-    onSelected: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val latestOnSelected by rememberUpdatedState(onSelected)
-    val lastCommand = remember { mutableStateOf("") }
-
-    val states = remember(muscles) {
-        JSONObject().apply {
-            muscles.forEach { item ->
-                put(item.group.id, item.state.name)
-            }
-        }.toString()
-    }
-    val command = remember(states, selected, back) {
-        "window.updateMuscleMap(" + states + ", " + JSONObject.quote(selected) + ", " +
-            JSONObject.quote(if (back) "back" else "front") + ");"
-    }
-
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            WebView(context).apply {
-                setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                setVerticalScrollBarEnabled(false)
-                setHorizontalScrollBarEnabled(false)
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = false
-                settings.allowFileAccess = true
-                settings.allowContentAccess = false
-                settings.blockNetworkLoads = true
-                settings.setSupportZoom(false)
-                settings.javaScriptCanOpenWindowsAutomatically = false
-                addJavascriptInterface(
-                    MuscleMapBridge { id -> latestOnSelected(id) }, "AndroidMuscles"
-                )
-                webViewClient = object : WebViewClient() {
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        if (url?.startsWith("file:///android_asset/muscle-map.html") == true) {
-                            view?.evaluateJavascript(lastCommand.value, null)
-                        }
-                    }
-                    override fun shouldOverrideUrlLoading(
-                        view: WebView?,
-                        request: android.webkit.WebResourceRequest?
-                    ): Boolean = true
-                }
-                loadUrl("file:///android_asset/muscle-map.html")
-            }
-        },
-        update = { webView ->
-            lastCommand.value = command
-            webView.evaluateJavascript(command, null)
-        },
-        onRelease = { webView ->
-            webView.removeJavascriptInterface("AndroidMuscles")
-            webView.stopLoading()
-            webView.destroy()
-        }
-    )
-}

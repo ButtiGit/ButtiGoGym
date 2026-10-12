@@ -2,7 +2,7 @@ name: ButtiGoGym Android APK
 
 on:
   push:
-    branches: [main, feature/myself-real-muscle-template]
+    branches: [main, fix/myself-native-anatomy-renderer]
   workflow_dispatch:
 
 permissions:
@@ -54,10 +54,19 @@ jobs:
       - name: Verify anatomical bundle
         shell: bash
         run: |
-          test -s app/src/main/assets/muscle-map.html
+          test -s app/src/main/assets/muscle-map.json
           test -s app/src/main/assets/male-front.webp
           test -s app/src/main/assets/male-back.webp
           test -s app/src/main/assets/MUSCLEMAP-LICENSE.txt
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          regions=json.loads(Path("app/src/main/assets/muscle-map.json").read_text())
+          for side in ("front","back"):
+              assert len(regions[side])>=20, f"Missing {side} muscle shapes"
+              assert all(x["path"].startswith("M") and x["muscle"] for x in regions[side])
+          print("Native muscle regions verified", {k:len(v) for k,v in regions.items()})
+          PY
 
       - name: Resolve public exercise GIF references
         run: python3 tools/resolve_gifs.py

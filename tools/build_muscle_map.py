@@ -7,6 +7,7 @@ Source assets are hand-traced anatomical surfaces; do not redraw their geometry.
 from __future__ import annotations
 
 import html
+import json
 import pathlib
 import re
 import urllib.request
@@ -75,6 +76,8 @@ def records(code: str, constant: str) -> list[dict[str, str]]:
         raise ValueError(f"No entries found in {constant}")
     return items
 
+NATIVE_REGIONS = {}
+
 def build_diagram(side: str) -> str:
     code = read(f"packages/assets/src/male-{side}.ts").decode("utf-8")
     outlines = records(code, "OUTLINE")
@@ -85,9 +88,11 @@ def build_diagram(side: str) -> str:
         for p in outlines
     )
     parts = []
+    native_parts = []
     for m in muscles:
         target = ANATOMY_TO_APP.get(m["group"], "")
         if target:
+            native_parts.append({"muscle": target, "path": m["d"]})
             parts.append(
                 f'<path class="muscle" data-muscle="{target}" '
                 f'data-part="{html.escape(m["id"], quote=True)}" '
@@ -97,6 +102,7 @@ def build_diagram(side: str) -> str:
             parts.append(
                 f'<path class="muscle-muted" d="{html.escape(m["d"], quote=True)}"/>'
             )
+    NATIVE_REGIONS[side] = native_parts
     return (
         f'<svg class="diagram" id="{side}" viewBox="160 20 704 1440" '
         'preserveAspectRatio="xMidYMid meet" role="img" '
@@ -185,4 +191,9 @@ rendered = page.replace(
     "%%DIAGRAMS%%", build_diagram("front") + build_diagram("back")
 )
 (ASSETS / "muscle-map.html").write_text(rendered, encoding="utf-8")
-print("Generated bundled realistic interactive MuscleMap", len(rendered), "chars")
+(ASSETS / "muscle-map.json").write_text(json.dumps(NATIVE_REGIONS, separators=(",", ":")), encoding="utf-8")
+for side in ("front", "back"):
+    if len(NATIVE_REGIONS[side]) < 20:
+        raise ValueError(f"Insufficient anatomy geometry for {side}")
+print("Generated native anatomy with", len(NATIVE_REGIONS["front"]), "front and",
+      len(NATIVE_REGIONS["back"]), "back muscle regions.")
