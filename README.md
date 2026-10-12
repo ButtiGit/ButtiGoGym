@@ -439,3 +439,33 @@ STABLE già installata.
   servizio in foreground. Alcune ottimizzazioni aggressive della batteria
   del produttore possono ritardarli: non garantire precisione al secondo
   in sospensione profonda.
+
+## V0.9.4 — Reset sessione e notifiche verificabili
+
+- **Reset allenamento** sempre accessibile nell'intestazione della sessione.
+  Chiede conferma; cancella tutte le serie del draft (anche i valori
+  precompilati), riscaldamenti, indice esercizio e recupero, e riavvia
+  il cronometro al momento del reset. Lo storico già salvato rimane intatto.
+- Nuovi canali Android separati `Timer allenamento` e
+  `Avvisi fine recupero`, importanza **DEFAULT** (v2).
+  I canali precedenti v1 avevano importanza LOW e potevano essere nascosti
+  su alcuni launcher Samsung; cambiare ID permette di creare nuovi canali,
+  senza provare a forzare le impostazioni di un canale già configurato
+  dall'utente.
+- Durante l'allenamento una card indica lo stato del servizio; se il
+  permesso, l'app o il canale sono disabilitati sono disponibili
+  **Abilita**, **Impostazioni**, **Riprova**.
+- **Invia notifica di prova**: avviso immediato sul canale fine recupero,
+  per distinguere un problema di permessi da quello del servizio.
+- Il servizio cattura eventuali errori di creazione della notifica
+  e li espone alla schermata invece di fallire silenziosamente.
+- `POST_NOTIFICATIONS` va autorizzato su Android 13+; in caso di
+  blocco permanente aprire Impostazioni > App > ButtiGoGym > Notifiche.
+- La notifica persistente richiede che la sessione sia attiva;
+  per il recupero segue il timer di sistema. I produttori possono
+  comunque ritardare avvisi con risparmio energetico aggressivo.
+- Versione `0.9.4`, codice 16, certificato release stabile invariato.
+
+L'integrazione e la compatibilità sono verificate dai test JVM, dall'APK
+firmato e dal manifest. La ricezione effettiva delle notifiche deve
+essere testata su un telefono reale: usa il pulsante di prova.

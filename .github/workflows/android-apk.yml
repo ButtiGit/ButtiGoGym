@@ -2,7 +2,7 @@ name: ButtiGoGym Android APK
 
 on:
   push:
-    branches: [main, feature/clean-ui-workout-notifications]
+    branches: [main, fix/reset-and-notification-visibility]
   workflow_dispatch:
 
 permissions:
@@ -76,6 +76,9 @@ jobs:
           test -s app/src/main/res/drawable/ic_workout_notification.xml
           grep -q 'foregroundServiceType="specialUse"' app/src/main/AndroidManifest.xml
           grep -q 'permission.POST_NOTIFICATIONS' app/src/main/AndroidManifest.xml
+          grep -q 'buttigogym_workout_timer_v2' app/src/main/java/it/pulse/workout/WorkoutTimerService.kt
+          grep -q 'fun restarted(atMillis: Long)' app/src/main/java/it/pulse/workout/data/WorkoutData.kt
+          test -s app/src/test/java/it/pulse/workout/data/WorkoutRestartTest.kt
 
       - name: Verify photo capture and recap resources
         shell: bash
