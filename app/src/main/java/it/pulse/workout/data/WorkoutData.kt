@@ -110,6 +110,18 @@ data class WorkoutDraft(
     val guidedWorkSet: Int = 1,
     val restUntilMillis: Long = 0L
 ) {
+    /** Ricomincia la seduta da zero: cancella anche bozze di ripetizioni,
+     *  riscaldamenti, serie completate, indice esercizio e recupero.
+     *  Mantiene la snapshot del programma e NON modifica lo storico.
+     */
+    fun restarted(atMillis: Long): WorkoutDraft = copy(
+        startedAt = atMillis,
+        entries = emptyMap(),
+        guidedExerciseIndex = 0,
+        guidedWorkSet = 1,
+        restUntilMillis = 0L
+    )
+
     fun entry(exercise: Exercise, setIndex: Int): SetEntry = entries[key(exercise.id, setIndex)] ?: SetEntry()
     fun update(exercise: Exercise, setIndex: Int, entry: SetEntry): WorkoutDraft =
         copy(entries = entries + (key(exercise.id, setIndex) to entry))
