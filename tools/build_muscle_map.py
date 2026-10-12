@@ -133,7 +133,7 @@ body{font-family:system-ui,-apple-system,Roboto,sans-serif}
 .diagram{display:none;width:100%;height:100%}
 .diagram.active{display:block}
 .body-shape{fill:#e5eae6;stroke:#bec9c0;stroke-width:1.5}
-.body-photo{opacity:.94;pointer-events:none}
+.body-photo{opacity:.86;filter:grayscale(1) brightness(1.13) contrast(.92);pointer-events:none}
 .muscle{fill:#b9c8bc;fill-opacity:.34;stroke:#fff;stroke-width:2.25;
   stroke-opacity:.73;stroke-linejoin:round;cursor:pointer;
   transition:fill .2s,fill-opacity .2s,stroke .2s}

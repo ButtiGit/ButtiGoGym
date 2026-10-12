@@ -235,3 +235,7 @@ Le superfici muscolari sono selezionabili al tocco via WebView, con una
 JavaScript bridge limitata agli ID dei 16 muscoli supportati dalla scheda.
 **Il WebView non effettua richieste Internet**. Streak, livello, XP e recupero
 restano implementati in Kotlin con dati locali.
+
+Myself v0.7.1 rende neutre (scala di grigi) le immagini base del template:
+i colori verde/arancione sono applicati esclusivamente ai muscoli secondo
+i dati reali di allenamento e recupero.
