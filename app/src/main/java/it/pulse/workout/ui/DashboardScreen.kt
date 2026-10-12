@@ -1,8 +1,11 @@
 package it.pulse.workout.ui
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -26,6 +29,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.res.painterResource
+import it.pulse.workout.R
+import kotlin.math.abs
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -74,6 +82,18 @@ fun DashboardScreen(
     val current = active?.daySnapshot ?: days.firstOrNull { it.id == active?.dayId } ?: upcoming
     var stepsDialog by remember { mutableStateOf(false) }
     val number = NumberFormat.getIntegerInstance(Locale.ITALIAN)
+    val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    val weekSessions = remember(history, today) {
+        history.filter {
+            val date = Instant.ofEpochMilli(it.completedAt).atZone(ZoneId.systemDefault()).toLocalDate()
+            !date.isBefore(weekStart) && date.isBefore(weekStart.plusDays(7))
+        }
+    }
+    val totalSetsThisWeek = weekSessions.sumOf { it.completedSets }
+    val trainingMinutes = weekSessions.sumOf { it.durationMinutes.coerceAtLeast(0) }
+    val readyMuscles = remember(history) {
+        MuscleAnalytics.evaluate(history).count { it.state == MuscleRecovery.READY }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(PulseColors.Background),
@@ -87,17 +107,21 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text("ButtiGoGym", color = PulseColors.Accent,
-                        fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.3).sp)
-                    Text("IL TUO SPAZIO", fontSize = 10.sp, letterSpacing = 1.7.sp,
-                        color = PulseColors.Muted, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(painter = painterResource(R.drawable.buttigogym_mascot),
+                        contentDescription = "Logo ButtiGoGym",
+                        modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)))
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text("ButtiGoGym", color = PulseColors.Accent,
+                            fontSize = 19.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
+                        Text("IL TUO SPAZIO", fontSize = 10.sp, letterSpacing = 1.7.sp,
+                            color = PulseColors.Muted, fontWeight = FontWeight.Bold)
+                    }
                 }
-                Box(
-                    modifier = Modifier.size(44.dp).clip(CircleShape).background(PulseColors.SoftGreen),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("B", color = PulseColors.Accent, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                Surface(color = PulseColors.SoftGreen, shape = CircleShape) {
+                    Text("LEAN BULK", Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        fontSize = 10.sp, fontWeight = FontWeight.Bold, color = PulseColors.Accent)
                 }
             }
         }
@@ -123,7 +147,9 @@ fun DashboardScreen(
                 color = PulseColors.Accent,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(Modifier.padding(22.dp)) {
+                Column(Modifier.background(Brush.linearGradient(
+                    listOf(Color(0xFF083C15), PulseColors.Accent, Color(0xFF237B36))
+                )).padding(22.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(color = Color.White.copy(alpha = .16f),
                             shape = RoundedCornerShape(50)) {
@@ -133,8 +159,9 @@ fun DashboardScreen(
                                 fontSize = 10.sp, letterSpacing = 0.7.sp)
                         }
                         Spacer(Modifier.weight(1f))
-                        Icon(Icons.Default.FitnessCenter, null, tint = Color.White,
-                            modifier = Modifier.size(25.dp))
+                        Image(painter = painterResource(R.drawable.buttigogym_mascot),
+                            contentDescription = null,
+                            modifier = Modifier.size(66.dp).clip(RoundedCornerShape(18.dp)))
                     }
                     Spacer(Modifier.height(20.dp))
                     Text(current.name, color = Color.White, fontSize = 25.sp,
@@ -169,6 +196,7 @@ fun DashboardScreen(
                     icon = Icons.Default.LocalFireDepartment, value = summary.generalDays,
                     unit = "giorni", title = "Generale",
                     detail = "Movimento + recupero", accentBackground = true,
+                    animateFlame = true,
                     modifier = Modifier.weight(1f)
                 )
                 StreakTile(
@@ -327,8 +355,12 @@ fun DashboardScreen(
             DashboardSectionTitle("La settimana", "${summary.workoutDaysThisWeek} su 3 allenamenti completati")
             Spacer(Modifier.height(12.dp))
             WidgetCard {
+                val animatedWeek by animateFloatAsState(
+                    (summary.workoutDaysThisWeek / 3f).coerceIn(0f, 1f),
+                    animationSpec = tween(900), label = "Sedute settimanali"
+                )
                 LinearProgressIndicator(
-                    progress = { (summary.workoutDaysThisWeek / 3f).coerceIn(0f, 1f) },
+                    progress = { animatedWeek },
                     modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
                     color = PulseColors.Accent,
                     trackColor = PulseColors.SoftGreen
@@ -456,8 +488,21 @@ private fun StreakTile(
     title: String,
     detail: String,
     modifier: Modifier,
-    accentBackground: Boolean = false
+    accentBackground: Boolean = false,
+    animateFlame: Boolean = false
 ) {
+    val wobble = remember { Animatable(0f) }
+    LaunchedEffect(value, animateFlame) {
+        wobble.snapTo(0f)
+        if (animateFlame && value > 0) {
+            // 6 × 500 ms: la fiamma si muove tre secondi e poi si ferma.
+            repeat(6) {
+                wobble.animateTo(9f, animationSpec = tween(125))
+                wobble.animateTo(-9f, animationSpec = tween(125))
+                wobble.animateTo(0f, animationSpec = tween(250))
+            }
+        }
+    }
     Surface(
         modifier = modifier.height(167.dp),
         color = if (accentBackground) PulseColors.SoftGreen else Color.White,
@@ -475,8 +520,13 @@ private fun StreakTile(
                     RoundedCornerShape(11.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(icon, contentDescription = null, tint = PulseColors.Accent,
-                        modifier = Modifier.size(19.dp))
+                    Icon(icon, contentDescription = null,
+                        tint = if (animateFlame && value > 0) Color(0xFFE6783D) else PulseColors.Accent,
+                        modifier = Modifier.size(19.dp).graphicsLayer {
+                            rotationZ = wobble.value
+                            scaleX = 1f + abs(wobble.value) / 45f
+                            scaleY = 1f + abs(wobble.value) / 55f
+                        })
                 }
                 Text("STREAK", color = PulseColors.Muted, fontSize = 8.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.0.sp)
@@ -501,7 +551,8 @@ private fun StreakTile(
 @Composable
 private fun StepsRing(value: Int, modifier: Modifier) {
     val ratio = (value.toFloat() / StreakCalculator.STEP_GOAL).coerceIn(0f, 1f)
-    val progress by animateFloatAsState(ratio, label = "Progressi passi")
+    val progress by animateFloatAsState(ratio,
+        animationSpec = tween(durationMillis = 1000), label = "Progressi passi")
     Box(modifier, contentAlignment = Alignment.Center) {
         Canvas(
             Modifier.fillMaxSize().semantics {
