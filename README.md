@@ -286,3 +286,12 @@ La pagina **Scheda** può ora espandere l'elenco di tutti gli esercizi, con
 serie, range, recuperi e richiami distinti, prima di iniziare il timer.
 La verifica automatizzata `tools/validate_lean_bulk_plan.py` controlla
 il programma effettivo prima di ogni build.
+
+## V0.8.1 — Nuovo logo del launcher
+
+La vecchia icona a bilanciere è stata sostituita dalla mascotte del logo
+ButtiGoGym fornito dal proprietario: capelli rosa, struttura verde e
+mascotte muscolosa. Il ritaglio centrale è ottimizzato per le icone
+Android adaptive/round; la scritta originale è volutamente esclusa
+per renderla leggibile anche a dimensioni molto piccole. Il file WebP
+è incorporato offline nell’APK sotto `res/drawable-nodpi`.

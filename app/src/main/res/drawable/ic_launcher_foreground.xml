@@ -1,8 +1,9 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <path android:fillColor="#106119"
-        android:pathData="M33,50 L75,50 L75,58 L33,58 Z M25,42 L33,42 L33,66 L25,66 Z M75,42 L83,42 L83,66 L75,66 Z M19,47 L25,47 L25,61 L19,61 Z M83,47 L89,47 L89,61 L83,61 Z" />
-</vector>
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Official ButtiGoGym mascot from the logo supplied by the app owner.
+     Keep it within the adaptive icon central safe area on all launchers. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/buttigogym_mascot"
+    android:insetLeft="16dp"
+    android:insetRight="16dp"
+    android:insetTop="16dp"
+    android:insetBottom="16dp" />
