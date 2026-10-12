@@ -257,3 +257,32 @@ La mappa funziona completamente offline, senza HTML, JavaScript, WebView né
 download. La foto base viene convertita in scala di grigi e ricoperta dalle
 regioni effettivamente allenate (verde), in recupero (arancio) e pronte
 (verde chiaro). Gli streak/XP restano invariati.
+
+## V0.8 — Lean bulk personalizzato con focus avambracci
+
+Scheda sostituita: tre giorni obbligatori (lunedì spalle, braccia e avambracci;
+mercoledì gambe e addominali; venerdì petto, schiena e avambracci) + sabato
+bonus facoltativo. Parametri indicati: 168 cm, 58 kg e aumento di peso controllato
+0,1–0,2 kg/settimana, con obiettivo iniziale di 100–120 g proteine/giorno.
+
+Serie previste: lun 22 + 2 richiamo facoltativo, mer 21, ven 19 + 2 richiamo
+facoltativo, bonus 8. Avambracci: 8 serie dirette fra lunedì e venerdì.
+Ogni seduta mostra il proprio protocollo di camminata finale.
+
+Il piano remoto `workouts/plan.json` rimane aggiornabile senza APK.
+Le sessioni attive conservano una snapshot della vecchia scheda sino al
+termine, per evitare di perdere serie già registrate; le sessioni nuove
+ricevono automaticamente il programma scaricato.
+
+Le nuove proprietà `optional`, `timeBased`, `group` degli esercizi e
+`cooldown` della giornata vengono validate, serializzate, salvate negli
+storici e visualizzate nell'allenamento guidato. I richiami facoltativi
+possono essere saltati senza falsare le statistiche. Il farmer's walk
+registra kg e *secondi*, non ripetizioni: la conversione per gli XP muscolari
+è normalizzata per non premiare artificialmente la durata come se fosse
+un grande numero di ripetizioni.
+
+La pagina **Scheda** può ora espandere l'elenco di tutti gli esercizi, con
+serie, range, recuperi e richiami distinti, prima di iniziare il timer.
+La verifica automatizzata `tools/validate_lean_bulk_plan.py` controlla
+il programma effettivo prima di ogni build.

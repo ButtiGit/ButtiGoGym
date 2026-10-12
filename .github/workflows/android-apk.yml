@@ -2,7 +2,7 @@ name: ButtiGoGym Android APK
 
 on:
   push:
-    branches: [main, fix/myself-native-map-rendering]
+    branches: [main, feature/lean-bulk-forearms-plan]
   workflow_dispatch:
 
 permissions:
@@ -68,6 +68,9 @@ jobs:
               assert all(item['muscle'] and item['path'].startswith(('M', 'm')) for item in maps[side])
           print('Verified native anatomy:', {k: len(v) for k, v in maps.items()})
           PY
+
+      - name: Validate lean bulk plan
+        run: python3 tools/validate_lean_bulk_plan.py
 
       - name: Resolve public exercise GIF references
         run: python3 tools/resolve_gifs.py

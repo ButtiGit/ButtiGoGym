@@ -383,12 +383,14 @@ fun HistoryScreen(history: List<SessionRecord>, days: List<WorkoutDay>) {
                                 Spacer(Modifier.height(3.dp))
                                 if (warmups.isNotEmpty()) {
                                     Text("Riscaldamento: " + warmups.joinToString(" · ") {
-                                        "${it.weight} kg × ${it.reps}"
+                                        if (exercise.timeBased) "${it.weight} kg · ${it.reps} sec"
+                                        else "${it.weight} kg × ${it.reps}"
                                     }, color = PulseColors.Muted, fontSize = 12.sp)
                                 }
                                 if (sets.isNotEmpty()) {
                                     Text(sets.joinToString("  ·  ") { entry ->
-                                        "${entry.weight.ifBlank { "–" }} kg × ${entry.reps.ifBlank { "–" }}"
+                                        if (exercise.timeBased) "${entry.weight.ifBlank { "–" }} kg · ${entry.reps.ifBlank { "–" }} sec"
+                                        else "${entry.weight.ifBlank { "–" }} kg × ${entry.reps.ifBlank { "–" }}"
                                     }, color = PulseColors.Muted, fontSize = 12.sp)
                                 }
                             }
