@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -40,6 +41,7 @@ import it.pulse.workout.data.WellnessStore
 import it.pulse.workout.data.AutomaticStepTracker
 import it.pulse.workout.data.HealthConnectStepsRepository
 import it.pulse.workout.ui.HistoryScreen
+import it.pulse.workout.ui.MyselfScreen
 import it.pulse.workout.ui.DashboardScreen
 import it.pulse.workout.ui.PlanScreen
 import it.pulse.workout.ui.PulseColors
@@ -222,7 +224,8 @@ private fun PulseApp() {
                     listOf(
                         Triple("Oggi", Icons.Default.Home, 0),
                         Triple("Scheda", Icons.Default.FitnessCenter, 1),
-                        Triple("Storico", Icons.Default.History, 2)
+                        Triple("Myself", Icons.Default.AccessibilityNew, 2),
+                        Triple("Storico", Icons.Default.History, 3)
                     ).forEach { (label, icon, index) ->
                         NavigationBarItem(
                             selected = tab == index,
@@ -257,7 +260,7 @@ private fun PulseApp() {
                         draft = null
                         history = store.history()
                         sessionVisible = false
-                        tab = 2
+                        tab = 3
                     }
                 )
             } else {
@@ -310,6 +313,7 @@ private fun PulseApp() {
                         onRefresh = { coroutineScope.launch { fetchCatalog() } },
                         onStart = ::start
                     )
+                    2 -> MyselfScreen(history = history, active = draft)
                     else -> HistoryScreen(history = history, days = catalog.days)
                 }
             }

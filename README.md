@@ -173,3 +173,44 @@ sul telefono; gli aggiornamenti del Watch possono arrivare con ritardo.
 Health Connect è integrato nel sistema Android 14+; su Android 13 o inferiori
 potrebbe essere necessario installare l'app Health Connect. Alcuni telefoni
 o versioni potrebbero non supportarlo.
+
+## Myself — muscoli, recupero, streak e livelli (V0.6)
+
+La nuova scheda **Myself** è una vista muscolare interattiva di fronte/retro
+con 16 gruppi anatomici selezionabili. Il manichino è disegnato direttamente
+con Android Compose Canvas, ispirato alle mappe muscolari del fitness ma
+non copiato da artwork di terze parti.
+
+**Colori dei gruppi:**
+- verde intenso: allenato oggi;
+- arancione: recupero in corso;
+- verde chiaro: pronto secondo la finestra temporale stimata;
+- grigio: nessuna serie allenante registrata.
+
+**Recupero:** indicatore euristico di circa 36–72 ore a seconda del gruppo
+muscolare; il coinvolgimento secondario prevede metà del tempo. Non è una
+misurazione medica né una garanzia di recupero reale.
+
+**Streak muscolare:** numero di settimane consecutive in cui hai completato
+almeno una serie allenante per il gruppo (primario o secondario). La settimana
+attuale ancora incompleta non interrompe la precedente.
+
+**XP e livelli:** basati sui dati reali, NON su benchmark clinici di forza.
+Per ogni serie allenante:
+`XP = round(reps × (1 + sqrt(min(kg, 400))/4) × ruolo)`;
+`ruolo = 1.0` per il muscolo primario, `0.35` per quello secondario.
+Ripetizioni conteggiate fino a 40 per serie per ridurre incentivi a inserimenti
+non realistici. Solo serie completate; **riscaldamento escluso**.
+Soglia del livello `n` = `150 × (n - 1)^1.55` XP; livelli dal 1 in poi.
+Il livello complessivo normalizza gli XP di tutti i gruppi. Ogni scheda
+mostra XP accumulati, progresso e XP mancanti al prossimo livello.
+I livelli sono gamificazione, non stimano la massa muscolare.
+
+**Esercizi / muscoli**: la scheda remota `workouts/plan.json` ora include
+`primaryMuscles` e `secondaryMuscles`: quando cambi gli esercizi su GitHub,
+puoi correggere anche questi gruppi senza aggiornare l'APK. Gli storici più
+vecchi sono coperti da una tabella fallback in `ExerciseMuscleMapping`.
+
+Myself legge lo **storico locale già registrato**: non inventa forza, volume,
+streak o progressi iniziali. Le sessioni in corso compaiono quando vengono
+salvate, per evitare di assegnare XP per serie non ancora confermate.
