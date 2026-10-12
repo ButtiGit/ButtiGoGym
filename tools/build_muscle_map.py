@@ -185,4 +185,28 @@ rendered = page.replace(
     "%%DIAGRAMS%%", build_diagram("front") + build_diagram("back")
 )
 (ASSETS / "muscle-map.html").write_text(rendered, encoding="utf-8")
+
+# Native Android renderer: lossless paths from the original template. This
+# avoids Android WebView entirely, which rendered a blank panel on some devices.
+import json
+native_diagrams = {}
+for side in ("front", "back"):
+    code = read(f"packages/assets/src/male-{side}.ts").decode("utf-8")
+    native_diagrams[side] = [
+        {
+            "muscle": ANATOMY_TO_APP[part["group"]],
+            "part": part["id"],
+            "path": part["d"]
+        }
+        for part in records(code, "MUSCLES")
+        if part["group"] in ANATOMY_TO_APP
+    ]
+native_output = {"source": "Jsplice/MuscleMap", "revision": REVISION, "views": native_diagrams}
+(ASSETS / "muscle-map-regions.json").write_text(
+    json.dumps(native_output, ensure_ascii=False, separators=(",", ":")),
+    encoding="utf-8"
+)
+assert len(native_diagrams["front"]) >= 20
+assert len(native_diagrams["back"]) >= 20
+print("Generated native muscle paths:", {k: len(v) for k, v in native_diagrams.items()})
 print("Generated bundled realistic interactive MuscleMap", len(rendered), "chars")
