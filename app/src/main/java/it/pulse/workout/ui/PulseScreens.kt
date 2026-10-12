@@ -1,0 +1,482 @@
+package it.pulse.workout.ui
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import it.pulse.workout.data.*
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+
+private val pagePad = 24.dp
+
+@Composable
+private fun BrandHeader() {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 28.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("PULSE", color = PulseColors.Accent, fontWeight = FontWeight.Black, fontSize = 15.sp, letterSpacing = 3.sp)
+        Box(
+            modifier = Modifier.size(38.dp).background(PulseColors.Raised, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("B", color = PulseColors.Accent, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun Eyebrow(label: String, color: Color = PulseColors.Muted) {
+    Text(label, color = color, style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold, letterSpacing = 1.35.sp)
+}
+
+@Composable
+private fun PageTitle(title: String) {
+    Text(title, color = PulseColors.Foreground, fontSize = 34.sp,
+        fontWeight = FontWeight.ExtraBold, lineHeight = 38.sp, letterSpacing = (-0.9).sp)
+}
+
+@Composable
+private fun LabelChip(label: String, selected: Boolean = false) {
+    Surface(
+        color = if (selected) PulseColors.Accent else PulseColors.Raised,
+        shape = RoundedCornerShape(50),
+    ) {
+        Text(label,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+            color = if (selected) PulseColors.DarkInk else PulseColors.Muted,
+            fontSize = 10.sp, fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.6.sp)
+    }
+}
+
+@Composable
+private fun PulseCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        modifier = modifier,
+        color = PulseColors.Surface,
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.dp, PulseColors.Border)
+    ) {
+        Column(Modifier.padding(20.dp), content = content)
+    }
+}
+
+@Composable
+private fun LimeButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier.fillMaxWidth().height(54.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = PulseColors.Accent,
+            contentColor = PulseColors.DarkInk,
+            disabledContainerColor = PulseColors.Raised,
+            disabledContentColor = PulseColors.Muted
+        )
+    ) {
+        Text(label, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+        Spacer(Modifier.width(8.dp))
+        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+    }
+}
+
+private fun italianDate(date: Long): String =
+    SimpleDateFormat("EEEE d MMMM", Locale.ITALIAN).format(Date(date))
+
+private fun weekStartMillis(): Long {
+    val calendar = Calendar.getInstance()
+    val offset = (calendar.get(Calendar.DAY_OF_WEEK) + 5) % 7
+    calendar.add(Calendar.DAY_OF_MONTH, -offset)
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+    return calendar.timeInMillis
+}
+
+@Composable
+fun HomeScreen(
+    upcoming: WorkoutDay,
+    active: WorkoutDraft?,
+    history: List<SessionRecord>,
+    onStart: (WorkoutDay) -> Unit
+) {
+    val today = System.currentTimeMillis()
+    val current = WorkoutPlan.days.firstOrNull { it.id == active?.dayId } ?: upcoming
+    val count = history.count { it.completedAt >= weekStartMillis() }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = pagePad, end = pagePad, bottom = 28.dp)
+    ) {
+        item {
+            BrandHeader()
+            Eyebrow(italianDate(today).uppercase(Locale.ITALIAN))
+            Spacer(Modifier.height(12.dp))
+            PageTitle("Il prossimo passo\nparte da qui.")
+            Spacer(Modifier.height(22.dp))
+            LabelChip("$count / 3 ALLENAMENTI QUESTA SETTIMANA")
+            Spacer(Modifier.height(22.dp))
+
+            PulseCard {
+                Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(PulseColors.Accent))
+                Spacer(Modifier.height(15.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LabelChip(if (active != null) "IN CORSO" else "PROSSIMA SESSIONE", selected = true)
+                }
+                Spacer(Modifier.height(22.dp))
+                Text(current.name, color = PulseColors.Foreground, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(5.dp))
+                Text("${current.exercises.size} esercizi  ·  ${current.duration}", color = PulseColors.Muted,
+                    style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(24.dp))
+                LimeButton(if (active != null) "Riprendi allenamento" else "Inizia allenamento", onClick = { onStart(current) })
+            }
+            Spacer(Modifier.height(26.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow("IL TUO PIANO")
+                Text("3 GIORNI", color = PulseColors.Accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(14.dp))
+        }
+        items(WorkoutPlan.days.filter { it.id != current.id }, key = { it.id }) { day ->
+            SmallWorkoutRow(day = day, onClick = { onStart(day) })
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+@Composable
+private fun SmallWorkoutRow(day: WorkoutDay, onClick: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        color = PulseColors.Surface,
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, PulseColors.Border)
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(52.dp).background(PulseColors.Raised, RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(day.weekday.take(3), color = PulseColors.Accent, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold)
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(day.name, color = PulseColors.Foreground, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Spacer(Modifier.height(3.dp))
+                Text("${day.exercises.size} esercizi · ${day.duration}", color = PulseColors.Muted, fontSize = 12.sp)
+            }
+            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = PulseColors.Muted)
+        }
+    }
+}
+
+@Composable
+fun PlanScreen(activeDayId: String?, onStart: (WorkoutDay) -> Unit) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = pagePad, end = pagePad, bottom = 30.dp)
+    ) {
+        item {
+            BrandHeader()
+            Eyebrow("IL TUO PROGRAMMA")
+            Spacer(Modifier.height(12.dp))
+            PageTitle("Allenati al\ntuo ritmo.")
+            Spacer(Modifier.height(10.dp))
+            Text("3 giorni / settimana · Puoi scegliere qualsiasi giorno.", color = PulseColors.Muted, fontSize = 13.sp)
+            Spacer(Modifier.height(26.dp))
+        }
+        items(WorkoutPlan.days, key = { it.id }) { day ->
+            PulseCard(Modifier.fillMaxWidth().clickable { onStart(day) }) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("0${WorkoutPlan.days.indexOf(day) + 1}", color = PulseColors.Accent,
+                        fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(18.dp))
+                    Eyebrow(day.weekday)
+                    Spacer(Modifier.weight(1f))
+                    if (activeDayId == day.id) LabelChip("IN CORSO", selected = true)
+                    else Icon(Icons.Default.ChevronRight, contentDescription = null, tint = PulseColors.Accent)
+                }
+                Spacer(Modifier.height(20.dp))
+                Text(day.name, color = PulseColors.Foreground, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(7.dp))
+                Text(day.description, color = PulseColors.Muted, fontSize = 12.sp)
+                Spacer(Modifier.height(15.dp))
+                Eyebrow("${day.exercises.size} ESERCIZI  ·  ${day.setCount} SERIE", PulseColors.Accent)
+            }
+            Spacer(Modifier.height(13.dp))
+        }
+    }
+}
+
+@Composable
+fun HistoryScreen(history: List<SessionRecord>) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = pagePad, end = pagePad, bottom = 30.dp)
+    ) {
+        item {
+            BrandHeader()
+            Eyebrow("IL TUO PERCORSO")
+            Spacer(Modifier.height(12.dp))
+            PageTitle("Ogni serie\nconta.")
+            Spacer(Modifier.height(22.dp))
+            LabelChip("${history.size} ALLENAMENTI REGISTRATI")
+            Spacer(Modifier.height(26.dp))
+        }
+        if (history.isEmpty()) {
+            item {
+                PulseCard(Modifier.fillMaxWidth()) {
+                    Text("Si comincia da qui.", color = PulseColors.Foreground,
+                        fontWeight = FontWeight.ExtraBold, fontSize = 21.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Completa il primo allenamento per vedere qui i tuoi progressi.",
+                        color = PulseColors.Muted, fontSize = 14.sp)
+                }
+            }
+        } else {
+            items(history, key = { it.id }) { record ->
+                val day = WorkoutPlan.days.firstOrNull { it.id == record.dayId }
+                var expanded by remember(record.id) { mutableStateOf(false) }
+                PulseCard(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
+                    Eyebrow(italianDate(record.completedAt).uppercase(Locale.ITALIAN), PulseColors.Accent)
+                    Spacer(Modifier.height(10.dp))
+                    Text(day?.name ?: "Allenamento", color = PulseColors.Foreground,
+                        fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text("${record.completedSets}/${record.totalSets} serie · ${record.durationMinutes} min",
+                        color = PulseColors.Muted, fontSize = 13.sp)
+                    Spacer(Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        progress = { (record.completedSets.toFloat() / record.totalSets.coerceAtLeast(1)).coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                        color = PulseColors.Accent,
+                        trackColor = PulseColors.Raised
+                    )
+                    Spacer(Modifier.height(15.dp))
+                    Eyebrow(if (expanded) "NASCONDI DETTAGLI  ↑" else "VEDI KG E RIPETIZIONI  ↓", PulseColors.Accent)
+                    if (expanded && day != null) {
+                        Spacer(Modifier.height(14.dp))
+                        HorizontalDivider(color = PulseColors.Border)
+                        day.exercises.forEach { exercise ->
+                            val sets = (1..exercise.sets).mapNotNull { index ->
+                                record.entries[WorkoutDraft.key(exercise.id, index)]?.takeIf { it.done }
+                            }
+                            if (sets.isNotEmpty()) {
+                                Spacer(Modifier.height(14.dp))
+                                Text(exercise.name, color = PulseColors.Foreground,
+                                    fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                Spacer(Modifier.height(3.dp))
+                                Text(sets.joinToString("  ·  ") { entry ->
+                                    "${entry.weight.ifBlank { "–" }} kg × ${entry.reps.ifBlank { "–" }}"
+                                }, color = PulseColors.Muted, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun SessionScreen(
+    day: WorkoutDay,
+    draft: WorkoutDraft,
+    onBack: () -> Unit,
+    onUpdate: (WorkoutDraft) -> Unit,
+    onFinish: () -> Unit
+) {
+    var askToFinish by remember { mutableStateOf(false) }
+    val done = day.exercises.sumOf { exercise ->
+        (1..exercise.sets).count { draft.entry(exercise, it).done }
+    }
+    val total = day.setCount
+    val fraction = done.toFloat() / total.coerceAtLeast(1)
+
+    Column(Modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, top = 15.dp, end = pagePad),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Torna indietro", tint = PulseColors.Foreground)
+            }
+            Eyebrow("ALLENAMENTO IN CORSO", PulseColors.Accent)
+        }
+        Column(Modifier.padding(horizontal = pagePad)) {
+            Spacer(Modifier.height(15.dp))
+            PageTitle(day.name)
+            Spacer(Modifier.height(8.dp))
+            Text("Iniziato ${SimpleDateFormat("HH:mm", Locale.ITALIAN).format(Date(draft.startedAt))}",
+                color = PulseColors.Muted, fontSize = 13.sp)
+            Spacer(Modifier.height(20.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                LabelChip("$done / $total SERIE", selected = true)
+                Text("${(fraction * 100).toInt()}% completato", color = PulseColors.Muted,
+                    fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(Modifier.height(14.dp))
+            LinearProgressIndicator(
+                progress = { fraction },
+                modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
+                color = PulseColors.Accent,
+                trackColor = PulseColors.Raised
+            )
+            Spacer(Modifier.height(16.dp))
+        }
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(start = pagePad, end = pagePad, bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp)
+        ) {
+            items(day.exercises, key = { it.id }) { exercise ->
+                ExerciseCard(
+                    exercise = exercise,
+                    exerciseNumber = day.exercises.indexOf(exercise) + 1,
+                    draft = draft,
+                    onUpdate = onUpdate
+                )
+            }
+        }
+        Surface(color = PulseColors.Background) {
+            Column(Modifier.padding(start = pagePad, end = pagePad, top = 13.dp, bottom = 18.dp)) {
+                LimeButton("Termina allenamento", onClick = { askToFinish = true }, enabled = done > 0)
+            }
+        }
+    }
+
+    if (askToFinish) {
+        AlertDialog(
+            onDismissRequest = { askToFinish = false },
+            title = { Text("Salvare l'allenamento?") },
+            text = { Text("Hai completato $done serie su $total. La sessione sarà salvata nello storico.") },
+            confirmButton = { TextButton(onClick = { askToFinish = false; onFinish() }) { Text("Salva e termina") } },
+            dismissButton = { TextButton(onClick = { askToFinish = false }) { Text("Continua") } }
+        )
+    }
+}
+
+@Composable
+private fun ExerciseCard(
+    exercise: Exercise,
+    exerciseNumber: Int,
+    draft: WorkoutDraft,
+    onUpdate: (WorkoutDraft) -> Unit
+) {
+    PulseCard(Modifier.fillMaxWidth()) {
+        Eyebrow("${exerciseNumber.toString().padStart(2, '0')}   ·   ${exercise.muscle}", PulseColors.Accent)
+        Spacer(Modifier.height(9.dp))
+        Text(exercise.name, color = PulseColors.Foreground, fontWeight = FontWeight.ExtraBold,
+            fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(5.dp))
+        Text("${exercise.sets} serie · ${exercise.target} ripetizioni", color = PulseColors.Muted, fontSize = 12.sp)
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Eyebrow("SERIE", PulseColors.Muted)
+            Spacer(Modifier.weight(1f))
+            Eyebrow("KG", PulseColors.Muted)
+            Spacer(Modifier.width(62.dp))
+            Eyebrow("REPS", PulseColors.Muted)
+            Spacer(Modifier.width(40.dp))
+        }
+        Spacer(Modifier.height(6.dp))
+        repeat(exercise.sets) { index ->
+            val setNumber = index + 1
+            val entry = draft.entry(exercise, setNumber)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("$setNumber", modifier = Modifier.width(27.dp), color = PulseColors.Muted,
+                    fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                SetNumberField(
+                    value = entry.weight,
+                    hint = "0",
+                    modifier = Modifier.weight(1f),
+                    onValueChange = { new -> onUpdate(draft.update(exercise, setNumber, entry.copy(weight = new))) }
+                )
+                SetNumberField(
+                    value = entry.reps,
+                    hint = "reps",
+                    modifier = Modifier.weight(1f),
+                    onValueChange = { new -> onUpdate(draft.update(exercise, setNumber, entry.copy(reps = new))) }
+                )
+                Checkbox(
+                    checked = entry.done,
+                    onCheckedChange = { checked -> onUpdate(draft.update(exercise, setNumber, entry.copy(done = checked))) },
+                    modifier = Modifier.size(42.dp),
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = PulseColors.Accent,
+                        checkmarkColor = PulseColors.DarkInk,
+                        uncheckedColor = PulseColors.Muted
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SetNumberField(
+    value: String,
+    hint: String,
+    modifier: Modifier,
+    onValueChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { incoming ->
+            // Consente decimali per i kg e limita la lunghezza per evitare overflow.
+            if (incoming.length <= 6 && incoming.all { it.isDigit() || it == '.' || it == ',' }) {
+                onValueChange(incoming)
+            }
+        },
+        modifier = modifier.height(55.dp),
+        singleLine = true,
+        placeholder = { Text(hint, color = PulseColors.Muted, fontSize = 12.sp) },
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = PulseColors.Foreground),
+        shape = RoundedCornerShape(12.dp),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = PulseColors.Accent,
+            unfocusedBorderColor = PulseColors.Border,
+            focusedContainerColor = PulseColors.Raised,
+            unfocusedContainerColor = PulseColors.Raised
+        )
+    )
+}
