@@ -2,7 +2,7 @@ name: ButtiGoGym Android APK
 
 on:
   push:
-    branches: [main, feature/logo-anime-launcher]
+    branches: [main, feature/design-motion-backup-signing]
   workflow_dispatch:
 
 permissions:
@@ -102,22 +102,58 @@ jobs:
       - name: Test workout, Health Connect and muscle analytics
         run: gradle --no-daemon :app:testDebugUnitTest
 
-      - name: Compile debug APK
-        run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Prepare permanent signing key
+        id: signing
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.BUTTIGOGYM_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.BUTTIGOGYM_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.BUTTIGOGYM_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.BUTTIGOGYM_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$KEYSTORE_BASE64" ]]; then
+            [[ -n "$STORE_PASSWORD" && -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]] || {
+              echo "::error::Incomplete permanent signing secrets"
+              exit 1
+            }
+            mkdir -p "$RUNNER_TEMP/buttigogym"
+            chmod 700 "$RUNNER_TEMP/buttigogym"
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/buttigogym/stable.jks"
+            chmod 600 "$RUNNER_TEMP/buttigogym/stable.jks"
+            echo "permanent=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Permanent signing secrets absent. Debug build cannot update APKs signed by a different debug certificate."
+            echo "permanent=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compile APK
+        env:
+          BUTTIGOGYM_SIGNING_FILE: ${{ runner.temp }}/buttigogym/stable.jks
+          BUTTIGOGYM_STORE_PASSWORD: ${{ secrets.BUTTIGOGYM_STORE_PASSWORD }}
+          BUTTIGOGYM_KEY_ALIAS: ${{ secrets.BUTTIGOGYM_KEY_ALIAS }}
+          BUTTIGOGYM_KEY_PASSWORD: ${{ secrets.BUTTIGOGYM_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          if [[ "${{ steps.signing.outputs.permanent }}" == "true" ]]; then
+            gradle --no-daemon --stacktrace :app:assembleRelease
+          else
+            gradle --no-daemon --stacktrace :app:assembleDebug
+          fi
 
       - name: Verify APK is valid
         shell: bash
         run: |
-          APK=app/build/outputs/apk/debug/app-debug.apk
-          test -s "$APK"
+          APK=$(find app/build/outputs/apk -name '*.apk' -type f | head -1)
+          test -n "$APK" && test -s "$APK"
           unzip -t "$APK" | tail -1
           unzip -Z1 "$APK" | grep -q "buttigogym_mascot"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
           ls -lh "$APK"
 
       - name: Upload downloadable APK
         uses: actions/upload-artifact@v4
         with:
           name: ButtiGoGym-Android-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 30
