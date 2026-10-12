@@ -1,6 +1,8 @@
 package it.pulse.workout
 
 import android.os.Bundle
+import android.provider.Settings
+import android.widget.Toast
 import java.io.ByteArrayOutputStream
 import it.pulse.workout.data.AppBackupStore
 import android.content.Intent
@@ -149,6 +151,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     inForeground = true
+                    notificationUiTick++
                     coroutineScope.launch { syncHealth() }
                 }
                 Lifecycle.Event.ON_PAUSE -> inForeground = false
@@ -179,6 +182,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> stepPermissionGranted = granted }
+    var notificationUiTick by remember { mutableIntStateOf(0) }
     var notificationsAllowed by remember {
         mutableStateOf(Build.VERSION.SDK_INT < 33 ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
@@ -186,11 +190,28 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { granted -> notificationsAllowed = granted }
+    ) { granted ->
+        notificationsAllowed = granted
+        notificationUiTick++
+    }
 
     fun requestTimerNotifications() {
+        notificationsAllowed = Build.VERSION.SDK_INT < 33 ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
         if (Build.VERSION.SDK_INT >= 33 && !notificationsAllowed) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        notificationUiTick++
+    }
+
+    fun openNotificationSettings() {
+        val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        }
+        runCatching { context.startActivity(intent) }.onFailure {
+            Toast.makeText(context, "Apri Impostazioni → App → ButtiGoGym → Notifiche",
+                Toast.LENGTH_LONG).show()
         }
     }
 
@@ -253,7 +274,19 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
 
     // Il servizio mantiene la notifica cronometro e il timer riposo
     // anche quando l'utente esce dalla schermata o passa ad altre app.
-    LaunchedEffect(draft) {
+    // Rileva anche servizi arrestati o canali disabilitati mentre l'utente era fuori dall'app.
+    LaunchedEffect(draft?.startedAt, inForeground) {
+        while (draft != null && inForeground) {
+            notificationUiTick++
+            kotlinx.coroutines.delay(1500L)
+        }
+    }
+    val timerStatus = remember(notificationUiTick, draft) { WorkoutTimerService.state(context) }
+    val notificationsVisible = remember(notificationUiTick, notificationsAllowed) {
+        WorkoutTimerService.notificationsVisible(context)
+    }
+
+    LaunchedEffect(draft, notificationsAllowed) {
         val current = draft
         if (current == null) {
             WorkoutTimerService.stop(context)
@@ -346,22 +379,55 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     ) { contentPadding ->
         Box(Modifier.fillMaxSize().padding(contentPadding)) {
             if (sessionVisible && draft != null && currentDay != null) {
-                GuidedSessionScreen(
-                    day = currentDay,
-                    draft = draft!!,
-                    onBack = { sessionVisible = false },
-                    onUpdate = { updated ->
-                        draft = updated
-                        store.saveDraft(updated)
-                    },
-                    onFinish = {
-                        draft?.let { active -> store.complete(active, currentDay) }
-                        draft = null
-                        history = store.history()
-                        sessionVisible = false
-                        tab = 3
-                    }
-                )
+                key(draft!!.startedAt) {
+                    GuidedSessionScreen(
+                        day = currentDay,
+                        draft = draft!!,
+                        onBack = { sessionVisible = false },
+                        onUpdate = { updated ->
+                            draft = updated
+                            store.saveDraft(updated)
+                        },
+                        onFinish = {
+                            draft?.let { active -> store.complete(active, currentDay) }
+                            draft = null
+                            history = store.history()
+                            sessionVisible = false
+                            tab = 3
+                        },
+                        onReset = {
+                            val restarted = draft?.restarted(System.currentTimeMillis())
+                            if (restarted != null) {
+                                store.saveDraft(restarted)
+                                draft = restarted
+                            }
+                        },
+                        notificationsVisible = notificationsVisible,
+                        timerStatus = timerStatus,
+                        onEnableNotifications = ::requestTimerNotifications,
+                        onNotificationSettings = ::openNotificationSettings,
+                        onRetryTimer = {
+                            val active = draft
+                            if (active != null) {
+                                runCatching { WorkoutTimerService.sync(context, active, currentDay) }
+                                    .onFailure {
+                                        Toast.makeText(context, "Timer non avviato: ${it.message}",
+                                            Toast.LENGTH_LONG).show()
+                                    }
+                                notificationUiTick++
+                            }
+                        },
+                        onTestNotification = {
+                            val test = runCatching {
+                                WorkoutTimerService.testNotification(context)
+                            }.getOrDefault(false)
+                            Toast.makeText(context,
+                                if (test) "Notifica di prova inviata"
+                                else "Notifiche bloccate: controlla i permessi",
+                                Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                }
             } else {
                 Crossfade(targetState = tab, animationSpec = tween(180),
                     label = "Cambio schermata") { selectedTab ->
