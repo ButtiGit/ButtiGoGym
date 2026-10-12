@@ -153,7 +153,7 @@ object MuscleAnalytics {
         val today = Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate()
 
         history.forEach { record ->
-            val day = record.daySnapshot ?: return@forEach
+            val day = record.daySnapshot ?: WorkoutPlan.days.firstOrNull { it.id == record.dayId } ?: return@forEach
             day.exercises.forEach { exercise ->
                 val (primary, secondary) = ExerciseMuscleMapping.forExercise(exercise)
                 val targets = primary.map { it to true } + secondary.map { it to false }
