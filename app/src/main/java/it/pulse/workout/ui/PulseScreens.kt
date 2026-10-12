@@ -244,23 +244,66 @@ fun PlanScreen(
             Spacer(Modifier.height(26.dp))
         }
         items(days, key = { it.id }) { day ->
-            PulseCard(Modifier.fillMaxWidth().clickable { onStart(day) }) {
+            var expanded by remember(day.id) { mutableStateOf(false) }
+            PulseCard(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (day.optional) "★" else "0${days.indexOf(day) + 1}", color = PulseColors.Accent,
-                        fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(if (day.optional) "★" else "0${days.indexOf(day) + 1}",
+                        color = PulseColors.Accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(18.dp))
                     Eyebrow(day.weekday)
                     Spacer(Modifier.weight(1f))
                     if (activeDayId == day.id) LabelChip("IN CORSO", selected = true)
                     else if (day.optional) LabelChip("FACOLTATIVO")
-                    else Icon(Icons.Default.ChevronRight, contentDescription = null, tint = PulseColors.Accent)
                 }
-                Spacer(Modifier.height(20.dp))
-                Text(day.name, color = PulseColors.Foreground, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(17.dp))
+                Text(day.name, color = PulseColors.Foreground,
+                    fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
                 Spacer(Modifier.height(7.dp))
                 Text(day.description, color = PulseColors.Muted, fontSize = 12.sp)
-                Spacer(Modifier.height(15.dp))
-                Eyebrow("${day.exercises.size} ESERCIZI  ·  ${day.setCount} SERIE", PulseColors.Accent)
+                Spacer(Modifier.height(7.dp))
+                Text("Durata indicativa: ${day.duration}", color = PulseColors.Muted, fontSize = 12.sp)
+                Spacer(Modifier.height(13.dp))
+                Eyebrow("${day.exercises.count { !it.optional }} ESERCIZI PRINCIPALI · ${day.setCount} SERIE" +
+                    (if (day.optionalSetCount > 0) " · +${day.optionalSetCount} SERIE FACOLTATIVE" else ""),
+                    PulseColors.Accent)
+                Spacer(Modifier.height(10.dp))
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(if (expanded) "Nascondi esercizi ↑" else "Mostra esercizi, serie e ripetizioni ↓",
+                        color = PulseColors.Accent, fontWeight = FontWeight.Bold)
+                }
+                if (expanded) {
+                    HorizontalDivider(color = PulseColors.Border)
+                    Spacer(Modifier.height(9.dp))
+                    day.exercises.forEachIndexed { idx, exercise ->
+                        if (idx > 0) Spacer(Modifier.height(12.dp))
+                        if (exercise.optional) {
+                            Text("RICHIAMO FACOLTATIVO", color = PulseColors.Accent,
+                                fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        } else if (exercise.group.isNotBlank() &&
+                            (idx == 0 || day.exercises[idx - 1].group != exercise.group)) {
+                            Text(exercise.group.uppercase(Locale.ITALIAN), color = PulseColors.Accent,
+                                fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Text(exercise.name, color = PulseColors.Foreground,
+                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("${exercise.sets} × ${exercise.target} · recupero ${exercise.restSeconds} s" +
+                            (if (exercise.optional) " · saltabile" else ""),
+                            color = PulseColors.Muted, fontSize = 12.sp)
+                    }
+                    if (day.cooldown.isNotBlank()) {
+                        Spacer(Modifier.height(14.dp))
+                        Text("FINE WO", color = PulseColors.Accent,
+                            fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(day.cooldown, color = PulseColors.Muted, fontSize = 12.sp)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = { onStart(day) }, modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent),
+                    shape = RoundedCornerShape(14.dp)) {
+                    Text(if (activeDayId == day.id) "Riprendi allenamento" else
+                        if (day.optional) "Inizia bonus facoltativo" else "Inizia allenamento")
+                }
             }
             Spacer(Modifier.height(13.dp))
         }
