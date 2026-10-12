@@ -84,6 +84,8 @@ fun DashboardScreen(
     }
     val current = active?.daySnapshot ?: days.firstOrNull { it.id == active?.dayId } ?: upcoming
     var stepsDialog by remember { mutableStateOf(false) }
+    var healthHelpExpanded by rememberSaveable { mutableStateOf(false) }
+    var backupExpanded by rememberSaveable { mutableStateOf(false) }
     val number = NumberFormat.getIntegerInstance(Locale.ITALIAN)
     val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     val weekSessions = remember(history, today) {
@@ -118,8 +120,7 @@ fun DashboardScreen(
                     Column {
                         Text("ButtiGoGym", color = PulseColors.Accent,
                             fontSize = 19.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
-                        Text("IL TUO SPAZIO", fontSize = 10.sp, letterSpacing = 1.7.sp,
-                            color = PulseColors.Muted, fontWeight = FontWeight.Bold)
+                        // Il logo e il nome identificano già la schermata.
                     }
                 }
                 Surface(color = PulseColors.SoftGreen, shape = CircleShape) {
@@ -136,12 +137,11 @@ fun DashboardScreen(
                 color = PulseColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.Medium
             )
             Spacer(Modifier.height(5.dp))
-            Text("Oggi, un passo\npiù forte.", color = PulseColors.Foreground,
+            Text("Il tuo ritmo.", color = PulseColors.Foreground,
                 fontSize = 35.sp, fontWeight = FontWeight.ExtraBold,
                 lineHeight = 39.sp, letterSpacing = (-1.15).sp)
             Spacer(Modifier.height(9.dp))
-            Text("Costanza, allenamento e recupero. Tutto qui.",
-                color = PulseColors.Muted, fontSize = 13.sp)
+            // I widget sottostanti raccontano già i progressi.
         }
 
         item {
@@ -192,7 +192,7 @@ fun DashboardScreen(
         }
 
         item {
-            DashboardSectionTitle("La tua evoluzione", "Ogni numero arriva dalle tue sessioni")
+            DashboardSectionTitle("Progressi")
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                 ProgressMetric("SEDUTE", "${summary.workoutDaysThisWeek}/3",
@@ -227,20 +227,20 @@ fun DashboardScreen(
         }
 
         item {
-            DashboardSectionTitle("Le tue streak", "Piccoli progressi, ogni giorno")
+            DashboardSectionTitle("Streak")
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StreakTile(
                     icon = Icons.Default.LocalFireDepartment, value = summary.generalDays,
                     unit = "giorni", title = "Generale",
-                    detail = "Movimento + recupero", accentBackground = true,
+                    detail = "", accentBackground = true,
                     animateFlame = true,
                     modifier = Modifier.weight(1f)
                 )
                 StreakTile(
                     icon = Icons.Default.FitnessCenter, value = summary.workoutWeeks,
                     unit = "settimane", title = "Allenamenti",
-                    detail = "3 sedute principali", modifier = Modifier.weight(1f)
+                    detail = "", modifier = Modifier.weight(1f)
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -248,18 +248,18 @@ fun DashboardScreen(
                 StreakTile(
                     icon = Icons.Default.Bedtime, value = summary.restDays,
                     unit = "giorni", title = "Riposo",
-                    detail = "Recupero registrato", modifier = Modifier.weight(1f)
+                    detail = "", modifier = Modifier.weight(1f)
                 )
                 StreakTile(
                     icon = Icons.Default.DirectionsWalk, value = summary.stepDays,
                     unit = "giorni", title = "Passi",
-                    detail = "Almeno 6.000", modifier = Modifier.weight(1f)
+                    detail = "", modifier = Modifier.weight(1f)
                 )
             }
         }
 
         item {
-            DashboardSectionTitle("Movimento quotidiano", "Obiettivo · 6.000 passi")
+            DashboardSectionTitle("Passi")
             Spacer(Modifier.height(12.dp))
             WidgetCard {
                 Row(
@@ -269,11 +269,11 @@ fun DashboardScreen(
                 ) {
                     StepsRing(summary.todaySteps, Modifier.size(116.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Passi di oggi", color = PulseColors.Muted, fontSize = 12.sp)
+                        Text("Oggi", color = PulseColors.Muted, fontSize = 12.sp)
                         Spacer(Modifier.height(5.dp))
                         Text(number.format(summary.todaySteps), color = PulseColors.Foreground,
                             fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
-                        Text("di 6.000 passi", color = PulseColors.Muted, fontSize = 12.sp)
+                        Text("/ 6.000", color = PulseColors.Muted, fontSize = 12.sp)
                         Spacer(Modifier.height(12.dp))
                         Text(
                             if (summary.todaySteps >= 6000) "Obiettivo raggiunto ✓"
@@ -290,8 +290,16 @@ fun DashboardScreen(
                         Spacer(Modifier.height(4.dp))
                         Text(healthStatus, color = PulseColors.Foreground, fontSize = 11.sp)
                         Spacer(Modifier.height(4.dp))
-                        Text("Samsung Health → Impostazioni → Health Connect: abilita la condivisione dei passi.",
-                            color = PulseColors.Muted, fontSize = 10.sp)
+                        if (!healthConnected) {
+                            TextButton(onClick = { healthHelpExpanded = !healthHelpExpanded }) {
+                                Text(if (healthHelpExpanded) "Nascondi guida" else "Come collegare?",
+                                    fontSize = 11.sp, color = PulseColors.Accent)
+                            }
+                            if (healthHelpExpanded) {
+                                Text("Samsung Health → Health Connect → consenti condivisione passi.",
+                                    color = PulseColors.Muted, fontSize = 11.sp)
+                            }
+                        }
                     }
                 }
                 Spacer(Modifier.height(11.dp))
@@ -303,12 +311,10 @@ fun DashboardScreen(
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
                     ) {
-                        Text(if (healthSyncing) "Sincronizzazione…" else "Aggiorna passi da Health Connect",
+                        Text(if (healthSyncing) "Sincronizzazione…" else "Sincronizza passi",
                             color = Color.White, fontWeight = FontWeight.SemiBold)
                     }
-                    Spacer(Modifier.height(7.dp))
-                    Text("Passi aggregati senza doppi conteggi. La sincronizzazione si aggiorna anche riaprendo l'app.",
-                        color = PulseColors.Muted, fontSize = 10.sp)
+                    Spacer(Modifier.height(4.dp))
                 } else {
                     Button(
                         onClick = onConnectHealth,
@@ -329,7 +335,8 @@ fun DashboardScreen(
                         Text("Inserisci / correggi passi", fontWeight = FontWeight.SemiBold)
                     }
                     Spacer(Modifier.height(6.dp))
-                    Text(stepStatus, color = PulseColors.Muted, fontSize = 10.sp)
+                    if (stepStatus.startsWith("Consenti") || !stepStatus.startsWith("Passi automatici"))
+                        Text(stepStatus, color = PulseColors.Muted, fontSize = 10.sp)
                     if (stepStatus.startsWith("Consenti")) {
                         TextButton(onClick = onRequestStepAccess) {
                             Text("Attiva contapassi del telefono", color = PulseColors.Accent)
@@ -340,7 +347,7 @@ fun DashboardScreen(
         }
 
         item {
-            DashboardSectionTitle("Recupero", "Allenarsi bene significa anche riposare")
+            DashboardSectionTitle("Recupero")
             Spacer(Modifier.height(12.dp))
             WidgetCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -390,7 +397,7 @@ fun DashboardScreen(
         }
 
         item {
-            DashboardSectionTitle("La settimana", "${summary.workoutDaysThisWeek} su 3 allenamenti completati")
+            DashboardSectionTitle("La settimana")
             Spacer(Modifier.height(12.dp))
             WidgetCard {
                 val animatedWeek by animateFloatAsState(
@@ -444,28 +451,38 @@ fun DashboardScreen(
         }
 
         item {
-            DashboardSectionTitle("I tuoi dati", "Tieni al sicuro allenamenti e progressi")
+            DashboardSectionTitle("Impostazioni")
             Spacer(Modifier.height(12.dp))
             WidgetCard {
-                Text("Backup degli allenamenti", color = PulseColors.Foreground,
-                    fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-                Spacer(Modifier.height(6.dp))
-                Text("Prima di disinstallare o cambiare firma dell'APK, esporta il backup. " +
-                    "Il file rimane sul tuo telefono e non viene caricato online.",
-                    color = PulseColors.Muted, fontSize = 12.sp)
-                Spacer(Modifier.height(13.dp))
-                Button(onClick = onExportBackup, modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)) {
-                    Text("Esporta backup in JSON", color = Color.White,
-                        fontWeight = FontWeight.Bold)
+                Row(
+                    Modifier.fillMaxWidth().clickable { backupExpanded = !backupExpanded },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.FitnessCenter, null, tint = PulseColors.Accent,
+                        modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text("Backup e ripristino", color = PulseColors.Foreground,
+                        fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f))
+                    Icon(if (backupExpanded) Icons.AutoMirrored.Filled.ArrowForward else
+                        Icons.Default.Edit, null, tint = PulseColors.Muted)
                 }
-                Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = onImportBackup, modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.dp, PulseColors.Border)) {
-                    Text("Ripristina un backup", color = PulseColors.Accent,
-                        fontWeight = FontWeight.Bold)
+                if (backupExpanded) {
+                    Spacer(Modifier.height(12.dp))
+                    Text("Esporta i progressi prima di disinstallare l'app.",
+                        color = PulseColors.Muted, fontSize = 11.sp)
+                    Spacer(Modifier.height(10.dp))
+                    Button(onClick = onExportBackup, modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)) {
+                        Text("Esporta backup", color = Color.White)
+                    }
+                    Spacer(Modifier.height(7.dp))
+                    OutlinedButton(onClick = onImportBackup, modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, PulseColors.Border)) {
+                        Text("Ripristina backup", color = PulseColors.Accent)
+                    }
                 }
                 if (backupStatus.isNotBlank()) {
                     Spacer(Modifier.height(9.dp))
@@ -474,11 +491,6 @@ fun DashboardScreen(
             }
         }
 
-        item {
-            Text("Gli streak iniziano dai dati realmente registrati, senza valori demo.",
-                color = PulseColors.Muted, fontSize = 11.sp,
-                modifier = Modifier.padding(bottom = 4.dp))
-        }
     }
 
     if (stepsDialog) {
@@ -527,12 +539,14 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun DashboardSectionTitle(title: String, subtitle: String) {
+private fun DashboardSectionTitle(title: String, subtitle: String = "") {
     Column {
         Text(title, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
             color = PulseColors.Foreground, letterSpacing = (-0.45).sp)
-        Spacer(Modifier.height(3.dp))
-        Text(subtitle, color = PulseColors.Muted, fontSize = 12.sp)
+        if (subtitle.isNotBlank()) {
+            Spacer(Modifier.height(3.dp))
+            Text(subtitle, color = PulseColors.Muted, fontSize = 12.sp)
+        }
     }
 }
 
@@ -573,7 +587,7 @@ private fun StreakTile(
         }
     }
     Surface(
-        modifier = modifier.height(167.dp),
+        modifier = modifier.height(148.dp),
         color = if (accentBackground) PulseColors.SoftGreen else Color.White,
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, if (accentBackground) PulseColors.SoftGreen else PulseColors.Border)
@@ -597,8 +611,7 @@ private fun StreakTile(
                             scaleY = 1f + abs(wobble.value) / 55f
                         })
                 }
-                Text("STREAK", color = PulseColors.Muted, fontSize = 8.sp,
-                    fontWeight = FontWeight.Bold, letterSpacing = 1.0.sp)
+                // Icona e valore identificano già il tipo di streak.
             }
             Spacer(Modifier.height(11.dp))
             Row(verticalAlignment = Alignment.Bottom) {
@@ -611,8 +624,8 @@ private fun StreakTile(
             }
             Text(title, color = PulseColors.Foreground, fontSize = 13.sp,
                 fontWeight = FontWeight.Bold, maxLines = 1)
-            Text(detail, color = PulseColors.Muted, fontSize = 10.sp,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (detail.isNotBlank()) Text(detail, color = PulseColors.Muted,
+                fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
