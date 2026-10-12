@@ -295,3 +295,80 @@ mascotte muscolosa. Il ritaglio centrale è ottimizzato per le icone
 Android adaptive/round; la scritta originale è volutamente esclusa
 per renderla leggibile anche a dimensioni molto piccole. Il file WebP
 è incorporato offline nell’APK sotto `res/drawable-nodpi`.
+
+## V0.9 — nuovo design, microanimazioni e widget di progresso
+
+- Mascotte ButtiGoGym nelle intestazioni Oggi, Scheda, Storico e Myself
+- Hero con verde sfumato, gerarchia tipografica e CTA primaria
+- Widget Oggi basati esclusivamente sullo storico: sedute fisse della
+  settimana (0–3), serie completate, minuti allenati, muscoli pronti
+  (stima, non misurazione fisiologica)
+- Animazione della fiamma per **3 secondi**, una sola volta quando si
+  apre la pagina o cambia la streak, senza loop infiniti
+- Barre di progresso di passi, allenamenti e livelli con transizioni brevi
+- Esporta/ripristina backup locali dall'interfaccia Oggi mediante il
+  selettore file di Android (senza permessi di archiviazione né cloud)
+
+## Aggiornamenti Android — certificato permanente
+
+**Limite di Android, da non aggirare:** APK firmati con certificati diversi
+NON possono aggiornarsi reciprocamente senza disinstallazione, né basta
+cambiare il numero di versione o il manifest. Le vecchie APK di GitHub
+Actions erano firmate con **chiavi debug temporanee**: il certificato della
+V0.8.1 installata sul telefono non può essere recuperato dal solo APK.
+Questa modifica non promette un aggiornamento diretto retroattivo.
+
+### 1. Configurare una sola volta una chiave privata stabile
+
+Generare la chiave **sul proprio PC** (non caricarla nel repository):
+```bash
+keytool -genkeypair -v -keystore buttigogym-release.jks -alias buttigogym -keyalg RSA -keysize 3072 -validity 10000
+```
+
+Convertire la JKS in Base64 (PowerShell Windows):
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("buttigogym-release.jks")) | Set-Clipboard
+```
+
+In GitHub > repository > Settings > Secrets and variables > Actions,
+aggiungere i repository secrets:
+- `BUTTIGOGYM_KEYSTORE_BASE64`: Base64 della JKS
+- `BUTTIGOGYM_STORE_PASSWORD`: password della JKS
+- `BUTTIGOGYM_KEY_ALIAS`: `buttigogym`
+- `BUTTIGOGYM_KEY_PASSWORD`: password della chiave
+
+La pipeline genera quindi **assembleRelease** con lo stesso certificato
+per ogni versione, verificando la firma con `apksigner`.
+Non committare JKS, password o valori segreti nella repository.
+Conserva una copia sicura della JKS e delle password: se le perdi,
+gli aggiornamenti diretti potranno non essere più possibili.
+
+In assenza dei secrets, la CI produce ancora un **APK debug** per test,
+segnalandolo con un warning: **questo APK NON garantisce l'aggiornamento
+di un'installazione già presente**.
+
+### 2. Migrare una vecchia APK debug senza perdere lo storico
+
+Se l'app già installata non supporta ancora il nuovo export:
+
+1. **PRIMA DI DISINSTALLARE**, collega il telefono al PC con debug USB
+   attivo; installa Android SDK Platform Tools (`adb`), sblocca il
+   telefono e autorizza il computer.
+2. Dal clone della repository, esegui
+   `python tools/backup_existing_debug_android.py`. Il comando
+   legge le SharedPreferences tramite `adb run-as` (supportato sulle
+   vecchie build **debuggable**) e crea
+   `ButtiGoGym-backup-migrazione.json` sul PC.
+3. Apri il JSON e verifica che contenga i dati attesi. Conservane
+   almeno una copia. Se il comando non riesce, **non disinstallare**.
+4. Dopo avere salvato il backup e verificato il contenuto, disinstalla
+   la vecchia APK, installa la versione con certificato stabile e, in
+   **Oggi > I tuoi dati > Ripristina un backup**, scegli il JSON.
+
+Da quel momento, le versioni rilasciate con la **stessa chiave stabile**
+e un `versionCode` superiore si installeranno come normali aggiornamenti.
+
+Per le versioni dalla V0.9 in poi, la funzione **Esporta backup in JSON**
+è disponibile direttamente nell'app, senza ADB. Il JSON è in chiaro:
+contiene dati degli allenamenti e potenzialmente passi; trattalo come
+un documento personale e non condividerlo pubblicamente.
