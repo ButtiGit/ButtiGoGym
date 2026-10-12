@@ -12,8 +12,8 @@ android {
         applicationId = "it.pulse.workout"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "0.9.1"
+        versionCode = 14
+        versionName = "0.9.2"
     }
 
     // Una chiave permanente resta nei GitHub Actions Secrets, mai nel repository.
@@ -53,6 +53,7 @@ dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
     implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")

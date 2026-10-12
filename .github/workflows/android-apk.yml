@@ -2,7 +2,7 @@ name: ButtiGoGym Android APK
 
 on:
   push:
-    branches: [main, fix/stable-release-signing-091]
+    branches: [main, feature/session-photo-recap-v010]
   workflow_dispatch:
 
 permissions:
@@ -68,6 +68,13 @@ jobs:
               assert all(item['muscle'] and item['path'].startswith(('M', 'm')) for item in maps[side])
           print('Verified native anatomy:', {k: len(v) for k, v in maps.items()})
           PY
+
+      - name: Verify photo capture and recap resources
+        shell: bash
+        run: |
+          test -s app/src/main/res/xml/session_photo_paths.xml
+          test -s app/src/main/java/it/pulse/workout/ui/WorkoutPhotoAndRecap.kt
+          test -s app/src/main/java/it/pulse/workout/ui/SessionPhotoAndRecap.kt
 
       - name: Verify new mascot launcher resources
         shell: bash

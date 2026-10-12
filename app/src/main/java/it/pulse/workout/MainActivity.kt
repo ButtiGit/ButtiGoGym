@@ -370,7 +370,13 @@ private fun PulseApp() {
                         onStart = ::start
                     )
                     2 -> MyselfScreen(history = history, active = draft)
-                    else -> HistoryScreen(history = history, days = catalog.days)
+                    else -> HistoryScreen(
+                        history = history,
+                        days = catalog.days,
+                        onPhotoSaved = { id, filename ->
+                            if (store.attachPhoto(id, filename)) history = store.history()
+                        }
+                    )
                 }
             }
         }

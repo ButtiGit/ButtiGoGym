@@ -329,7 +329,11 @@ fun PlanScreen(
 }
 
 @Composable
-fun HistoryScreen(history: List<SessionRecord>, days: List<WorkoutDay>) {
+fun HistoryScreen(
+    history: List<SessionRecord>,
+    days: List<WorkoutDay>,
+    onPhotoSaved: (Long, String) -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = pagePad, end = pagePad, bottom = 30.dp)
@@ -376,10 +380,11 @@ fun HistoryScreen(history: List<SessionRecord>, days: List<WorkoutDay>) {
                     )
                     Spacer(Modifier.height(15.dp))
                     Eyebrow(if (expanded) "NASCONDI DETTAGLI  ↑" else "VEDI KG E RIPETIZIONI  ↓", PulseColors.Accent)
-                    if (expanded && day != null) {
+                    if (expanded) {
                         Spacer(Modifier.height(14.dp))
                         HorizontalDivider(color = PulseColors.Border)
-                        day.exercises.forEach { exercise ->
+                        SessionPhotoAndRecap(record = record, day = day, onPhotoSaved = onPhotoSaved)
+                        day?.exercises?.forEach { exercise ->
                             val warmups = record.entries.entries
                                 .filter { it.key.startsWith("warmup:${exercise.id}:") && it.value.done }
                                 .sortedBy { it.value.completedAt }

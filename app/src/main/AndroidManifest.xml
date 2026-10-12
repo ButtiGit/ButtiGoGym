@@ -32,6 +32,16 @@
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity-alias>
+        <!-- URI sicure per salvare una foto alla massima risoluzione con la fotocamera di sistema. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/session_photo_paths" />
+        </provider>
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -385,3 +385,31 @@ incompatibile). Per le versioni seguenti aumentare sempre `versionCode`.
 firmando `assembleRelease` riutilizza la stessa chiave; l'APK di avvio
 firmato localmente usa lo stesso certificato da importare nei Secrets.
 Conservare il file `.jks` e le relative credenziali fuori dalla repository.
+
+## V0.9.2 — Foto e recap per ogni sessione di allenamento
+
+Nella sezione Storico, apri una sessione per **allegare una foto dalla galleria**
+o **scattare una foto a risoluzione piena con la fotocamera di sistema**.
+Le immagini sono ridimensionate e salvate in `filesDir/session_photos/`,
+private e senza upload online; rimangono presenti durante i normali aggiornamenti
+Android firmati con il medesimo certificato.
+
+**Recap WO** genera e salva un PNG 1080×1350 con la foto,
+il titolo/data della sessione e 3 statistiche:
+- Volume (kg): somma su tutte le **serie allenanti completate**
+  di `peso registrato × ripetizioni registrate`. Riscaldamento escluso;
+  il farmer's walk misura secondi e non contribuisce al volume.
+- Durata: `durationSeconds` realmente registrati, con fallback
+  a `durationMinutes * 60` per storici precedenti.
+- Calorie: **stima indicativa**, non sensore, MET 5,0 e 58 kg:
+  `5 × 3,5 × 58 / 200 × minuti`. Gli allenamenti meno o più intensi
+  possono consumare significativamente meno o più di questa cifra.
+
+Le foto sono legate all'ID della sessione e memorizzate come nomi di file
+nel JSON dello storico. Non vengono attualmente incluse negli export JSON
+delle preferenze: salva separatamente le foto/recap prima di disinstallare
+l'app. Per l'aggiornamento normale invece i file privati si conservano.
+
+`versionCode=14`, `versionName=0.9.2`. Il workflow usa il certificato
+permanente dai Secrets GitHub: deve corrispondere alla firma della v0.9.1
+STABLE già installata.
