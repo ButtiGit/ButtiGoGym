@@ -1,6 +1,8 @@
 package it.pulse.workout
 
 import android.os.Bundle
+import java.io.ByteArrayOutputStream
+import it.pulse.workout.data.AppBackupStore
 import android.content.Intent
 import android.net.Uri
 import androidx.health.connect.client.HealthConnectClient
@@ -215,6 +217,53 @@ private fun PulseApp() {
     }
 
     val currentDay = draft?.daySnapshot ?: catalog.days.firstOrNull { it.id == draft?.dayId }
+    val backupStore = remember { AppBackupStore(context.applicationContext) }
+    var backupStatus by rememberSaveable { mutableStateOf("") }
+    var pendingBackup by remember { mutableStateOf<String?>(null) }
+
+    val exportBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument(AppBackupStore.MIME_TYPE)
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                val json = backupStore.export()
+                checkNotNull(context.contentResolver.openOutputStream(uri)) {
+                    "Non posso scrivere nel file selezionato"
+                }.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+            }.onSuccess {
+                backupStatus = "Backup salvato. Conserva il file prima di disinstallare."
+            }.onFailure {
+                backupStatus = "Esportazione fallita: ${it.message.orEmpty().take(100)}"
+            }
+        }
+    }
+    val importBackup = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            runCatching {
+                checkNotNull(context.contentResolver.openInputStream(uri)) {
+                    "Non posso leggere il file selezionato"
+                }.use { stream ->
+                    val result = ByteArrayOutputStream()
+                    val buffer = ByteArray(4096)
+                    while (true) {
+                        val count = stream.read(buffer)
+                        if (count < 0) break
+                        require(result.size() + count <= AppBackupStore.MAX_SIZE) {
+                            "File troppo grande"
+                        }
+                        result.write(buffer, 0, count)
+                    }
+                    result.toString(Charsets.UTF_8.name()).also { backupStore.validate(it) }
+                }
+            }.onSuccess {
+                pendingBackup = it
+            }.onFailure {
+                backupStatus = "Backup non valido: ${it.message.orEmpty().take(100)}"
+            }
+        }
+    }
 
     Scaffold(
         containerColor = PulseColors.Background,
@@ -301,7 +350,14 @@ private fun PulseApp() {
                         onStart = ::start,
                         onSaveSteps = { steps -> wellness = wellnessStore.updateSteps(java.time.LocalDate.now(), steps) },
                         onToggleRest = { wellness = wellnessStore.toggleRest(java.time.LocalDate.now()) },
-                        onOpenPlan = { tab = 1 }
+                        onOpenPlan = { tab = 1 },
+                        backupStatus = backupStatus,
+                        onExportBackup = {
+                            exportBackup.launch("ButtiGoGym-backup-${java.time.LocalDate.now()}.json")
+                        },
+                        onImportBackup = {
+                            importBackup.launch(arrayOf("application/json", "text/plain"))
+                        }
                     )
                     1 -> PlanScreen(
                         activeDayId = draft?.dayId,
@@ -318,6 +374,35 @@ private fun PulseApp() {
                 }
             }
         }
+    }
+
+    pendingBackup?.let { raw ->
+        AlertDialog(
+            onDismissRequest = { pendingBackup = null },
+            title = { Text("Ripristinare i tuoi dati?") },
+            text = { Text("Sostituirà lo storico, l'eventuale allenamento in corso, passi salvati e preferenze del piano. Continua solo se vuoi recuperare un backup precedente.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    runCatching {
+                        backupStore.restore(raw)
+                        history = store.history()
+                        draft = store.loadDraft()
+                        wellness = wellnessStore.read()
+                        catalog = repository.initial()
+                        sessionVisible = false
+                        tab = 0
+                    }.onSuccess {
+                        backupStatus = "Backup ripristinato correttamente."
+                    }.onFailure {
+                        backupStatus = "Ripristino fallito: ${it.message.orEmpty().take(100)}"
+                    }
+                    pendingBackup = null
+                }) { Text("Ripristina") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingBackup = null }) { Text("Annulla") }
+            }
+        )
     }
 
     pendingNewWorkout?.let { next ->
