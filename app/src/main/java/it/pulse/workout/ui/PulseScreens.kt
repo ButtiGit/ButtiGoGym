@@ -1,5 +1,7 @@
 package it.pulse.workout.ui
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -252,7 +254,7 @@ fun PlanScreen(
         }
         items(days, key = { it.id }) { day ->
             var expanded by remember(day.id) { mutableStateOf(false) }
-            PulseCard(Modifier.fillMaxWidth()) {
+            PulseCard(Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(330))) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(if (day.optional) "★" else "0${days.indexOf(day) + 1}",
                         color = PulseColors.Accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -355,7 +357,9 @@ fun HistoryScreen(history: List<SessionRecord>, days: List<WorkoutDay>) {
             items(history, key = { it.id }) { record ->
                 val day = record.daySnapshot ?: days.firstOrNull { it.id == record.dayId }
                 var expanded by remember(record.id) { mutableStateOf(false) }
-                PulseCard(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
+                PulseCard(Modifier.fillMaxWidth()
+                    .animateContentSize(animationSpec = tween(300))
+                    .clickable { expanded = !expanded }) {
                     Eyebrow(italianDate(record.completedAt).uppercase(Locale.ITALIAN), PulseColors.Accent)
                     Spacer(Modifier.height(10.dp))
                     Text(day?.name ?: "Allenamento", color = PulseColors.Foreground,
