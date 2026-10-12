@@ -7,7 +7,13 @@ data class Exercise(
     val name: String,
     val muscle: String,
     val sets: Int,
-    val target: String
+    val target: String,
+    val restSeconds: Int = 90,
+    val equipment: String = "",
+    val rir: String = "1–3",
+    val note: String = "",
+    val alternative: String = "",
+    val gifUrl: String = ""
 )
 
 data class WorkoutDay(
@@ -16,7 +22,8 @@ data class WorkoutDay(
     val name: String,
     val description: String,
     val duration: String,
-    val exercises: List<Exercise>
+    val exercises: List<Exercise>,
+    val optional: Boolean = false
 ) {
     val setCount: Int get() = exercises.sumOf { it.sets }
 }
@@ -65,12 +72,12 @@ object WorkoutPlan {
         )
     )
 
-    fun upcoming(): WorkoutDay {
+    fun upcoming(days: List<WorkoutDay> = days): WorkoutDay {
         val day = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
         return when (day) {
-            Calendar.MONDAY, Calendar.SATURDAY, Calendar.SUNDAY -> days[0]
-            Calendar.TUESDAY, Calendar.WEDNESDAY -> days[1]
-            else -> days[2]
+            Calendar.MONDAY, Calendar.SATURDAY, Calendar.SUNDAY -> days.first { !it.optional }
+            Calendar.TUESDAY, Calendar.WEDNESDAY -> days.filterNot { it.optional }[1]
+            else -> days.filterNot { it.optional }[2]
         }
     }
 }
@@ -84,7 +91,8 @@ data class SetEntry(
 data class WorkoutDraft(
     val dayId: String,
     val startedAt: Long,
-    val entries: Map<String, SetEntry> = emptyMap()
+    val entries: Map<String, SetEntry> = emptyMap(),
+    val daySnapshot: WorkoutDay? = null
 ) {
     fun entry(exercise: Exercise, setIndex: Int): SetEntry = entries[key(exercise.id, setIndex)] ?: SetEntry()
     fun update(exercise: Exercise, setIndex: Int, entry: SetEntry): WorkoutDraft =
@@ -102,5 +110,15 @@ data class SessionRecord(
     val durationMinutes: Int,
     val completedSets: Int,
     val totalSets: Int,
-    val entries: Map<String, SetEntry> = emptyMap()
+    val entries: Map<String, SetEntry> = emptyMap(),
+    val daySnapshot: WorkoutDay? = null
+)
+
+/** Versione validata della scheda scaricata da GitHub, separata dai progressi locali. */
+data class WorkoutCatalog(
+    val revision: String,
+    val title: String,
+    val days: List<WorkoutDay>,
+    val source: String,
+    val guidelines: List<String> = emptyList()
 )

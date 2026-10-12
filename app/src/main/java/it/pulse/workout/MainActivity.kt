@@ -13,6 +13,10 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import it.pulse.workout.data.WorkoutCatalogRepository
 import it.pulse.workout.data.WorkoutDay
 import it.pulse.workout.data.WorkoutDraft
 import it.pulse.workout.data.WorkoutPlan
@@ -39,6 +43,23 @@ class MainActivity : ComponentActivity() {
 private fun PulseApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember { WorkoutStore(context.applicationContext) }
+    val repository = remember { WorkoutCatalogRepository(context.applicationContext) }
+    var catalog by remember { mutableStateOf(repository.initial()) }
+    var refreshState by remember { mutableStateOf("Scheda salvata sul telefono") }
+    var refreshing by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
+
+    suspend fun fetchCatalog() {
+        if (refreshing) return
+        refreshing = true
+        refreshState = "Aggiornamento in corso…"
+        runCatching { withContext(Dispatchers.IO) { repository.refresh() } }
+            .onSuccess { catalog = it; refreshState = "Sincronizzata da GitHub · v${it.revision}" }
+            .onFailure { refreshState = "Offline: utilizzo scheda salvata" }
+        refreshing = false
+    }
+
+    LaunchedEffect(Unit) { fetchCatalog() }
     var draft by remember { mutableStateOf(store.loadDraft()) }
     var history by remember { mutableStateOf(store.history()) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -51,13 +72,13 @@ private fun PulseApp() {
             return
         }
         if (draft == null) {
-            draft = store.newDraft(day.id)
+            draft = store.newDraft(day)
             store.saveDraft(draft)
         }
         sessionVisible = true
     }
 
-    val currentDay = WorkoutPlan.days.firstOrNull { it.id == draft?.dayId }
+    val currentDay = draft?.daySnapshot ?: catalog.days.firstOrNull { it.id == draft?.dayId }
 
     Scaffold(
         containerColor = PulseColors.Background,
@@ -108,16 +129,23 @@ private fun PulseApp() {
             } else {
                 when (tab) {
                     0 -> HomeScreen(
-                        upcoming = WorkoutPlan.upcoming(),
+                        upcoming = WorkoutPlan.upcoming(catalog.days),
+                        days = catalog.days,
                         active = draft,
                         history = history,
                         onStart = ::start
                     )
                     1 -> PlanScreen(
                         activeDayId = draft?.dayId,
+                        days = catalog.days,
+                        version = catalog.revision,
+                        refreshState = refreshState,
+                        refreshing = refreshing,
+                        guidelines = catalog.guidelines,
+                        onRefresh = { coroutineScope.launch { fetchCatalog() } },
                         onStart = ::start
                     )
-                    else -> HistoryScreen(history = history)
+                    else -> HistoryScreen(history = history, days = catalog.days)
                 }
             }
         }
@@ -130,7 +158,7 @@ private fun PulseApp() {
             text = { Text("La sessione in corso verrà eliminata. Lo storico già salvato resterà intatto.") },
             confirmButton = {
                 TextButton(onClick = {
-                    draft = store.newDraft(next.id)
+                    draft = store.newDraft(next)
                     store.saveDraft(draft)
                     sessionVisible = true
                     pendingNewWorkout = null

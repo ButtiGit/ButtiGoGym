@@ -3,6 +3,7 @@ package it.pulse.workout.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,6 +27,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import android.os.Build
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
+import coil.request.ImageRequest
 import it.pulse.workout.data.*
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -126,13 +135,14 @@ private fun weekStartMillis(): Long {
 @Composable
 fun HomeScreen(
     upcoming: WorkoutDay,
+    days: List<WorkoutDay>,
     active: WorkoutDraft?,
     history: List<SessionRecord>,
     onStart: (WorkoutDay) -> Unit
 ) {
     val today = System.currentTimeMillis()
-    val current = WorkoutPlan.days.firstOrNull { it.id == active?.dayId } ?: upcoming
-    val count = history.count { it.completedAt >= weekStartMillis() }
+    val current = active?.daySnapshot ?: days.firstOrNull { it.id == active?.dayId } ?: upcoming
+    val count = history.count { it.completedAt >= weekStartMillis() && it.dayId != "bonus" }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -169,7 +179,7 @@ fun HomeScreen(
             }
             Spacer(Modifier.height(14.dp))
         }
-        items(WorkoutPlan.days.filter { it.id != current.id }, key = { it.id }) { day ->
+        items(days.filter { it.id != current.id }, key = { it.id }) { day ->
             SmallWorkoutRow(day = day, onClick = { onStart(day) })
             Spacer(Modifier.height(12.dp))
         }
@@ -203,7 +213,16 @@ private fun SmallWorkoutRow(day: WorkoutDay, onClick: () -> Unit) {
 }
 
 @Composable
-fun PlanScreen(activeDayId: String?, onStart: (WorkoutDay) -> Unit) {
+fun PlanScreen(
+    activeDayId: String?,
+    days: List<WorkoutDay>,
+    version: String,
+    refreshState: String,
+    refreshing: Boolean,
+    guidelines: List<String>,
+    onRefresh: () -> Unit,
+    onStart: (WorkoutDay) -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = pagePad, end = pagePad, bottom = 30.dp)
@@ -214,18 +233,26 @@ fun PlanScreen(activeDayId: String?, onStart: (WorkoutDay) -> Unit) {
             Spacer(Modifier.height(12.dp))
             PageTitle("Allenati al\ntuo ritmo.")
             Spacer(Modifier.height(10.dp))
-            Text("3 giorni / settimana · Puoi scegliere qualsiasi giorno.", color = PulseColors.Muted, fontSize = 13.sp)
+            Text("3 sedute fisse + 1 bonus quando sei recuperato.", color = PulseColors.Muted, fontSize = 13.sp)
+            Spacer(Modifier.height(14.dp))
+            Text("Versione $version", color = PulseColors.Accent, fontSize = 12.sp)
+            Text(refreshState, color = PulseColors.Muted, fontSize = 12.sp)
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton(onClick = onRefresh, enabled = !refreshing, modifier = Modifier.fillMaxWidth()) {
+                Text(if (refreshing) "Sincronizzo…" else "Aggiorna scheda da GitHub")
+            }
             Spacer(Modifier.height(26.dp))
         }
-        items(WorkoutPlan.days, key = { it.id }) { day ->
+        items(days, key = { it.id }) { day ->
             PulseCard(Modifier.fillMaxWidth().clickable { onStart(day) }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("0${WorkoutPlan.days.indexOf(day) + 1}", color = PulseColors.Accent,
+                    Text(if (day.optional) "★" else "0${days.indexOf(day) + 1}", color = PulseColors.Accent,
                         fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(18.dp))
                     Eyebrow(day.weekday)
                     Spacer(Modifier.weight(1f))
                     if (activeDayId == day.id) LabelChip("IN CORSO", selected = true)
+                    else if (day.optional) LabelChip("FACOLTATIVO")
                     else Icon(Icons.Default.ChevronRight, contentDescription = null, tint = PulseColors.Accent)
                 }
                 Spacer(Modifier.height(20.dp))
@@ -237,11 +264,20 @@ fun PlanScreen(activeDayId: String?, onStart: (WorkoutDay) -> Unit) {
             }
             Spacer(Modifier.height(13.dp))
         }
+        item {
+            Spacer(Modifier.height(15.dp))
+            Eyebrow("LINEE GUIDA")
+            Spacer(Modifier.height(10.dp))
+            guidelines.forEach { guideline ->
+                Text("• $guideline", color = PulseColors.Muted, fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 8.dp))
+            }
+        }
     }
 }
 
 @Composable
-fun HistoryScreen(history: List<SessionRecord>) {
+fun HistoryScreen(history: List<SessionRecord>, days: List<WorkoutDay>) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = pagePad, end = pagePad, bottom = 30.dp)
@@ -267,7 +303,7 @@ fun HistoryScreen(history: List<SessionRecord>) {
             }
         } else {
             items(history, key = { it.id }) { record ->
-                val day = WorkoutPlan.days.firstOrNull { it.id == record.dayId }
+                val day = record.daySnapshot ?: days.firstOrNull { it.id == record.dayId }
                 var expanded by remember(record.id) { mutableStateOf(false) }
                 PulseCard(Modifier.fillMaxWidth().clickable { expanded = !expanded }) {
                     Eyebrow(italianDate(record.completedAt).uppercase(Locale.ITALIAN), PulseColors.Accent)
@@ -397,13 +433,34 @@ private fun ExerciseCard(
     draft: WorkoutDraft,
     onUpdate: (WorkoutDraft) -> Unit
 ) {
+    var showDemo by remember(exercise.id) { mutableStateOf(false) }
     PulseCard(Modifier.fillMaxWidth()) {
         Eyebrow("${exerciseNumber.toString().padStart(2, '0')}   ·   ${exercise.muscle}", PulseColors.Accent)
         Spacer(Modifier.height(9.dp))
         Text(exercise.name, color = PulseColors.Foreground, fontWeight = FontWeight.ExtraBold,
             fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Spacer(Modifier.height(5.dp))
-        Text("${exercise.sets} serie · ${exercise.target} ripetizioni", color = PulseColors.Muted, fontSize = 12.sp)
+        Text("${exercise.sets} serie · ${exercise.target} ripetizioni · recupero ${exercise.restSeconds}s · RIR ${exercise.rir}",
+            color = PulseColors.Muted, fontSize = 12.sp)
+        if (exercise.equipment.isNotBlank()) {
+            Spacer(Modifier.height(7.dp))
+            Text("Attrezzo: ${exercise.equipment}", color = PulseColors.Muted, fontSize = 12.sp)
+        }
+        if (exercise.note.isNotBlank()) {
+            Spacer(Modifier.height(7.dp))
+            Text(exercise.note, color = PulseColors.Foreground, fontSize = 12.sp)
+        }
+        if (exercise.alternative.isNotBlank()) {
+            Spacer(Modifier.height(5.dp))
+            Text("Alternativa: ${exercise.alternative}", color = PulseColors.Muted, fontSize = 12.sp)
+        }
+        if (exercise.gifUrl.isNotBlank()) {
+            Spacer(Modifier.height(10.dp))
+            TextButton(onClick = { showDemo = !showDemo }) {
+                Text(if (showDemo) "Nascondi GIF ↑" else "▶ Guarda esecuzione GIF", color = PulseColors.Accent)
+            }
+            if (showDemo) ExerciseGif(exercise.gifUrl, exercise.name)
+        }
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Eyebrow("SERIE", PulseColors.Muted)
@@ -479,4 +536,26 @@ private fun SetNumberField(
             unfocusedContainerColor = PulseColors.Raised
         )
     )
+}
+
+/** GIF esterne caricate soltanto su richiesta dell'utente. */
+@Composable
+private fun ExerciseGif(url: String, title: String) {
+    val context = LocalContext.current
+    val loader = remember(context) {
+        ImageLoader.Builder(context).components {
+            if (Build.VERSION.SDK_INT >= 28) add(ImageDecoderDecoder.Factory())
+            else add(GifDecoder.Factory())
+        }.build()
+    }
+    AsyncImage(
+        model = ImageRequest.Builder(context).data(url).crossfade(false).build(),
+        imageLoader = loader,
+        contentDescription = "Dimostrazione di $title",
+        contentScale = ContentScale.Fit,
+        modifier = Modifier.fillMaxWidth().height(200.dp)
+            .clip(RoundedCornerShape(14.dp)).background(PulseColors.Raised)
+    )
+    Spacer(Modifier.height(10.dp))
+    Text("GIF esterna; è necessaria una connessione internet.", color = PulseColors.Muted, fontSize = 11.sp)
 }

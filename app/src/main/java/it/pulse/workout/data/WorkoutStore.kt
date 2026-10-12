@@ -15,8 +15,9 @@ class WorkoutStore(context: Context) {
         WorkoutDraft(
             dayId = json.getString("dayId"),
             startedAt = json.getLong("startedAt"),
-            entries = entries
-        ).takeIf { draft -> WorkoutPlan.days.any { it.id == draft.dayId } }
+            entries = entries,
+            daySnapshot = json.optJSONObject("daySnapshot")?.let { WorkoutCatalogRepository.parseDay(it) }
+        )
     }.getOrNull()
 
     fun saveDraft(draft: WorkoutDraft?) {
@@ -29,6 +30,7 @@ class WorkoutStore(context: Context) {
             put("dayId", draft.dayId)
             put("startedAt", draft.startedAt)
             put("entries", entries)
+            draft.daySnapshot?.let { put("daySnapshot", WorkoutCatalogRepository.dayToJson(it)) }
         }
         preferences.edit().putString("active_draft", json.toString()).apply()
     }
@@ -44,16 +46,18 @@ class WorkoutStore(context: Context) {
                 durationMinutes = json.getInt("minutes"),
                 completedSets = json.getInt("completedSets"),
                 totalSets = json.getInt("totalSets"),
-                entries = entriesFromJson(json.optJSONObject("entries") ?: JSONObject())
+                entries = entriesFromJson(json.optJSONObject("entries") ?: JSONObject()),
+                daySnapshot = json.optJSONObject("daySnapshot")?.let { WorkoutCatalogRepository.parseDay(it) }
             )
         }.sortedByDescending { it.completedAt }
     }.getOrDefault(emptyList())
 
     /** Riutilizza kg/reps dell'ultimo allenamento, senza segnare già completate le serie. */
-    fun newDraft(dayId: String): WorkoutDraft {
-        val previous = history().firstOrNull { it.dayId == dayId }
+    fun newDraft(day: WorkoutDay): WorkoutDraft {
+        val previous = history().firstOrNull { it.dayId == day.id }
         return WorkoutDraft(
-            dayId = dayId,
+            dayId = day.id,
+            daySnapshot = day,
             startedAt = System.currentTimeMillis(),
             entries = previous?.entries.orEmpty().mapValues { (_, entry) -> entry.copy(done = false) }
         )
@@ -96,7 +100,8 @@ class WorkoutStore(context: Context) {
             durationMinutes = ((end - draft.startedAt).coerceAtLeast(0L) / 60_000L).toInt(),
             completedSets = completed,
             totalSets = day.setCount,
-            entries = draft.entries
+            entries = draft.entries,
+            daySnapshot = day
         )
         val updated = listOf(record) + history()
         val json = JSONArray()
@@ -109,6 +114,7 @@ class WorkoutStore(context: Context) {
                 put("completedSets", item.completedSets)
                 put("totalSets", item.totalSets)
                 put("entries", entriesToJson(item.entries))
+                item.daySnapshot?.let { put("daySnapshot", WorkoutCatalogRepository.dayToJson(it)) }
             })
         }
         // Un commit sincrono evita di perdere la cronologia in caso di chiusura immediata.
