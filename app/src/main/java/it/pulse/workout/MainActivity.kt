@@ -1,6 +1,7 @@
 package it.pulse.workout
 
 import android.os.Bundle
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -21,8 +22,9 @@ import it.pulse.workout.data.WorkoutDay
 import it.pulse.workout.data.WorkoutDraft
 import it.pulse.workout.data.WorkoutPlan
 import it.pulse.workout.data.WorkoutStore
+import it.pulse.workout.data.WellnessStore
 import it.pulse.workout.ui.HistoryScreen
-import it.pulse.workout.ui.HomeScreen
+import it.pulse.workout.ui.DashboardScreen
 import it.pulse.workout.ui.PlanScreen
 import it.pulse.workout.ui.PulseColors
 import it.pulse.workout.ui.PulseTheme
@@ -31,10 +33,10 @@ import it.pulse.workout.ui.SessionScreen
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = android.graphics.Color.rgb(12, 17, 16)
-        window.navigationBarColor = android.graphics.Color.rgb(12, 17, 16)
+        window.statusBarColor = android.graphics.Color.rgb(246, 248, 246)
+        window.navigationBarColor = android.graphics.Color.WHITE
         @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = 0
+        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         setContent { PulseTheme { PulseApp() } }
     }
 }
@@ -43,6 +45,8 @@ class MainActivity : ComponentActivity() {
 private fun PulseApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember { WorkoutStore(context.applicationContext) }
+    val wellnessStore = remember { WellnessStore(context.applicationContext) }
+    var wellness by remember { mutableStateOf(wellnessStore.read()) }
     val repository = remember { WorkoutCatalogRepository(context.applicationContext) }
     var catalog by remember { mutableStateOf(repository.initial()) }
     var refreshState by remember { mutableStateOf("Scheda salvata sul telefono") }
@@ -84,7 +88,7 @@ private fun PulseApp() {
         containerColor = PulseColors.Background,
         bottomBar = {
             if (!sessionVisible) {
-                NavigationBar(containerColor = PulseColors.Surface) {
+                NavigationBar(containerColor = PulseColors.Surface, tonalElevation = 0.dp) {
                     listOf(
                         Triple("Oggi", Icons.Default.Home, 0),
                         Triple("Scheda", Icons.Default.FitnessCenter, 1),
@@ -128,12 +132,16 @@ private fun PulseApp() {
                 )
             } else {
                 when (tab) {
-                    0 -> HomeScreen(
+                    0 -> DashboardScreen(
                         upcoming = WorkoutPlan.upcoming(catalog.days),
                         days = catalog.days,
                         active = draft,
                         history = history,
-                        onStart = ::start
+                        wellness = wellness,
+                        onStart = ::start,
+                        onSaveSteps = { steps -> wellness = wellnessStore.updateSteps(java.time.LocalDate.now(), steps) },
+                        onToggleRest = { wellness = wellnessStore.toggleRest(java.time.LocalDate.now()) },
+                        onOpenPlan = { tab = 1 }
                     )
                     1 -> PlanScreen(
                         activeDayId = draft?.dayId,

@@ -1,8 +1,8 @@
-name: PULSE Android APK
+name: ButtiGoGym Android APK
 
 on:
   push:
-    branches: [main, feature/remote-workout-plan]
+    branches: [main, feature/ios-style-dashboard]
   workflow_dispatch:
 
 permissions:
@@ -65,6 +65,9 @@ jobs:
             git push origin "HEAD:${{ github.ref_name }}"
           fi
 
+      - name: Test streak calculations
+        run: gradle --no-daemon :app:testDebugUnitTest
+
       - name: Compile debug APK
         run: gradle --no-daemon --stacktrace :app:assembleDebug
 
@@ -79,7 +82,7 @@ jobs:
       - name: Upload downloadable APK
         uses: actions/upload-artifact@v4
         with:
-          name: ButtiGoGym-v0.1-APK
+          name: ButtiGoGym-Android-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
