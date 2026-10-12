@@ -54,10 +54,27 @@ class WorkoutStore(context: Context) {
                 completedSets = json.getInt("completedSets"),
                 totalSets = json.getInt("totalSets"),
                 entries = entriesFromJson(json.optJSONObject("entries") ?: JSONObject()),
-                daySnapshot = json.optJSONObject("daySnapshot")?.let { WorkoutCatalogRepository.parseDay(it) }
+                daySnapshot = json.optJSONObject("daySnapshot")?.let { WorkoutCatalogRepository.parseDay(it) },
+                photoFileName = json.optString("photoFileName", "")
             )
         }.sortedByDescending { it.completedAt }
     }.getOrDefault(emptyList())
+
+    /** Associa una foto alla sessione senza modificare carichi, durata o altre sessioni. */
+    fun attachPhoto(recordId: Long, fileName: String): Boolean {
+        require(fileName.matches(Regex("session_[0-9]+_[0-9]+\\.jpg"))) { "Nome foto non valido" }
+        val history = JSONArray(preferences.getString("history", "[]"))
+        var found = false
+        for (i in 0 until history.length()) {
+            val record = history.optJSONObject(i) ?: continue
+            if (record.optLong("id") == recordId) {
+                record.put("photoFileName", fileName)
+                found = true
+                break
+            }
+        }
+        return found && preferences.edit().putString("history", history.toString()).commit()
+    }
 
     /** Riutilizza kg/reps dell'ultimo allenamento, senza segnare già completate le serie. */
     fun newDraft(day: WorkoutDay): WorkoutDraft {
@@ -131,6 +148,7 @@ class WorkoutStore(context: Context) {
                 put("seconds", item.durationSeconds)
                 put("completedSets", item.completedSets)
                 put("totalSets", item.totalSets)
+                put("photoFileName", item.photoFileName)
                 put("entries", entriesToJson(item.entries))
                 item.daySnapshot?.let { put("daySnapshot", WorkoutCatalogRepository.dayToJson(it)) }
             })

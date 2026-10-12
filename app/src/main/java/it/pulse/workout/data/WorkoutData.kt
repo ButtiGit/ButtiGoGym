@@ -171,7 +171,9 @@ data class SessionRecord(
     val totalSets: Int,
     val entries: Map<String, SetEntry> = emptyMap(),
     val daySnapshot: WorkoutDay? = null,
-    val durationSeconds: Int = durationMinutes * 60
+    val durationSeconds: Int = durationMinutes * 60,
+    /** Solo il nome di un'immagine salvata nella directory privata dell'app. */
+    val photoFileName: String = ""
 )
 
 /** Versione validata della scheda scaricata da GitHub, separata dai progressi locali. */
