@@ -54,11 +54,11 @@ def main():
             def compatible(name):
                 name = normalize(name)
                 if label == "leg_press": return "leg press" in name and "one leg" not in name and "single leg" not in name
-                if label == "leg_extension": return "leg extension" in name and "triceps" not in name
+                if label == "leg_extension": return "leg extension" in name and ("machine" in name or "lever" in name)
                 if label == "leg_curl": return "leg curl" in name and "seated" in name
                 if label == "crunch": return "crunch" in name and "side" not in name and "oblique" not in name
                 if label == "split_squat": return "bulgarian" in name and "step up" not in name
-                if label == "bench": return "chest press" in name and "standing" not in name
+                if label == "bench": return "chest press" in name and "standing" not in name and ("machine" in name or "lever" in name)
                 if label in ("tricep_pushdown", "bonus_pushdown"): return "pushdown" in name and "rope" in name
                 return True
             candidates = [(v, item) for v, item in options if compatible(item.get("name", ""))]
