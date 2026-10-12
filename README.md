@@ -372,3 +372,16 @@ Per le versioni dalla V0.9 in poi, la funzione **Esporta backup in JSON**
 è disponibile direttamente nell'app, senza ADB. Il JSON è in chiaro:
 contiene dati degli allenamenti e potenzialmente passi; trattalo come
 un documento personale e non condividerlo pubblicamente.
+
+## v0.9.1 - Installazione pulita e aggiornamenti affidabili
+
+La v0.9.1 avvia una nuova catena di firma: installare una volta con certificato
+persistente (dopo aver disinstallato una precedente build debug con firma
+incompatibile). Per le versioni seguenti aumentare sempre `versionCode`.
+
+**La CI su main ora rifiuta di generare APK debug effimeri** se mancano
+`BUTTIGOGYM_KEYSTORE_BASE64`, `BUTTIGOGYM_STORE_PASSWORD`,
+`BUTTIGOGYM_KEY_ALIAS` e `BUTTIGOGYM_KEY_PASSWORD`. La pipeline
+firmando `assembleRelease` riutilizza la stessa chiave; l'APK di avvio
+firmato localmente usa lo stesso certificato da importare nei Secrets.
+Conservare il file `.jks` e le relative credenziali fuori dalla repository.

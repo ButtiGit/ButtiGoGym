@@ -2,7 +2,7 @@ name: ButtiGoGym Android APK
 
 on:
   push:
-    branches: [main, feature/design-motion-backup-signing]
+    branches: [main, fix/stable-release-signing-091]
   workflow_dispatch:
 
 permissions:
@@ -122,7 +122,11 @@ jobs:
             chmod 600 "$RUNNER_TEMP/buttigogym/stable.jks"
             echo "permanent=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::Permanent signing secrets absent. Debug build cannot update APKs signed by a different debug certificate."
+            if [[ "$GITHUB_REF_NAME" == "main" ]]; then
+              echo "::error::Configurare i quattro Secrets BUTTIGOGYM_* per pubblicare un APK aggiornabile. Non verranno più rilasciate build debug firmate con certificati temporanei."
+              exit 1
+            fi
+            echo "::warning::Solo test: nessuna chiave permanente, questa build di branch NON può aggiornare un'app già installata."
             echo "permanent=false" >> "$GITHUB_OUTPUT"
           fi
 
