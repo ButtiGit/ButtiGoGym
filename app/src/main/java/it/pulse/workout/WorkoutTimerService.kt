@@ -28,6 +28,7 @@ class WorkoutTimerService : Service() {
         private const val REST_CHANNEL = "buttigogym_rest_alerts_v1"
         private const val LIVE_ID = 3010
         private const val REST_DONE_ID = 3011
+        const val EXTRA_OPEN_WORKOUT = "openWorkoutTimer"
         private const val ACTION_SYNC = "it.pulse.workout.SYNC_WORKOUT_TIMER"
         private const val EXTRA_STARTED = "started"
         private const val EXTRA_REST_UNTIL = "restUntil"
@@ -120,6 +121,7 @@ class WorkoutTimerService : Service() {
 
     private fun openApp(): PendingIntent {
         val intent = Intent(this, MainActivity::class.java)
+            .putExtra(EXTRA_OPEN_WORKOUT, true)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         return PendingIntent.getActivity(this, 3010, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)

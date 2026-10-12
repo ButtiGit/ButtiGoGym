@@ -51,18 +51,30 @@ import it.pulse.workout.ui.PulseTheme
 import it.pulse.workout.ui.GuidedSessionScreen
 
 class MainActivity : ComponentActivity() {
+    private val openWorkoutFromNotification = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = android.graphics.Color.rgb(246, 248, 246)
         window.navigationBarColor = android.graphics.Color.WHITE
         @Suppress("DEPRECATION")
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-        setContent { PulseTheme { PulseApp() } }
+        openWorkoutFromNotification.value =
+            intent?.getBooleanExtra(WorkoutTimerService.EXTRA_OPEN_WORKOUT, false) == true
+        setContent { PulseTheme { PulseApp(openWorkoutFromNotification) } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(WorkoutTimerService.EXTRA_OPEN_WORKOUT, false)) {
+            openWorkoutFromNotification.value = true
+        }
     }
 }
 
 @Composable
-private fun PulseApp() {
+private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember { WorkoutStore(context.applicationContext) }
     val wellnessStore = remember { WellnessStore(context.applicationContext) }
@@ -217,6 +229,12 @@ private fun PulseApp() {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var sessionVisible by rememberSaveable { mutableStateOf(draft != null) }
     var pendingNewWorkout by remember { mutableStateOf<WorkoutDay?>(null) }
+    LaunchedEffect(openWorkoutFromNotification.value, draft) {
+        if (openWorkoutFromNotification.value && draft != null) {
+            sessionVisible = true
+            openWorkoutFromNotification.value = false
+        }
+    }
 
     fun start(day: WorkoutDay) {
         if (draft != null && draft?.dayId != day.id) {
