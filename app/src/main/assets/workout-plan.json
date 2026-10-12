@@ -50,7 +50,7 @@
           "note": "Scendi senza staccare il bacino",
           "alternative": "Hack squat o goblet squat",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/WWD6FzI.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/10Z2DXU.gif"
         },
         {
           "id": "incline",
@@ -102,11 +102,11 @@
           "target": "10–15",
           "restSeconds": 75,
           "equipment": "Cavo alto + corda",
-          "gifQuery": "cable triceps pushdown",
+          "gifQuery": "cable triceps pushdown rope",
           "note": "Gomiti fissi vicino al corpo",
           "alternative": "Pushdown con barra",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/gAwDzB3.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/dU605di.gif"
         },
         {
           "id": "bicep_curl",
@@ -144,7 +144,7 @@
           "note": "Piedi stabili e ginocchia allineate",
           "alternative": "Hack squat",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/WWD6FzI.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/10Z2DXU.gif"
         },
         {
           "id": "rdl",
@@ -168,7 +168,7 @@
           "target": "10–15",
           "restSeconds": 90,
           "equipment": "Leg curl",
-          "gifQuery": "lever seated leg curl",
+          "gifQuery": "seated leg curl",
           "note": "Fermo breve in chiusura",
           "alternative": "Leg curl sdraiato",
           "rir": "1–3",
@@ -182,11 +182,11 @@
           "target": "12–15",
           "restSeconds": 90,
           "equipment": "Leg extension",
-          "gifQuery": "lever leg extension",
+          "gifQuery": "leg extension",
           "note": "Non rimbalzare, corsa controllata",
           "alternative": "Split squat",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/Ser9eQp.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/Y1MsI1l.gif"
         },
         {
           "id": "seated_row",
@@ -224,11 +224,11 @@
           "target": "10–15",
           "restSeconds": 75,
           "equipment": "Cavo alto + corda",
-          "gifQuery": "cable crunch",
+          "gifQuery": "kneeling cable crunch",
           "note": "Avvicina sterno e bacino",
           "alternative": "Crunch a terra",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/q2ADGqV.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/WW95auq.gif"
         }
       ]
     },
@@ -248,11 +248,11 @@
           "target": "6–10",
           "restSeconds": 150,
           "equipment": "Chest press",
-          "gifQuery": "lever chest press",
+          "gifQuery": "seated chest press",
           "note": "Scapole stabili, spinta completa",
           "alternative": "Panca piana con manubri",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/WbNq5Xu.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/nIR4Rwl.gif"
         },
         {
           "id": "row_chest",
@@ -304,11 +304,11 @@
           "target": "8–12 per gamba",
           "restSeconds": 120,
           "equipment": "Panca + manubri",
-          "gifQuery": "dumbbell bulgarian split squat",
+          "gifQuery": "bulgarian split squat",
           "note": "Riduci carico se perdi equilibrio",
           "alternative": "Affondi indietro",
           "rir": "1–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/QjE2DcA.gif"
+          "gifUrl": ""
         },
         {
           "id": "reverse_fly",
@@ -398,11 +398,11 @@
           "target": "12–15",
           "restSeconds": 75,
           "equipment": "Cavo + corda",
-          "gifQuery": "cable triceps pushdown",
+          "gifQuery": "cable triceps pushdown rope",
           "note": "Controlla la salita",
           "alternative": "Estensioni ai cavi",
           "rir": "2–3",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/gAwDzB3.gif"
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/dU605di.gif"
         },
         {
           "id": "bonus_calf",
