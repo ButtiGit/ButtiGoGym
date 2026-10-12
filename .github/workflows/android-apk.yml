@@ -2,7 +2,7 @@ name: PULSE Android APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/remote-workout-plan]
   workflow_dispatch:
 
 permissions:
@@ -48,15 +48,21 @@ jobs:
           test -f app/src/main/AndroidManifest.xml
           find app/src/main -type f | sort
 
+      - name: Resolve public exercise GIF references
+        run: python3 tools/resolve_gifs.py
+
+      - name: Include current plan as offline fallback
+        run: cp workouts/plan.json app/src/main/assets/workout-plan.json
+
       - name: Publish Android source files to repository
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A app build.gradle.kts settings.gradle.kts gradle.properties gradle/wrapper .gitignore
+          git add -A app workouts/plan.json build.gradle.kts settings.gradle.kts gradle.properties gradle/wrapper .gitignore
           if ! git diff --cached --quiet; then
             git commit -m "feat: add complete PULSE Android source v0.1"
-            git push origin HEAD:main
+            git push origin "HEAD:${{ github.ref_name }}"
           fi
 
       - name: Compile debug APK
