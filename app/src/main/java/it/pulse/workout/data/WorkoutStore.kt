@@ -16,7 +16,10 @@ class WorkoutStore(context: Context) {
             dayId = json.getString("dayId"),
             startedAt = json.getLong("startedAt"),
             entries = entries,
-            daySnapshot = json.optJSONObject("daySnapshot")?.let { WorkoutCatalogRepository.parseDay(it) }
+            daySnapshot = json.optJSONObject("daySnapshot")?.let { WorkoutCatalogRepository.parseDay(it) },
+            guidedExerciseIndex = json.optInt("guidedExerciseIndex", 0),
+            guidedWorkSet = json.optInt("guidedWorkSet", 1),
+            restUntilMillis = json.optLong("restUntilMillis", 0L)
         )
     }.getOrNull()
 
@@ -30,6 +33,9 @@ class WorkoutStore(context: Context) {
             put("dayId", draft.dayId)
             put("startedAt", draft.startedAt)
             put("entries", entries)
+            put("guidedExerciseIndex", draft.guidedExerciseIndex)
+            put("guidedWorkSet", draft.guidedWorkSet)
+            put("restUntilMillis", draft.restUntilMillis)
             draft.daySnapshot?.let { put("daySnapshot", WorkoutCatalogRepository.dayToJson(it)) }
         }
         preferences.edit().putString("active_draft", json.toString()).apply()
@@ -44,6 +50,7 @@ class WorkoutStore(context: Context) {
                 dayId = json.getString("dayId"),
                 completedAt = json.getLong("completedAt"),
                 durationMinutes = json.getInt("minutes"),
+                durationSeconds = json.optInt("seconds", json.getInt("minutes") * 60),
                 completedSets = json.getInt("completedSets"),
                 totalSets = json.getInt("totalSets"),
                 entries = entriesFromJson(json.optJSONObject("entries") ?: JSONObject()),
@@ -59,7 +66,9 @@ class WorkoutStore(context: Context) {
             dayId = day.id,
             daySnapshot = day,
             startedAt = System.currentTimeMillis(),
-            entries = previous?.entries.orEmpty().mapValues { (_, entry) -> entry.copy(done = false) }
+            entries = previous?.entries.orEmpty()
+                .filterKeys { !it.startsWith("warmup:") }
+                .mapValues { (_, entry) -> entry.copy(done = false, warmup = false, completedAt = 0L) }
         )
     }
 
@@ -72,7 +81,9 @@ class WorkoutStore(context: Context) {
             entries[key] = SetEntry(
                 weight = value.optString("weight", ""),
                 reps = value.optString("reps", ""),
-                done = value.optBoolean("done", false)
+                done = value.optBoolean("done", false),
+                warmup = value.optBoolean("warmup", false),
+                completedAt = value.optLong("completedAt", 0L)
             )
         }
         return entries
@@ -84,6 +95,8 @@ class WorkoutStore(context: Context) {
                 put("weight", entry.weight)
                 put("reps", entry.reps)
                 put("done", entry.done)
+                put("warmup", entry.warmup)
+                put("completedAt", entry.completedAt)
             })
         }
     }
@@ -100,6 +113,7 @@ class WorkoutStore(context: Context) {
             durationMinutes = ((end - draft.startedAt).coerceAtLeast(0L) / 60_000L).toInt(),
             completedSets = completed,
             totalSets = day.setCount,
+            durationSeconds = ((end - draft.startedAt).coerceAtLeast(0L) / 1000L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
             entries = draft.entries,
             daySnapshot = day
         )
@@ -111,6 +125,7 @@ class WorkoutStore(context: Context) {
                 put("dayId", item.dayId)
                 put("completedAt", item.completedAt)
                 put("minutes", item.durationMinutes)
+                put("seconds", item.durationSeconds)
                 put("completedSets", item.completedSets)
                 put("totalSets", item.totalSets)
                 put("entries", entriesToJson(item.entries))

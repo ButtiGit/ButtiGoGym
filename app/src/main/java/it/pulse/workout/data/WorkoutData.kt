@@ -85,18 +85,57 @@ object WorkoutPlan {
 data class SetEntry(
     val weight: String = "",
     val reps: String = "",
-    val done: Boolean = false
+    val done: Boolean = false,
+    val warmup: Boolean = false,
+    val completedAt: Long = 0L
 )
 
 data class WorkoutDraft(
     val dayId: String,
     val startedAt: Long,
     val entries: Map<String, SetEntry> = emptyMap(),
-    val daySnapshot: WorkoutDay? = null
+    val daySnapshot: WorkoutDay? = null,
+    val guidedExerciseIndex: Int = 0,
+    val guidedWorkSet: Int = 1,
+    val restUntilMillis: Long = 0L
 ) {
     fun entry(exercise: Exercise, setIndex: Int): SetEntry = entries[key(exercise.id, setIndex)] ?: SetEntry()
     fun update(exercise: Exercise, setIndex: Int, entry: SetEntry): WorkoutDraft =
         copy(entries = entries + (key(exercise.id, setIndex) to entry))
+
+    fun warmups(exercise: Exercise): List<SetEntry> =
+        entries.entries.filter { it.key.startsWith("warmup:${exercise.id}:") && it.value.done }
+            .sortedBy { it.value.completedAt }.map { it.value }
+
+    fun recordSet(
+        day: WorkoutDay,
+        weight: String,
+        reps: String,
+        warmup: Boolean,
+        at: Long
+    ): WorkoutDraft {
+        require(guidedExerciseIndex in day.exercises.indices) { "Sessione completata" }
+        require(weight.toDoubleOrNull() != null && weight.toDouble() >= 0.0)
+        require(reps.toIntOrNull() in 1..999)
+        val exercise = day.exercises[guidedExerciseIndex]
+        val completed = SetEntry(weight, reps, done = true, warmup = warmup, completedAt = at)
+        val eventKey = if (warmup) {
+            "warmup:${exercise.id}:${warmups(exercise).size + 1}"
+        } else {
+            key(exercise.id, guidedWorkSet)
+        }
+        val nextEntries = entries + (eventKey to completed)
+        val next = if (warmup) {
+            copy(entries = nextEntries)
+        } else if (guidedWorkSet < exercise.sets) {
+            copy(entries = nextEntries, guidedWorkSet = guidedWorkSet + 1)
+        } else {
+            copy(entries = nextEntries, guidedExerciseIndex = guidedExerciseIndex + 1, guidedWorkSet = 1)
+        }
+        val remaining = next.guidedExerciseIndex < day.exercises.size
+        val seconds = if (warmup) exercise.restSeconds.coerceAtMost(90) else exercise.restSeconds
+        return next.copy(restUntilMillis = if (remaining) at + seconds * 1000L else 0L)
+    }
 
     companion object {
         fun key(exerciseId: String, setIndex: Int) = "$exerciseId:$setIndex"
@@ -111,7 +150,8 @@ data class SessionRecord(
     val completedSets: Int,
     val totalSets: Int,
     val entries: Map<String, SetEntry> = emptyMap(),
-    val daySnapshot: WorkoutDay? = null
+    val daySnapshot: WorkoutDay? = null,
+    val durationSeconds: Int = durationMinutes * 60
 )
 
 /** Versione validata della scheda scaricata da GitHub, separata dai progressi locali. */
