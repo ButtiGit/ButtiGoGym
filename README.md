@@ -88,3 +88,46 @@ da allenamenti, passi e riposo. I test automatizzati si trovano in
 
 Il nuovo design è ispirato alle superfici arrotondate e ai riquadri di iOS:
 non aggiunge ancora widget alla schermata Home del launcher Android.
+
+## V0.4 · Contapassi e allenamenti guidati
+
+### Contapassi Android automatico
+
+L'app richiede il permesso **Attività fisica** (`ACTIVITY_RECOGNITION` su Android 10+)
+e legge il sensore a basso consumo `TYPE_STEP_COUNTER`, se presente sul dispositivo.
+Dopo la concessione del permesso, il riepilogo passi si aggiorna automaticamente
+alla ricezione degli eventi del sensore. Non è necessario premere "Registra passi".
+
+**Limite tecnico importante:** il sensore restituisce un totale dal riavvio,
+non il totale di oggi. La prima lettura imposta un riferimento iniziale e non
+può ricostruire i passi precedenti. Se l'app non viene aperta per più giorni,
+non può ricostruire precisamente a quale giorno appartengano i passi effettuati
+a cavallo di mezzanotte: in quel caso prende una nuova base. Non funziona su
+smartphone privi di `TYPE_STEP_COUNTER` o se il permesso viene rifiutato.
+L'inserimento manuale rimane come alternativa/correzione.
+
+Per uno storico giornaliero completo e indipendente dall'apertura dell'app è
+prevista come evoluzione l'integrazione con **Health Connect**, con consenso
+esplicito e una sorgente dati compatibile.
+
+### Sessione guidata
+
+Il pulsante **Inizia allenamento** crea una sessione e avvia il cronometro.
+A ogni passo l'app mostra un singolo esercizio, il numero della serie e due
+campi (peso in kg e ripetizioni). La casella **Serie di riscaldamento** registra
+una serie aggiuntiva separata da quelle allenanti e non diminuisce il conteggio
+delle serie del programma.
+
+Dopo aver registrato una serie parte il timer di recupero, calcolato dal campo
+`restSeconds` presente nella scheda remota; per il riscaldamento il massimo è
+90 secondi. Il recupero può essere accorciato, allungato o saltato.
+Alla serie successiva il procedimento si ripete.
+
+La sessione rimane su disco, incluse serie, riscaldamenti, esercizio corrente,
+prossima serie e scadenza del recupero. Tornando nell'app il timer recupera
+il tempo trascorso. Premendo **Salva allenamento** si registra anche la durata
+effettiva in secondi e si possono vedere i risultati nello storico.
+
+Le serie già registrate e lo storico precedente restano disponibili. Nella
+prima versione guidata la schermata modifica il percorso una serie alla volta;
+la modifica retroattiva delle singole serie è prevista in un secondo passaggio.
