@@ -94,7 +94,7 @@ internal class NativeMuscleMapView(context: Context) : View(context) {
     }
 
     private fun loadBitmap(name: String): Bitmap? =
-        runCatching { context.assets.open(name).use(BitmapFactory::decodeStream) }.getOrNull()
+        runCatching { context.assets.open(name).use { BitmapFactory.decodeStream(it) } }.getOrNull()
 
     fun bind(
         showBack: Boolean,

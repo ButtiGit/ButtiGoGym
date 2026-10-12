@@ -239,3 +239,21 @@ restano implementati in Kotlin con dati locali.
 Myself v0.7.1 rende neutre (scala di grigi) le immagini base del template:
 i colori verde/arancione sono applicati esclusivamente ai muscoli secondo
 i dati reali di allenamento e recupero.
+
+## V0.7.2 — Correzione mappa muscoli bianca
+
+Alcuni telefoni mostravano un pannello completamente bianco nella sezione
+Myself nonostante gli asset fossero presenti nell'APK. La causa esatta
+dell'incompatibilità WebView sul dispositivo non è verificabile senza
+logcat, ma ora **WebView è stato rimosso** dalla mappa dei muscoli.
+
+`NativeMuscleMapView.kt` visualizza le immagini anatomiche frontale e posteriore
+del template MIT Jsplice/MuscleMap tramite Android Canvas nativo. I percorsi
+anatomici originali vengono importati come `muscle-map-regions.json` e
+interpretati da `androidx.core.graphics.PathParser`; non sono poligoni
+disegnati manualmente. L'interazione usa Android `Region.contains` per i tocchi.
+
+La mappa funziona completamente offline, senza HTML, JavaScript, WebView né
+download. La foto base viene convertita in scala di grigi e ricoperta dalle
+regioni effettivamente allenate (verde), in recupero (arancio) e pronte
+(verde chiaro). Gli streak/XP restano invariati.
