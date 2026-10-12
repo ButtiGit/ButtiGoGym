@@ -4,6 +4,9 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.NotificationManagerCompat
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -24,10 +27,56 @@ import it.pulse.workout.data.WorkoutStore
  */
 class WorkoutTimerService : Service() {
     companion object {
-        private const val WORKOUT_CHANNEL = "buttigogym_workout_timer_v1"
-        private const val REST_CHANNEL = "buttigogym_rest_alerts_v1"
+        private const val WORKOUT_CHANNEL = "buttigogym_workout_timer_v2"
+        private const val REST_CHANNEL = "buttigogym_rest_alerts_v2"
         private const val LIVE_ID = 3010
         private const val REST_DONE_ID = 3011
+        private const val TEST_ID = 3012
+        private const val TIMER_PREFS = "buttigogym_timer_service"
+        private const val LAST_STATE = "last_state"
+
+        fun notificationsVisible(context: Context): Boolean {
+            if (Build.VERSION.SDK_INT >= 33 &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) return false
+            if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
+            val manager = context.getSystemService(NotificationManager::class.java)
+            return listOf(WORKOUT_CHANNEL, REST_CHANNEL).all { channel ->
+                manager.getNotificationChannel(channel)?.importance != NotificationManager.IMPORTANCE_NONE
+            }
+        }
+
+        /** Stato aggiornato dal servizio in background, leggibile dalla schermata workout. */
+        fun state(context: Context): String = context.getSharedPreferences(TIMER_PREFS,
+            Context.MODE_PRIVATE).getString(LAST_STATE, "not_started").orEmpty()
+
+        /** Notifica manuale per verificare se il sistema visualizza davvero gli avvisi. */
+        fun testNotification(context: Context): Boolean {
+            if (!notificationsVisible(context)) return false
+            val manager = context.getSystemService(NotificationManager::class.java)
+            ensureChannels(manager)
+            manager.notify(TEST_ID, NotificationCompat.Builder(context, REST_CHANNEL)
+                .setSmallIcon(R.drawable.ic_workout_notification)
+                .setContentTitle("Notifiche ButtiGoGym attive")
+                .setContentText("La prova ha funzionato. Torna all'allenamento!")
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .build())
+            return true
+        }
+
+        private fun ensureChannels(manager: NotificationManager) {
+            manager.createNotificationChannel(NotificationChannel(
+                WORKOUT_CHANNEL, "Timer allenamento", NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Notifica persistente con durata sessione e recupero"
+                setShowBadge(false)
+                setSound(null, null)
+            })
+            manager.createNotificationChannel(NotificationChannel(
+                REST_CHANNEL, "Avvisi fine recupero", NotificationManager.IMPORTANCE_DEFAULT
+            ).apply { description = "Avviso al termine del recupero tra le serie" })
+        }
         const val EXTRA_OPEN_WORKOUT = "openWorkoutTimer"
         private const val ACTION_SYNC = "it.pulse.workout.SYNC_WORKOUT_TIMER"
         private const val EXTRA_STARTED = "started"
@@ -50,6 +99,8 @@ class WorkoutTimerService : Service() {
 
         fun stop(context: Context) {
             context.stopService(Intent(context, WorkoutTimerService::class.java))
+            context.getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE).edit()
+                .putString(LAST_STATE, "stopped").apply()
         }
     }
 
@@ -65,18 +116,7 @@ class WorkoutTimerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        manager.createNotificationChannel(NotificationChannel(
-            WORKOUT_CHANNEL, "Sessione attiva", NotificationManager.IMPORTANCE_LOW
-        ).apply {
-            description = "Cronometro della sessione e conto alla rovescia del recupero"
-            setShowBadge(false)
-            enableVibration(false)
-        })
-        manager.createNotificationChannel(NotificationChannel(
-            REST_CHANNEL, "Fine recupero", NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = "Avviso quando puoi iniziare la serie successiva"
-        })
+        ensureChannels(manager)
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -105,17 +145,29 @@ class WorkoutTimerService : Service() {
             return START_NOT_STICKY
         }
 
-        val notification = buildActiveNotification()
-        if (!foregroundStarted) {
-            ServiceCompat.startForeground(
-                this, LIVE_ID, notification,
-                if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
-            )
-            foregroundStarted = true
-        } else {
-            manager.notify(LIVE_ID, notification)
+        val failure = runCatching {
+            val notification = buildActiveNotification()
+            if (!foregroundStarted) {
+                ServiceCompat.startForeground(
+                    this, LIVE_ID, notification,
+                    if (Build.VERSION.SDK_INT >= 34) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
+                )
+                foregroundStarted = true
+            } else {
+                manager.notify(LIVE_ID, notification)
+            }
+            getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE).edit()
+                .putString(LAST_STATE, "running").apply()
+            scheduleRestCompletion()
+        }.exceptionOrNull()
+        if (failure != null) {
+            android.util.Log.e("ButtiGoGym/Timer", "Cannot start foreground workout timer", failure)
+            getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE).edit()
+                .putString(LAST_STATE, "error:" + (failure.message ?: failure.javaClass.simpleName).take(140))
+                .apply()
+            stopSelf()
+            return START_NOT_STICKY
         }
-        scheduleRestCompletion()
         return START_STICKY
     }
 
@@ -138,7 +190,7 @@ class WorkoutTimerService : Service() {
             .setContentIntent(openApp())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setSilent(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setShowWhen(true)
             .setWhen(if (resting) restEnd else sessionStart)
             .setUsesChronometer(true)
@@ -178,6 +230,11 @@ class WorkoutTimerService : Service() {
     override fun onDestroy() {
         restCallback?.let { handler.removeCallbacks(it) }
         restCallback = null
+        if (getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE)
+                .getString(LAST_STATE, "") == "running") {
+            getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE).edit()
+                .putString(LAST_STATE, "stopped").apply()
+        }
         super.onDestroy()
     }
 }
