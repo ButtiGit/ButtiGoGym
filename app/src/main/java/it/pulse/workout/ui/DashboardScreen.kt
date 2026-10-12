@@ -189,6 +189,41 @@ fun DashboardScreen(
         }
 
         item {
+            DashboardSectionTitle("La tua evoluzione", "Ogni numero arriva dalle tue sessioni")
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                ProgressMetric("SEDUTE", "${summary.workoutDaysThisWeek}/3",
+                    "questa settimana", summary.workoutDaysThisWeek / 3f, Modifier.weight(1f))
+                ProgressMetric("SERIE", totalSetsThisWeek.toString(),
+                    "questa settimana", totalSetsThisWeek / 62f, Modifier.weight(1f))
+                ProgressMetric("TEMPO", "${trainingMinutes}m",
+                    "questa settimana", trainingMinutes / 255f, Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(10.dp))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(19.dp), color = Color.White,
+                border = BorderStroke(1.dp, PulseColors.Border)
+            ) {
+                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(43.dp).background(PulseColors.SoftGreen, RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.FitnessCenter, null, tint = PulseColors.Accent)
+                    }
+                    Spacer(Modifier.width(13.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Muscoli pronti", fontSize = 13.sp,
+                            fontWeight = FontWeight.ExtraBold, color = PulseColors.Foreground)
+                        Text("Stima del recupero dopo i pesi",
+                            color = PulseColors.Muted, fontSize = 11.sp)
+                    }
+                    Text("${readyMuscles}/16", fontWeight = FontWeight.Black,
+                        color = PulseColors.Accent, fontSize = 20.sp)
+                }
+            }
+        }
+
+        item {
             DashboardSectionTitle("Le tue streak", "Piccoli progressi, ogni giorno")
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -571,5 +606,33 @@ private fun StepsRing(value: Int, modifier: Modifier) {
             Icons.Default.DirectionsWalk, contentDescription = null,
             tint = PulseColors.Accent, modifier = Modifier.size(33.dp)
         )
+    }
+}
+
+@Composable
+private fun ProgressMetric(
+    label: String, value: String, hint: String, fraction: Float, modifier: Modifier
+) {
+    val animated by animateFloatAsState(
+        targetValue = fraction.coerceIn(0f, 1f),
+        animationSpec = tween(950), label = "Indicatore $label"
+    )
+    Surface(modifier = modifier, color = Color.White, shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, PulseColors.Border)) {
+        Column(Modifier.padding(12.dp)) {
+            Text(label, fontSize = 9.sp, color = PulseColors.Muted,
+                fontWeight = FontWeight.Bold, letterSpacing = .9.sp)
+            Spacer(Modifier.height(8.dp))
+            Text(value, fontWeight = FontWeight.Black, fontSize = 23.sp,
+                color = PulseColors.Foreground, maxLines = 1)
+            Text(hint, color = PulseColors.Muted, fontSize = 9.sp,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(12.dp))
+            LinearProgressIndicator(
+                progress = { animated },
+                modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
+                color = PulseColors.Accent, trackColor = PulseColors.SoftGreen
+            )
+        }
     }
 }
