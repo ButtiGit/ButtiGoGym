@@ -12,9 +12,12 @@ import java.time.temporal.TemporalAdjusters
 /** Registro locale delle abitudini. Nessun dato viene trasmesso a GitHub. */
 data class WellnessData(
     val stepsByDate: Map<String, Int> = emptyMap(),
-    val restDates: Set<String> = emptySet()
+    val restDates: Set<String> = emptySet(),
+    val healthStepsByDate: Map<String, Int> = emptyMap()
 ) {
-    fun stepsOn(day: LocalDate): Int = stepsByDate[day.toString()] ?: 0
+    /** Health Connect replaces, never adds to, manually/sensor counted steps. */
+    fun stepsOn(day: LocalDate): Int =
+        healthStepsByDate[day.toString()] ?: stepsByDate[day.toString()] ?: 0
     fun restedOn(day: LocalDate): Boolean = restDates.contains(day.toString())
 }
 
@@ -34,18 +37,44 @@ class WellnessStore(context: Context) {
                 }
             }
         }
+        val health = json.optJSONObject("healthSteps") ?: JSONObject()
+        val healthByDate = buildMap {
+            val keys = health.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                if (runCatching { LocalDate.parse(key) }.isSuccess) {
+                    put(key, health.optInt(key, 0).coerceIn(0, 200000))
+                }
+            }
+        }
         val entries = json.optJSONArray("rest") ?: JSONArray()
         val rest = (0 until entries.length()).mapNotNull {
             val str = entries.optString(it)
             str.takeIf { runCatching { LocalDate.parse(it) }.isSuccess }
         }.toSet()
-        WellnessData(steps, rest)
+        WellnessData(steps, rest, healthByDate)
     }.getOrElse { WellnessData() }
 
     fun updateSteps(day: LocalDate, steps: Int): WellnessData {
         require(steps in 0..200000)
         val data = read()
         return save(data.copy(stepsByDate = data.stepsByDate + (day.toString() to steps)))
+    }
+
+    /** Atomic import of daily totals; previous entries remain for days outside the window. */
+    fun updateHealthSteps(days: Map<String, Int>): WellnessData {
+        require(days.all { (date, steps) ->
+            runCatching { LocalDate.parse(date) }.isSuccess && steps in 0..200000
+        })
+        val data = read()
+        return save(data.copy(healthStepsByDate = data.healthStepsByDate + days))
+    }
+
+    /** Called when permission is revoked: do not retain Health Connect data. */
+    fun clearHealthSteps(): WellnessData {
+        val data = read()
+        return if (data.healthStepsByDate.isEmpty()) data
+            else save(data.copy(healthStepsByDate = emptyMap()))
     }
 
     fun toggleRest(day: LocalDate): WellnessData {
@@ -63,12 +92,18 @@ class WellnessStore(context: Context) {
         val validRest = data.restDates.filter {
             runCatching { LocalDate.parse(it) >= limit }.getOrDefault(false)
         }.toSet()
-        val persisted = WellnessData(validSteps, validRest)
+        val validHealth = data.healthStepsByDate.filterKeys {
+            runCatching { LocalDate.parse(it) >= limit }.getOrDefault(false)
+        }
+        val persisted = WellnessData(validSteps, validRest, validHealth)
         val json = JSONObject().apply {
             put("steps", JSONObject().apply {
                 persisted.stepsByDate.forEach { (day, count) -> put(day, count) }
             })
             put("rest", JSONArray().apply { persisted.restDates.sorted().forEach { put(it) } })
+            put("healthSteps", JSONObject().apply {
+                persisted.healthStepsByDate.forEach { (day, count) -> put(day, count) }
+            })
         }
         check(preferences.edit().putString("wellness", json.toString()).commit()) {
             "Impossibile salvare i dati locali"
