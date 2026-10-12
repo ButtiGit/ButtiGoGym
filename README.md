@@ -214,3 +214,24 @@ vecchi sono coperti da una tabella fallback in `ExerciseMuscleMapping`.
 Myself legge lo **storico locale già registrato**: non inventa forza, volume,
 streak o progressi iniziali. Le sessioni in corso compaiono quando vengono
 salvate, per evitare di assegnare XP per serie non ancora confermate.
+
+## Myself V2 — anatomia reale con template open source (v0.7)
+
+La sezione **Myself** non usa più i poligoni disegnati a mano in Compose.
+Il corpo anteriore e posteriore, le immagini fotografiche e i tracciati
+individuali dei muscoli sono importati da
+[Jsplice/MuscleMap](https://github.com/Jsplice/MuscleMap), versione
+`170cfacda79376dd59ac0cf2f7dfab8ff9f4443a`, **licenza MIT**.
+I crediti e la licenza completa sono contenuti nell'APK in
+`app/src/main/assets/MUSCLEMAP-LICENSE.txt`.
+
+La mappa viene costruita da `tools/build_muscle_map.py` nella pipeline CI:
+importa l'illustrazione anatomica tracciata da MuscleMap (senza modificarne
+la geometria), le immagini male-front/male-back, genera un HTML locale che
+colorizza i gruppi in base a recupero/allenamento, e li include offline nel
+pacchetto Android.
+
+Le superfici muscolari sono selezionabili al tocco via WebView, con una
+JavaScript bridge limitata agli ID dei 16 muscoli supportati dalla scheda.
+**Il WebView non effettua richieste Internet**. Streak, livello, XP e recupero
+restano implementati in Kotlin con dati locali.

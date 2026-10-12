@@ -2,7 +2,7 @@ name: ButtiGoGym Android APK
 
 on:
   push:
-    branches: [main, feature/myself-muscle-map]
+    branches: [main, feature/myself-real-muscle-template]
   workflow_dispatch:
 
 permissions:
@@ -47,6 +47,17 @@ jobs:
           test -f settings.gradle.kts
           test -f app/src/main/AndroidManifest.xml
           find app/src/main -type f | sort
+
+      - name: Bundle MIT anatomical template and body images
+        run: python3 tools/build_muscle_map.py
+
+      - name: Verify anatomical bundle
+        shell: bash
+        run: |
+          test -s app/src/main/assets/muscle-map.html
+          test -s app/src/main/assets/male-front.webp
+          test -s app/src/main/assets/male-back.webp
+          test -s app/src/main/assets/MUSCLEMAP-LICENSE.txt
 
       - name: Resolve public exercise GIF references
         run: python3 tools/resolve_gifs.py
