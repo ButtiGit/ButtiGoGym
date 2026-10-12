@@ -26,9 +26,10 @@ jobs:
         shell: bash
         run: |
           echo "Android SDK: ${ANDROID_HOME:-unset}"
-          test -x "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" || command -v sdkmanager
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0"
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
 
       - name: Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
