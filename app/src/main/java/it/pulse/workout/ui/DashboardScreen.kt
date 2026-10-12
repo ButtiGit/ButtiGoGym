@@ -55,6 +55,8 @@ fun DashboardScreen(
     active: WorkoutDraft?,
     history: List<SessionRecord>,
     wellness: WellnessData,
+    stepStatus: String,
+    onRequestStepAccess: () -> Unit,
     onStart: (WorkoutDay) -> Unit,
     onSaveSteps: (Int) -> Unit,
     onToggleRest: () -> Unit,
@@ -218,11 +220,17 @@ fun DashboardScreen(
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(9.dp))
-                    Text("Registra i passi", fontWeight = FontWeight.SemiBold)
+                    Text("Inserisci / correggi passi", fontWeight = FontWeight.SemiBold)
                 }
                 Spacer(Modifier.height(6.dp))
-                Text("Inserimento manuale per ora · dati salvati sul telefono",
-                    modifier = Modifier.fillMaxWidth(),
+                Text(stepStatus, modifier = Modifier.fillMaxWidth(),
+                    color = PulseColors.Muted, fontSize = 10.sp)
+                if (stepStatus.startsWith("Consenti")) {
+                    TextButton(onClick = onRequestStepAccess) {
+                        Text("Attiva contapassi", color = PulseColors.Accent)
+                    }
+                }
+                Text("La prima rilevazione stabilisce la base. Se necessario puoi correggere i dati.",
                     color = PulseColors.Muted, fontSize = 10.sp)
             }
         }

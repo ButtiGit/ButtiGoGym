@@ -311,7 +311,7 @@ fun HistoryScreen(history: List<SessionRecord>, days: List<WorkoutDay>) {
                     Text(day?.name ?: "Allenamento", color = PulseColors.Foreground,
                         fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     Spacer(Modifier.height(8.dp))
-                    Text("${record.completedSets}/${record.totalSets} serie · ${record.durationMinutes} min",
+                    Text("${record.completedSets}/${record.totalSets} serie · ${formatDuration(record.durationSeconds.toLong())}",
                         color = PulseColors.Muted, fontSize = 13.sp)
                     Spacer(Modifier.height(12.dp))
                     LinearProgressIndicator(
@@ -326,17 +326,28 @@ fun HistoryScreen(history: List<SessionRecord>, days: List<WorkoutDay>) {
                         Spacer(Modifier.height(14.dp))
                         HorizontalDivider(color = PulseColors.Border)
                         day.exercises.forEach { exercise ->
+                            val warmups = record.entries.entries
+                                .filter { it.key.startsWith("warmup:${exercise.id}:") && it.value.done }
+                                .sortedBy { it.value.completedAt }
+                                .map { it.value }
                             val sets = (1..exercise.sets).mapNotNull { index ->
                                 record.entries[WorkoutDraft.key(exercise.id, index)]?.takeIf { it.done }
                             }
-                            if (sets.isNotEmpty()) {
+                            if (sets.isNotEmpty() || warmups.isNotEmpty()) {
                                 Spacer(Modifier.height(14.dp))
                                 Text(exercise.name, color = PulseColors.Foreground,
                                     fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                 Spacer(Modifier.height(3.dp))
-                                Text(sets.joinToString("  ·  ") { entry ->
-                                    "${entry.weight.ifBlank { "–" }} kg × ${entry.reps.ifBlank { "–" }}"
-                                }, color = PulseColors.Muted, fontSize = 12.sp)
+                                if (warmups.isNotEmpty()) {
+                                    Text("Riscaldamento: " + warmups.joinToString(" · ") {
+                                        "${it.weight} kg × ${it.reps}"
+                                    }, color = PulseColors.Muted, fontSize = 12.sp)
+                                }
+                                if (sets.isNotEmpty()) {
+                                    Text(sets.joinToString("  ·  ") { entry ->
+                                        "${entry.weight.ifBlank { "–" }} kg × ${entry.reps.ifBlank { "–" }}"
+                                    }, color = PulseColors.Muted, fontSize = 12.sp)
+                                }
                             }
                         }
                     }

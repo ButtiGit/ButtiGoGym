@@ -1,6 +1,12 @@
 package it.pulse.workout
 
 import android.os.Bundle
+import android.os.Build
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,12 +30,13 @@ import it.pulse.workout.data.WorkoutDraft
 import it.pulse.workout.data.WorkoutPlan
 import it.pulse.workout.data.WorkoutStore
 import it.pulse.workout.data.WellnessStore
+import it.pulse.workout.data.AutomaticStepTracker
 import it.pulse.workout.ui.HistoryScreen
 import it.pulse.workout.ui.DashboardScreen
 import it.pulse.workout.ui.PlanScreen
 import it.pulse.workout.ui.PulseColors
 import it.pulse.workout.ui.PulseTheme
-import it.pulse.workout.ui.SessionScreen
+import it.pulse.workout.ui.GuidedSessionScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +55,34 @@ private fun PulseApp() {
     val store = remember { WorkoutStore(context.applicationContext) }
     val wellnessStore = remember { WellnessStore(context.applicationContext) }
     var wellness by remember { mutableStateOf(wellnessStore.read()) }
+    var stepPermissionGranted by remember {
+        mutableStateOf(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) ==
+                PackageManager.PERMISSION_GRANTED)
+    }
+    val tracker = remember(wellnessStore) {
+        AutomaticStepTracker(context.applicationContext, wellnessStore) { refreshed ->
+            wellness = refreshed
+        }
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> stepPermissionGranted = granted }
+
+    LaunchedEffect(Unit) {
+        if (tracker.available && !stepPermissionGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+        }
+    }
+    DisposableEffect(stepPermissionGranted, tracker) {
+        if (stepPermissionGranted) tracker.start()
+        onDispose { tracker.stop() }
+    }
+    val stepStatus = when {
+        !tracker.available -> "Sensore passi non disponibile · inserimento manuale"
+        !stepPermissionGranted -> "Consenti Attività fisica per il contapassi"
+        else -> "Passi automatici dal sensore Android"
+    }
     val repository = remember { WorkoutCatalogRepository(context.applicationContext) }
     var catalog by remember { mutableStateOf(repository.initial()) }
     var refreshState by remember { mutableStateOf("Scheda salvata sul telefono") }
@@ -115,7 +150,7 @@ private fun PulseApp() {
     ) { contentPadding ->
         Box(Modifier.fillMaxSize().padding(contentPadding)) {
             if (sessionVisible && draft != null && currentDay != null) {
-                SessionScreen(
+                GuidedSessionScreen(
                     day = currentDay,
                     draft = draft!!,
                     onBack = { sessionVisible = false },
@@ -139,6 +174,11 @@ private fun PulseApp() {
                         active = draft,
                         history = history,
                         wellness = wellness,
+                        stepStatus = stepStatus,
+                        onRequestStepAccess = {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                                permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+                        },
                         onStart = ::start,
                         onSaveSteps = { steps -> wellness = wellnessStore.updateSteps(java.time.LocalDate.now(), steps) },
                         onToggleRest = { wellness = wellnessStore.toggleRest(java.time.LocalDate.now()) },

@@ -116,7 +116,7 @@ data class WorkoutDraft(
     ): WorkoutDraft {
         require(guidedExerciseIndex in day.exercises.indices) { "Sessione completata" }
         require(weight.toDoubleOrNull() != null && weight.toDouble() >= 0.0)
-        require(reps.toIntOrNull() in 1..999)
+        require((reps.toIntOrNull() ?: 0) in 1..999)
         val exercise = day.exercises[guidedExerciseIndex]
         val completed = SetEntry(weight, reps, done = true, warmup = warmup, completedAt = at)
         val eventKey = if (warmup) {
