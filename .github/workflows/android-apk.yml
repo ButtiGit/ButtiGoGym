@@ -2,7 +2,7 @@ name: ButtiGoGym Android APK
 
 on:
   push:
-    branches: [main, feature/guided-workouts-autosteps]
+    branches: [main, feature/health-connect-samsung-steps]
   workflow_dispatch:
 
 permissions:
@@ -65,7 +65,7 @@ jobs:
             git push origin "HEAD:${{ github.ref_name }}"
           fi
 
-      - name: Test streak and guided workout logic
+      - name: Test streak and Health Connect integration
         run: gradle --no-daemon :app:testDebugUnitTest
 
       - name: Compile debug APK

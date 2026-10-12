@@ -56,6 +56,11 @@ fun DashboardScreen(
     history: List<SessionRecord>,
     wellness: WellnessData,
     stepStatus: String,
+    healthConnected: Boolean,
+    healthSyncing: Boolean,
+    healthStatus: String,
+    onConnectHealth: () -> Unit,
+    onRefreshHealth: () -> Unit,
     onRequestStepAccess: () -> Unit,
     onStart: (WorkoutDay) -> Unit,
     onSaveSteps: (Int) -> Unit,
@@ -212,26 +217,59 @@ fun DashboardScreen(
                     }
                 }
                 Spacer(Modifier.height(18.dp))
-                OutlinedButton(
-                    onClick = { stepsDialog = true }, modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PulseColors.Accent),
-                    border = BorderStroke(1.dp, PulseColors.Border)
-                ) {
-                    Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(9.dp))
-                    Text("Inserisci / correggi passi", fontWeight = FontWeight.SemiBold)
-                }
-                Spacer(Modifier.height(6.dp))
-                Text(stepStatus, modifier = Modifier.fillMaxWidth(),
-                    color = PulseColors.Muted, fontSize = 10.sp)
-                if (stepStatus.startsWith("Consenti")) {
-                    TextButton(onClick = onRequestStepAccess) {
-                        Text("Attiva contapassi", color = PulseColors.Accent)
+                Surface(color = PulseColors.SoftGreen, shape = RoundedCornerShape(14.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(13.dp)) {
+                        Text(if (healthConnected) "● Health Connect collegato" else "Health Connect",
+                            color = PulseColors.Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
+                        Text(healthStatus, color = PulseColors.Foreground, fontSize = 11.sp)
+                        Spacer(Modifier.height(4.dp))
+                        Text("Samsung Health → Impostazioni → Health Connect: abilita la condivisione dei passi.",
+                            color = PulseColors.Muted, fontSize = 10.sp)
                     }
                 }
-                Text("La prima rilevazione stabilisce la base. Se necessario puoi correggere i dati.",
-                    color = PulseColors.Muted, fontSize = 10.sp)
+                Spacer(Modifier.height(11.dp))
+                if (healthConnected) {
+                    Button(
+                        onClick = onRefreshHealth,
+                        enabled = !healthSyncing,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
+                    ) {
+                        Text(if (healthSyncing) "Sincronizzazione…" else "Aggiorna passi da Health Connect",
+                            color = Color.White, fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(Modifier.height(7.dp))
+                    Text("Passi aggregati senza doppi conteggi. La sincronizzazione si aggiorna anche riaprendo l'app.",
+                        color = PulseColors.Muted, fontSize = 10.sp)
+                } else {
+                    Button(
+                        onClick = onConnectHealth,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
+                    ) { Text("Collega Health Connect", color = Color.White, fontWeight = FontWeight.Bold) }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { stepsDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = PulseColors.Accent),
+                        border = BorderStroke(1.dp, PulseColors.Border)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(9.dp))
+                        Text("Inserisci / correggi passi", fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(stepStatus, color = PulseColors.Muted, fontSize = 10.sp)
+                    if (stepStatus.startsWith("Consenti")) {
+                        TextButton(onClick = onRequestStepAccess) {
+                            Text("Attiva contapassi del telefono", color = PulseColors.Accent)
+                        }
+                    }
+                }
             }
         }
 

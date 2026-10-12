@@ -1,6 +1,13 @@
 package it.pulse.workout
 
 import android.os.Bundle
+import android.content.Intent
+import android.net.Uri
+import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.PermissionController
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import android.os.Build
 import android.Manifest
 import android.content.pm.PackageManager
@@ -31,6 +38,7 @@ import it.pulse.workout.data.WorkoutPlan
 import it.pulse.workout.data.WorkoutStore
 import it.pulse.workout.data.WellnessStore
 import it.pulse.workout.data.AutomaticStepTracker
+import it.pulse.workout.data.HealthConnectStepsRepository
 import it.pulse.workout.ui.HistoryScreen
 import it.pulse.workout.ui.DashboardScreen
 import it.pulse.workout.ui.PlanScreen
@@ -55,6 +63,91 @@ private fun PulseApp() {
     val store = remember { WorkoutStore(context.applicationContext) }
     val wellnessStore = remember { WellnessStore(context.applicationContext) }
     var wellness by remember { mutableStateOf(wellnessStore.read()) }
+    val healthRepo = remember { HealthConnectStepsRepository(context.applicationContext) }
+    val coroutineScope = rememberCoroutineScope()
+    var healthConnected by remember { mutableStateOf(false) }
+    var healthSyncing by remember { mutableStateOf(false) }
+    var healthStatus by remember {
+        mutableStateOf("Collega Health Connect per leggere i passi di Samsung Health")
+    }
+
+    suspend fun syncHealth() {
+        if (healthSyncing) return
+        healthSyncing = true
+        try {
+            when (healthRepo.sdkStatus()) {
+                HealthConnectClient.SDK_UNAVAILABLE -> {
+                    healthConnected = false
+                    wellness = wellnessStore.clearHealthSteps()
+                    healthStatus = "Health Connect non supportato su questo telefono"
+                }
+                HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
+                    healthConnected = false
+                    wellness = wellnessStore.clearHealthSteps()
+                    healthStatus = "Installa o aggiorna Health Connect per continuare"
+                }
+                else -> {
+                    if (!healthRepo.granted()) {
+                        healthConnected = false
+                        wellness = wellnessStore.clearHealthSteps()
+                        healthStatus = "Collega Health Connect e autorizza la lettura dei passi"
+                    } else {
+                        healthConnected = true
+                        healthStatus = "Sincronizzazione passi da Health Connect…"
+                        val values = withContext(Dispatchers.IO) { healthRepo.recentSteps() }
+                        wellness = wellnessStore.updateHealthSteps(values)
+                        healthStatus = "Health Connect connesso · passi sincronizzati"
+                    }
+                }
+            }
+        } catch (cancelled: kotlinx.coroutines.CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            healthStatus = if (healthConnected)
+                "Health Connect connesso · sincronizzazione non riuscita"
+            else "Health Connect non disponibile: usa il contapassi locale"
+        } finally {
+            healthSyncing = false
+        }
+    }
+
+    val healthPermissionLauncher = rememberLauncherForActivityResult(
+        PermissionController.createRequestPermissionResultContract()
+    ) { granted ->
+        coroutineScope.launch {
+            if (HealthConnectStepsRepository.READ_STEPS in granted) syncHealth()
+            else {
+                healthConnected = false
+                wellness = wellnessStore.clearHealthSteps()
+                healthStatus = "Permesso passi non concesso · usa il sensore o inseriscili manualmente"
+            }
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var inForeground by remember { mutableStateOf(true) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> {
+                    inForeground = true
+                    coroutineScope.launch { syncHealth() }
+                }
+                Lifecycle.Event.ON_PAUSE -> inForeground = false
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(Unit) { syncHealth() }
+    LaunchedEffect(healthConnected, inForeground) {
+        while (healthConnected && inForeground) {
+            kotlinx.coroutines.delay(60_000L)
+            syncHealth()
+        }
+    }
+
     var stepPermissionGranted by remember {
         mutableStateOf(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACTIVITY_RECOGNITION) ==
@@ -70,12 +163,15 @@ private fun PulseApp() {
     ) { granted -> stepPermissionGranted = granted }
 
     LaunchedEffect(Unit) {
-        if (tracker.available && !stepPermissionGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (tracker.available && !stepPermissionGranted &&
+            healthRepo.sdkStatus() != HealthConnectClient.SDK_AVAILABLE &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
         }
     }
-    DisposableEffect(stepPermissionGranted, tracker) {
-        if (stepPermissionGranted) tracker.start()
+    // Health Connect is authoritative when connected: the local sensor must stop.
+    DisposableEffect(stepPermissionGranted, healthConnected, tracker) {
+        if (stepPermissionGranted && !healthConnected) tracker.start()
         onDispose { tracker.stop() }
     }
     val stepStatus = when {
@@ -87,8 +183,6 @@ private fun PulseApp() {
     var catalog by remember { mutableStateOf(repository.initial()) }
     var refreshState by remember { mutableStateOf("Scheda salvata sul telefono") }
     var refreshing by remember { mutableStateOf(false) }
-    val coroutineScope = rememberCoroutineScope()
-
     suspend fun fetchCatalog() {
         if (refreshing) return
         refreshing = true
@@ -175,6 +269,28 @@ private fun PulseApp() {
                         history = history,
                         wellness = wellness,
                         stepStatus = stepStatus,
+                        healthConnected = healthConnected,
+                        healthSyncing = healthSyncing,
+                        healthStatus = healthStatus,
+                        onConnectHealth = {
+                            when (healthRepo.sdkStatus()) {
+                                HealthConnectClient.SDK_AVAILABLE ->
+                                    healthPermissionLauncher.launch(setOf(HealthConnectStepsRepository.READ_STEPS))
+                                HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED -> {
+                                    val intent = Intent(Intent.ACTION_VIEW,
+                                        Uri.parse("market://details?id=${HealthConnectStepsRepository.PROVIDER_PACKAGE}"))
+                                    runCatching { context.startActivity(intent) }.onFailure {
+                                        runCatching {
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(
+                                                "https://play.google.com/store/apps/details?id=${HealthConnectStepsRepository.PROVIDER_PACKAGE}"
+                                            )))
+                                        }
+                                    }
+                                }
+                                else -> healthStatus = "Il telefono non supporta Health Connect"
+                            }
+                        },
+                        onRefreshHealth = { coroutineScope.launch { syncHealth() } },
                         onRequestStepAccess = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                                 permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
