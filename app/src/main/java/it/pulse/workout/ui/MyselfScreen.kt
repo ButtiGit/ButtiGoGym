@@ -67,7 +67,9 @@ fun MyselfScreen(
             kotlinx.coroutines.delay(60_000L)
         }
     }
-    val muscles = remember(history, clock) { MuscleAnalytics.evaluate(history, clock) }
+    val report = remember(history, clock) { MuscleAnalytics.analyze(history, clock) }
+    val muscles = report.muscles
+    val balance = report.balance
     val muscle = muscles.first { it.group.id == selected }
     val totalXp = muscles.sumOf { it.xp }
     val scaledXp = totalXp / 4
@@ -158,6 +160,53 @@ fun MyselfScreen(
         }
         item {
             MyselfCard {
+                Text("Equilibrio del programma", color = PulseColors.Foreground,
+                    fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                Spacer(Modifier.height(4.dp))
+                Text("Ultimi 28 giorni · solo serie effettivamente salvate",
+                    fontSize = 11.sp, color = PulseColors.Muted)
+                Spacer(Modifier.height(12.dp))
+                if (balance.sessions28Days == 0) {
+                    Text("Nessuna seduta registrata nel periodo. Inizia ad allenarti per vedere la distribuzione degli stimoli.",
+                        fontSize = 12.sp, color = PulseColors.Muted)
+                } else {
+                    Text("${balance.sessions28Days} sedute con serie valide negli ultimi 28 giorni",
+                        fontSize = 12.sp, color = PulseColors.Accent,
+                        fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    MuscleBalancePair("Spinta", balance.pushDirectSets,
+                        "Trazione", balance.pullDirectSets)
+                    Spacer(Modifier.height(12.dp))
+                    MuscleBalancePair("Quadricipiti", balance.quadDirectSets,
+                        "Femorali", balance.hamstringDirectSets)
+                    Spacer(Modifier.height(10.dp))
+                    Text("Addome e lombari: ${balance.coreDirectSets} serie dirette · " +
+                        "Avambracci: ${balance.forearmDirectSets}",
+                        fontSize = 12.sp, color = PulseColors.Foreground)
+                    Spacer(Modifier.height(12.dp))
+                    if (!balance.enoughHistoryForGaps) {
+                        Text("Con almeno 3 sedute registrate in 28 giorni mostreremo i gruppi senza stimoli nel periodo.",
+                            color = PulseColors.Muted, fontSize = 11.sp)
+                    } else if (balance.unstimulatedGroups.isNotEmpty()) {
+                        Text("Senza stimoli registrati negli ultimi 28 giorni",
+                            color = PulseColors.Foreground, fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp)
+                        Spacer(Modifier.height(4.dp))
+                        Text(balance.unstimulatedGroups.joinToString(" · "),
+                            color = PulseColors.Muted, fontSize = 12.sp)
+                    } else {
+                        Text("Tutti i gruppi della mappa hanno almeno uno stimolo registrato nel periodo.",
+                            color = PulseColors.Muted, fontSize = 11.sp)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Text("Sono conteggi descrittivi, non un punteggio di simmetria o un obiettivo di volume. " +
+                    "Una serie multi-muscolo può essere diretta per più gruppi.",
+                    color = PulseColors.Muted, fontSize = 10.sp)
+            }
+        }
+        item {
+            MyselfCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text("Body map", color = PulseColors.Foreground,
@@ -230,8 +279,33 @@ fun MyselfScreen(
                 Spacer(Modifier.height(17.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     SmallStat("Streak", "${muscle.streakWeeks} sett.", Modifier.weight(1f))
-                    SmallStat("Serie", muscle.workingSets.toString(), Modifier.weight(1f))
+                    SmallStat("Serie dirette", muscle.workingSets.toString(), Modifier.weight(1f))
                     SmallStat("Volume", "${n.format(muscle.volumeKg)} kg", Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(16.dp))
+                Text("Stimolo registrato", fontSize = 15.sp,
+                    fontWeight = FontWeight.ExtraBold, color = PulseColors.Foreground)
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SmallStat("7gg dirette", muscle.directSets7Days.toString(), Modifier.weight(1f))
+                    SmallStat("7gg indirette", muscle.indirectSets7Days.toString(), Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SmallStat("28gg dirette", muscle.directSets28Days.toString(), Modifier.weight(1f))
+                    SmallStat("28gg indirette", muscle.indirectSets28Days.toString(), Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(6.dp))
+                Text("Dirette = muscolo primario; indirette = secondario. " +
+                    "I carichi non equivalgono a crescita misurata.",
+                    color = PulseColors.Muted, fontSize = 11.sp)
+                muscle.bestEstimatedStrengthKg?.let { estimated ->
+                    Spacer(Modifier.height(12.dp))
+                    Text("Miglior 1RM stimato (Epley): ${n.format(estimated)} kg",
+                        color = PulseColors.Foreground, fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp)
+                    Text("Stima riferita a un esercizio, non alla forza del singolo muscolo.",
+                        color = PulseColors.Muted, fontSize = 10.sp)
                 }
                 Spacer(Modifier.height(20.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -281,6 +355,10 @@ fun MyselfScreen(
                             fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         Text("Streak ${value.streakWeeks} sett. · ${shortStatus(value)}",
                             color = PulseColors.Muted, fontSize = 10.sp)
+                        Spacer(Modifier.height(3.dp))
+                        Text("7gg: ${value.directSets7Days} dirette · " +
+                            "${value.indirectSets7Days} indirette",
+                            color = PulseColors.Muted, fontSize = 10.sp)
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text("LV ${value.level}", color = PulseColors.Accent,
@@ -292,7 +370,8 @@ fun MyselfScreen(
             }
         }
         item {
-            Text("Recupero stimato (36–72 h) e livelli gamificati: non sono misure mediche.",
+            Text("Recupero stimato (36–72 h), XP e livelli gamificati. " +
+                "Serie e volume descrivono il lavoro, non misurano ipertrofia o recupero biologico.",
                 color = PulseColors.Muted, fontSize = 10.sp, lineHeight = 15.sp)
             if (active != null) {
                 Spacer(Modifier.height(8.dp))
@@ -340,6 +419,32 @@ private fun LevelTrack(progress: Float, height: androidx.compose.ui.unit.Dp = 9.
         color = PulseColors.Accent,
         trackColor = PulseColors.SoftGreen
     )
+}
+
+/** Barre normalizzate solo all'interno della coppia, non rispetto a un target fisiologico. */
+@Composable
+private fun MuscleBalancePair(
+    leftLabel: String, left: Int, rightLabel: String, right: Int
+) {
+    val peak = maxOf(left, right, 1).toFloat()
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text("$leftLabel · $left", color = PulseColors.Foreground,
+                fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Spacer(Modifier.height(5.dp))
+            LinearProgressIndicator(progress = { left / peak },
+                modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
+                color = PulseColors.Accent, trackColor = PulseColors.SoftGreen)
+        }
+        Column(Modifier.weight(1f)) {
+            Text("$rightLabel · $right", color = PulseColors.Foreground,
+                fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Spacer(Modifier.height(5.dp))
+            LinearProgressIndicator(progress = { right / peak },
+                modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
+                color = PulseColors.Accent, trackColor = PulseColors.SoftGreen)
+        }
+    }
 }
 
 @Composable

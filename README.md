@@ -861,3 +861,28 @@ eseguite con l'APK cumulativa solo dopo il completamento di tutte le fasi.
   `AppBackupArchiveRulesTest.kt` verifica i nuovi percorsi ZIP.
 - Il flusso di salvataggio, galleria e fotocamera dovrà essere collaudato
   sul Samsung con l'APK finale, come concordato.
+
+## Roadmap V1.0 — Fase 3 / Modifica 3: mappa muscolare e bilancio (V0.9.12)
+
+**Solo su `feature/v1-phase1-complete-backup` — nessun APK intermedio o modifica a `main`.**
+
+- Myself usa la stessa scansione di serie **effettivamente confermate** per mappa, recupero,
+  XP e bilancio del programma: warmup, serie non completate e dati invalidi non contano.
+- Per ciascuno dei 16 muscoli distingue serie **dirette/primarie** e **indirette/secondarie**
+  negli ultimi 7 e 28 giorni, senza equiparare le serie indirette a serie dirette.
+  Vengono considerate solo le sessioni salvate: una bozza non genera progressi.
+- Il quadro «Equilibrio del programma» confronta le serie dirette di **spinta/trazione**
+  e **quadricipiti/femorali**, oltre a mostrare tronco e avambracci. Le barre rappresentano
+  soltanto la distribuzione osservata, **non target di volume né rapporti ideali**.
+- Dopo almeno **3 sedute con serie valide** negli ultimi 28 giorni, evidenzia i muscoli
+  **senza alcuno stimolo registrato**. Non valuta come trascurati i gruppi di chi
+  non ha ancora uno storico sufficiente.
+- La scheda muscolare mostra serie 7/28 giorni, serie dirette totali, volume e XP
+  separati. Il miglior 1RM **stimato con Epley** usa solo esercizi a ripetizioni
+  e serie positive entro 30 reps: non è una misura medica o della forza del singolo muscolo.
+  Le serie a tempo (es. farmer's walk) non falsano il volume kg × ripetizioni.
+- **Recupero:** mantiene la finestra euristica specifica del gruppo (36–72 ore), sempre
+  dichiarata come stima. XP e livelli rappresentano soltanto il gioco; nessun
+  algoritmo deduce quanti grammi di muscolo siano cresciuti.
+- `MuscleBalanceAnalyticsTest.kt` copre finestre temporali, serie dirette/indirette,
+  gruppi senza stimolo, mancanza di storico, esclusione warmup e serie a tempo.

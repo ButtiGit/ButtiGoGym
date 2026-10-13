@@ -110,7 +110,34 @@ data class MuscleProgress(
     val levelCurrentXp: Int,
     val levelRequiredXp: Int,
     val progressToNext: Float,
-    val topSet: String?
+    val topSet: String?,
+    /** Serie realmente confermate: diretto = muscolo primario, indiretto = secondario. */
+    val directSets7Days: Int = 0,
+    val indirectSets7Days: Int = 0,
+    val directSets28Days: Int = 0,
+    val indirectSets28Days: Int = 0,
+    /** Epley, soltanto su serie a ripetizioni con kg > 0 e 1–30 reps: NON misura di forza reale. */
+    val bestEstimatedStrengthKg: Double? = null
+)
+
+/** Fotografia delle sole serie registrate, senza obiettivi universalmente "giusti". */
+data class MuscleBalanceSummary(
+    val sessions28Days: Int,
+    val pushDirectSets: Int,
+    val pullDirectSets: Int,
+    val quadDirectSets: Int,
+    val hamstringDirectSets: Int,
+    val coreDirectSets: Int,
+    val forearmDirectSets: Int,
+    val unstimulatedGroups: List<String>
+) {
+    /** Evita giudizi su gruppi "trascurati" con uno storico appena avviato. */
+    val enoughHistoryForGaps: Boolean get() = sessions28Days >= 3
+}
+
+data class MuscleAnalysisReport(
+    val muscles: List<MuscleProgress>,
+    val balance: MuscleBalanceSummary
 )
 
 object MuscleAnalytics {
@@ -138,7 +165,14 @@ object MuscleAnalytics {
         history: List<SessionRecord>,
         nowMillis: Long = System.currentTimeMillis(),
         zone: ZoneId = ZoneId.systemDefault()
-    ): List<MuscleProgress> {
+    ): List<MuscleProgress> = analyze(history, nowMillis, zone).muscles
+
+    /** Un'unica scansione delle serie: mappa, recupero e bilancio condividono gli stessi dati. */
+    fun analyze(
+        history: List<SessionRecord>,
+        nowMillis: Long = System.currentTimeMillis(),
+        zone: ZoneId = ZoneId.systemDefault()
+    ): MuscleAnalysisReport {
         data class Acc(
             var xp: Int = 0,
             var sets: Int = 0,
@@ -147,9 +181,16 @@ object MuscleAnalytics {
             var readyAt: Long = 0,
             val trainedWeekStarts: MutableSet<LocalDate> = mutableSetOf(),
             var bestEstimated1Rm: Double = 0.0,
-            var topSet: String? = null
+            var topSet: String? = null,
+            var direct7: Int = 0,
+            var indirect7: Int = 0,
+            var direct28: Int = 0,
+            var indirect28: Int = 0
         )
         val groups = MuscleGroup.all.associate { it.id to Acc() }
+        val recentSessions = mutableSetOf<Long>()
+        val since7 = nowMillis - 7L * 24 * 60 * 60 * 1000
+        val since28 = nowMillis - 28L * 24 * 60 * 60 * 1000
         val today = Instant.ofEpochMilli(nowMillis).atZone(zone).toLocalDate()
 
         history.forEach { record ->
@@ -169,7 +210,9 @@ object MuscleAnalytics {
                     val reps = if (exercise.timeBased) (recorded / 4).coerceIn(1, 25)
                         else recorded
                     val timestamp = entry.completedAt.takeIf { it > 0L } ?: record.completedAt
-                    if (timestamp > nowMillis + 60_000L) return@forEach
+                    if (timestamp > nowMillis || timestamp < 0L) return@forEach
+                    if (targets.isEmpty()) return@forEach
+                    if (timestamp >= since28) recentSessions.add(record.id)
                     val date = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
                     val week = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
                     targets.forEach { (id, isPrimary) ->
@@ -178,12 +221,22 @@ object MuscleAnalytics {
                         acc.xp += xpForSet(weight, reps, isPrimary)
                         if (isPrimary) {
                             acc.sets++
-                            acc.volume += weight * reps
-                            val estimated = weight * (1.0 + reps.coerceIn(1, 30) / 30.0)
-                            if (estimated > acc.bestEstimated1Rm) {
-                                acc.bestEstimated1Rm = estimated
-                                acc.topSet = "${exercise.name}: ${entry.weight} kg × ${entry.reps}"
+                            if (timestamp >= since7) acc.direct7++
+                            if (timestamp >= since28) acc.direct28++
+                            // I secondi di farmer's walk non sono ripetizioni né volume kg × rep.
+                            if (!exercise.timeBased) {
+                                acc.volume += weight * reps
+                                if (weight > 0.0 && recorded in 1..30) {
+                                    val estimated = weight * (1.0 + recorded / 30.0)
+                                    if (estimated > acc.bestEstimated1Rm) {
+                                        acc.bestEstimated1Rm = estimated
+                                        acc.topSet = "${exercise.name}: ${entry.weight} kg × ${entry.reps}"
+                                    }
+                                }
                             }
+                        } else {
+                            if (timestamp >= since7) acc.indirect7++
+                            if (timestamp >= since28) acc.indirect28++
                         }
                         acc.trainedWeekStarts.add(week)
                         acc.last = maxOf(acc.last ?: 0L, timestamp)
@@ -194,7 +247,7 @@ object MuscleAnalytics {
             }
         }
         val thisWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        return MuscleGroup.all.map { group ->
+        val result = MuscleGroup.all.map { group ->
             val acc = groups.getValue(group.id)
             val last = acc.last
             val state = when {
@@ -230,8 +283,30 @@ object MuscleAnalytics {
                 levelCurrentXp = (xp - base).coerceAtLeast(0),
                 levelRequiredXp = needed,
                 progressToNext = ((xp - base).toFloat() / needed).coerceIn(0f, 1f),
-                topSet = acc.topSet
+                topSet = acc.topSet,
+                directSets7Days = acc.direct7,
+                indirectSets7Days = acc.indirect7,
+                directSets28Days = acc.direct28,
+                indirectSets28Days = acc.indirect28,
+                bestEstimatedStrengthKg = acc.bestEstimated1Rm.takeIf { it > 0.0 }
             )
         }
+        val byId = result.associateBy { it.group.id }
+        fun direct(vararg ids: String): Int =
+            ids.sumOf { byId.getValue(it).directSets28Days }
+        val balance = MuscleBalanceSummary(
+            sessions28Days = recentSessions.size,
+            pushDirectSets = direct("chest", "shoulders", "triceps"),
+            pullDirectSets = direct("lats", "upper_back", "rear_delts", "biceps"),
+            quadDirectSets = direct("quads"),
+            hamstringDirectSets = direct("hamstrings"),
+            coreDirectSets = direct("abs", "obliques", "lower_back"),
+            forearmDirectSets = direct("forearms"),
+            unstimulatedGroups = if (recentSessions.size >= 3)
+                result.filter { it.directSets28Days + it.indirectSets28Days == 0 }
+                    .map { it.group.label }
+            else emptyList()
+        )
+        return MuscleAnalysisReport(result, balance)
     }
 }
