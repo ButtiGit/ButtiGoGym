@@ -34,7 +34,7 @@ object PersonalSettingsRules {
     fun validate(value: PersonalSettings): PersonalSettings {
         require(value.weeklyWorkouts in 1..7) { "Allenamenti settimanali: da 1 a 7" }
         require(value.reminderDays.isNotEmpty()) { "Seleziona almeno un giorno per i promemoria" }
-        require(value.reminderEnd.isAfter(value.reminderStart.plusHours(1))) {
+        require(java.time.Duration.between(value.reminderStart, value.reminderEnd).toMinutes() > 60) {
             "La fascia dei promemoria deve durare più di un'ora"
         }
         return value

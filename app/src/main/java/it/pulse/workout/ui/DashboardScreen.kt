@@ -797,6 +797,8 @@ private fun StepsRing(value: Int, modifier: Modifier) {
     val ratio = (value.toFloat() / StreakCalculator.STEP_GOAL).coerceIn(0f, 1f)
     val progress by animateFloatAsState(ratio,
         animationSpec = tween(durationMillis = 1000), label = "Progressi passi")
+    val ringTrack = PulseColors.SoftGreen
+    val ringProgress = PulseColors.Accent
     Box(modifier, contentAlignment = Alignment.Center) {
         Canvas(
             Modifier.fillMaxSize().semantics {
@@ -804,10 +806,10 @@ private fun StepsRing(value: Int, modifier: Modifier) {
             }
         ) {
             val stroke = 11.dp.toPx()
-            drawArc(PulseColors.SoftGreen, 0f, 360f, false,
+            drawArc(ringTrack, 0f, 360f, false,
                 style = Stroke(width = stroke, cap = StrokeCap.Round))
             if (progress > 0f) {
-                drawArc(PulseColors.Accent, -90f, progress * 360f, false,
+                drawArc(ringProgress, -90f, progress * 360f, false,
                     style = Stroke(width = stroke, cap = StrokeCap.Round))
             }
         }
