@@ -31,7 +31,7 @@ import it.pulse.workout.data.WorkoutDay
 internal fun RecordedSetsEditor(
     day: WorkoutDay,
     recorded: List<RecordedWorkoutSet>,
-    onCorrect: (RecordedWorkoutSet, String, String) -> Unit,
+    onCorrect: (RecordedWorkoutSet, String, String, Int?) -> Unit,
     onCancel: (RecordedWorkoutSet) -> Unit
 ) {
     if (recorded.isEmpty()) return
@@ -91,7 +91,8 @@ internal fun RecordedSetsEditor(
                                     )
                                     Text(
                                         "${saved.entry.weight} kg  ·  ${saved.entry.reps} " +
-                                            (if (exercise.timeBased) "sec" else "rep"),
+                                            (if (exercise.timeBased) "sec" else "rep") +
+                                            (saved.entry.rir?.let { " · RIR $it" } ?: ""),
                                         color = PulseColors.Foreground,
                                         fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
                                         maxLines = 1
@@ -129,6 +130,7 @@ internal fun RecordedSetsEditor(
         key(target.exercise.id, target.number, target.warmup, target.entry.completedAt) {
             var weight by remember { mutableStateOf(target.entry.weight) }
             var reps by remember { mutableStateOf(target.entry.reps) }
+            var actualRir by remember { mutableStateOf(target.entry.rir) }
             val kg = weight.trim().replace(',', '.').toDoubleOrNull()
             val valid = kg != null && kg.isFinite() && kg in 0.0..10_000.0 &&
                 (reps.toIntOrNull() ?: 0) in 1..999
@@ -170,6 +172,11 @@ internal fun RecordedSetsEditor(
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
+                        if (!target.warmup) {
+                            Spacer(Modifier.height(13.dp))
+                            ActualRirPicker(value = actualRir,
+                                onValueChange = { actualRir = it }, compact = true)
+                        }
                         if (!valid) {
                             Spacer(Modifier.height(8.dp))
                             Text("Inserisci un peso valido e un valore da 1 a 999.",
@@ -182,7 +189,7 @@ internal fun RecordedSetsEditor(
                     Button(
                         enabled = valid,
                         onClick = {
-                            onCorrect(target, weight, reps)
+                            onCorrect(target, weight, reps, actualRir)
                             editing = null
                         },
                         colors = ButtonDefaults.buttonColors(
