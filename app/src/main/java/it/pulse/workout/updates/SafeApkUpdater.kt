@@ -45,7 +45,8 @@ class SafeApkUpdater(context: Context) {
     ): File = withContext(Dispatchers.IO) {
         val directory = File(app.filesDir, "updates").apply { mkdirs() }
         val target = File(directory, "ButtiGoGym-${release.version}.apk")
-        val temporary = File(directory, "ButtiGoGym-${release.version}.part")
+        // PackageManager richiede un percorso che finisca in .apk.
+        val temporary = File(directory, ".ButtiGoGym-${release.version}-pending.apk")
         target.delete()
         temporary.delete()
 
@@ -134,6 +135,7 @@ class SafeApkUpdater(context: Context) {
         error("Troppi reindirizzamenti durante il download APK")
     }
 
+    @Suppress("DEPRECATION")
     fun verifyPackage(file: File, release: AppRelease) {
         require(file.isFile && file.length() == release.sizeBytes) {
             "APK incompleto o inesistente"
@@ -151,9 +153,9 @@ class SafeApkUpdater(context: Context) {
             "L'APK non appartiene a ButtiGoGym"
         }
         val currentVersionCode = if (Build.VERSION.SDK_INT >= 28)
-            installed.longVersionCode else @Suppress("DEPRECATION") installed.versionCode.toLong()
+            installed.longVersionCode else installed.versionCode.toLong()
         val nextVersionCode = if (Build.VERSION.SDK_INT >= 28)
-            incoming.longVersionCode else @Suppress("DEPRECATION") incoming.versionCode.toLong()
+            incoming.longVersionCode else incoming.versionCode.toLong()
         require(nextVersionCode > currentVersionCode) {
             "Il numero di versione Android non è superiore a quello installato"
         }
