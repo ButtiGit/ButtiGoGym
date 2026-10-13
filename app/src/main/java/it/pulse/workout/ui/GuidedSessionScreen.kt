@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.SkipNext
@@ -90,6 +91,8 @@ fun GuidedSessionScreen(
     val optionalCompleted = day.exercises.filter { it.optional }.sumOf { ex ->
         (1..ex.sets).count { draft.entry(ex, it).done }
     }
+    val recordedSets = remember(day, draft.entries) { draft.recordedSets(day) }
+    val canUndo = recordedSets.any { it.entry.completedAt > 0L }
     val mainCompleted = finishedSets - optionalCompleted
     val progressTotal = day.setCount + optionalCompleted
     val allDone = draft.guidedExerciseIndex >= day.exercises.size
@@ -141,9 +144,24 @@ fun GuidedSessionScreen(
                 color = PulseColors.Accent, trackColor = PulseColors.SoftGreen
             )
             Spacer(Modifier.height(7.dp))
-            Text("$mainCompleted / ${day.setCount} serie" +
-                    (if (optionalCompleted > 0) " · +$optionalCompleted extra" else ""),
-                color = PulseColors.Muted, fontSize = 11.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("$mainCompleted / ${day.setCount} serie" +
+                        (if (optionalCompleted > 0) " · +$optionalCompleted extra" else ""),
+                    color = PulseColors.Muted, fontSize = 11.sp,
+                    modifier = Modifier.weight(1f))
+                if (canUndo) {
+                    TextButton(
+                        onClick = { onUpdate(draft.undoLastRecordedSet(day)) },
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                    ) {
+                        Icon(Icons.Default.Undo, contentDescription = null,
+                            modifier = Modifier.size(17.dp), tint = PulseColors.Accent)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Annulla ultima", color = PulseColors.Accent,
+                            fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
 
         LazyColumn(
@@ -417,23 +435,24 @@ fun GuidedSessionScreen(
                     }
                 }
 
-                item {
-                    val logged = (1..exercise.sets).mapNotNull { number ->
-                        draft.entry(exercise, number).takeIf { it.done }?.let { number to it }
-                    }
-                    val warmups = draft.warmups(exercise)
-                    if (logged.isNotEmpty() || warmups.isNotEmpty()) {
-                        Panel {
-                            Text("REGISTRATE", color = PulseColors.Muted, fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                            warmups.forEachIndexed { index, it ->
-                                LoggedRow("Risc. ${index + 1}", it, exercise.timeBased)
-                            }
-                            logged.forEach { (number, entry) ->
-                                LoggedRow("Serie $number", entry, exercise.timeBased)
-                            }
+            }
+            if (recordedSets.isNotEmpty()) {
+                item(key = "session-recorded-series") {
+                    RecordedSetsEditor(
+                        day = day,
+                        recorded = recordedSets,
+                        onCorrect = { target, weight, reps ->
+                            onUpdate(draft.correctRecordedSet(
+                                day, target.exercise.id, target.number, target.warmup,
+                                weight, reps
+                            ))
+                        },
+                        onCancel = { target ->
+                            onUpdate(draft.cancelRecordedSet(
+                                day, target.exercise.id, target.number, target.warmup
+                            ))
                         }
-                    }
+                    )
                 }
             }
             item {
@@ -650,21 +669,6 @@ private fun GuidedSetForm(
                     color = PulseColors.Muted, fontSize = 11.sp)
             }
         }
-    }
-}
-
-@Composable
-private fun LoggedRow(title: String, entry: SetEntry, timeBased: Boolean = false) {
-    Spacer(Modifier.height(10.dp))
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Default.Check, null, tint = PulseColors.Accent,
-            modifier = Modifier.size(15.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(title, color = PulseColors.Foreground, fontSize = 12.sp,
-            modifier = Modifier.weight(1f))
-        Text(if (timeBased) "${entry.weight} kg · ${entry.reps} sec" else "${entry.weight} kg × ${entry.reps} rep",
-            color = PulseColors.Accent,
-            fontWeight = FontWeight.Bold, fontSize = 12.sp)
     }
 }
 
