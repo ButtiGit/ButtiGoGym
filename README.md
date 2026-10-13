@@ -669,3 +669,37 @@ con la versione cumulativa finale.
 Questa funzionalità interviene solo sulla **sessione in corso**.
 La modifica a posteriori di una sessione già salvata nello **Storico**
 richiederà un intervento distinto, se desiderato.
+
+## Roadmap V1.0 — Fase 2 / Modifica 2: scheda personalizzabile
+
+**Solo sul branch `feature/v1-phase1-complete-backup`; nessuna APK generata o caricata.**
+
+- Nella scheda, ogni giorno ha il tasto **Modifica**, che apre un editor
+  dedicato con anteprima dell'ordine degli esercizi. **↑/↓** riordina
+  liberamente, la matita modifica e il cestino rimuove previa conferma.
+- **Aggiungi esercizio personale** crea un ID casuale stabile e consente
+  nome, muscolo, serie, ripetizioni/secondi target, recupero in secondi,
+  RIR e carattere facoltativo. Valori ammessi: 1–8 serie, 30–300 secondi
+  di pausa e massimo 30 esercizi per giornata. Le modifiche ai muscoli
+  mantengono coerente il mapping usato dal manichino dei progressi.
+- Le modifiche sono una **bozza locale**: il salvataggio avviene solo
+  premendo **Salva personalizzazioni**. Chiudendo l'editor senza salvare
+  viene richiesta conferma per scartare.
+- Ogni giornata personalizzata mostra l'etichetta **Personalizzata**.
+  **Ripristina la scheda originale** elimina soltanto le modifiche
+  di quella giornata, previa conferma; gli altri giorni restano personalizzati.
+- Le personalizzazioni si salvano in `pulse_plan/custom_days_v1`,
+  pref già incluse nel nuovo backup ZIP V2 della Fase 1.
+  Si memorizza solo l'elenco esercizi della giornata: una sincronizzazione
+  successiva da GitHub aggiorna nome del giorno, linee guida e le altre
+  giornate, ma **non sovrascrive gli esercizi personalizzati**.
+- Il programma viene copiato nel `WorkoutDraft.daySnapshot` quando si
+  inizia un allenamento, e in `SessionRecord.daySnapshot` al termine:
+  le modifiche **non cambiano** sessioni in corso o cronologie pregresse.
+  Conservare l'ID degli esercizi già presenti mantiene compatibili i
+  valori dell'ultima sessione per il preload dei carichi.
+- Test JVM: modifica, spostamento e riordino, aggiunta, rimozione, unicità
+  degli ID, validazione dei limiti e mapping dei muscoli.
+- Questa modifica personalizza gli esercizi nei giorni esistenti. Creazione
+  di nuove giornate/settimane e pianificazione a calendario sono successive
+  tappe della roadmap.
