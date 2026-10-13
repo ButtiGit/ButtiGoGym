@@ -23,6 +23,9 @@ import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.AccessibilityNew
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -74,6 +77,12 @@ fun DashboardScreen(
     onSaveSteps: (Int) -> Unit,
     onToggleRest: () -> Unit,
     onOpenPlan: () -> Unit,
+    reminderWaterEnabled: Boolean,
+    reminderMoveEnabled: Boolean,
+    remindersPermissionGranted: Boolean,
+    onToggleWaterReminder: (Boolean) -> Unit,
+    onToggleMoveReminder: (Boolean) -> Unit,
+    onEnableReminderNotifications: () -> Unit,
     backupStatus: String,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit
@@ -447,6 +456,70 @@ fun DashboardScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowForward,
                         contentDescription = null, tint = PulseColors.Accent)
                 }
+            }
+        }
+
+        item {
+            DashboardSectionTitle("Promemoria")
+            Spacer(Modifier.height(12.dp))
+            WidgetCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(39.dp).clip(RoundedCornerShape(13.dp))
+                            .background(Color(0xFFE5F0FA)), contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.WaterDrop, contentDescription = null,
+                            tint = Color(0xFF3978A0), modifier = Modifier.size(21.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Bere acqua", color = PulseColors.Foreground,
+                            fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Ogni 30 min · 08:30–18:00", color = PulseColors.Muted,
+                            fontSize = 11.sp)
+                    }
+                    Switch(checked = reminderWaterEnabled, onCheckedChange = onToggleWaterReminder,
+                        colors = SwitchDefaults.colors(checkedTrackColor = PulseColors.Accent))
+                }
+                Spacer(Modifier.height(8.dp))
+                HorizontalDivider(color = PulseColors.Border)
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(39.dp).clip(RoundedCornerShape(13.dp))
+                            .background(PulseColors.SoftGreen), contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.AccessibilityNew, contentDescription = null,
+                            tint = PulseColors.Accent, modifier = Modifier.size(21.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Alzati e muoviti", color = PulseColors.Foreground,
+                            fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text("Ogni ora · 09:30–17:30", color = PulseColors.Muted,
+                            fontSize = 11.sp)
+                    }
+                    Switch(checked = reminderMoveEnabled, onCheckedChange = onToggleMoveReminder,
+                        colors = SwitchDefaults.colors(checkedTrackColor = PulseColors.Accent))
+                }
+                if (!remindersPermissionGranted && (reminderWaterEnabled || reminderMoveEnabled)) {
+                    Spacer(Modifier.height(12.dp))
+                    Surface(color = PulseColors.Raised, shape = RoundedCornerShape(13.dp)) {
+                        Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Notifications, contentDescription = null,
+                                tint = PulseColors.Accent, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text("Consenti notifiche", color = PulseColors.Foreground,
+                                fontSize = 12.sp, modifier = Modifier.weight(1f))
+                            TextButton(onClick = onEnableReminderNotifications) {
+                                Text("Attiva", color = PulseColors.Accent)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(6.dp))
+                Text("Gli avvisi seguono l'orario del telefono. Android può ritardarli.",
+                    color = PulseColors.Muted, fontSize = 10.sp)
             }
         }
 
