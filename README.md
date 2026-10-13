@@ -945,3 +945,47 @@ Solo sul branch `feature/v1-phase1-complete-backup`, senza release/APK e senza m
 - `WorkoutCalendarRulesTest.kt` copre date, riposi, spostamenti, conflitti,
   deduplicazione degli allenamenti reali, percentuali e limiti mensili.
   La verifica sul Samsung reale resta programmata per la fase finale.
+
+
+## Roadmap V1.0 — Fase 4 / Modifica 3: design definitivo
+
+**Solo nel branch `feature/v1-phase1-complete-backup`. Nessuna APK generata e `main` invariato.**
+
+- Identità centrale in `PulseTheme.kt`: il verde primario del tema chiaro resta
+  **`#106119`**, con superfici, contorni, tipografia Material 3 e angoli arrotondati
+  condivisi fra le schermate. Il tema scuro conserva una variante verde leggibile.
+- `BGDesignSystem.kt` definisce **spaziatura pagina 20dp**, altezza minima
+  dei pulsanti 52dp, aree touch di navigazione 48dp, card 22dp,
+  intestazioni unificate, azioni principali e stati vuoti con istruzioni concrete.
+  Ogni schermata usa la stessa struttura ma conserva un proprio contenuto.
+- `BGBackHeader` gestisce sia la freccia sia il **tasto Indietro di Android**:
+  Impostazioni, diario fisico, grafici e calendario tornano alla schermata
+  precedente senza chiudere l'app; lo stesso vale per l'allenamento guidato.
+  Non sono stati alterati salvataggi o cronometri.
+- Stati vuoti di **Storico**, **Grafici**, **Diario fisico** e **Scheda**
+  spiegano come cominciare e dove intervenire. Il diario offre l'azione
+  diretta per registrare una misura; la scheda permette il nuovo tentativo
+  di sincronizzazione senza inventare esercizi.
+- I comandi espandibili di Storico, Scheda e Serie registrate indicano lo
+  stato espanso/chiuso ai lettori schermo; i giorni del calendario annunciano
+  **data completa, stato e selezione** invece di sole icone grafiche. La
+  navigazione inferiore ha etichette persistenti per le quattro sezioni.
+- Animazioni di transizione e progresso usano il tempo centralizzato in
+  `BGMotion`, rispettando il comando Android «Rimuovi animazioni».
+  Il ritorno all'inizio della sessione evita lo scorrimento animato in
+  modalità a movimento ridotto. L'animazione della fiamma non parte
+  quando il sistema disabilita le animazioni.
+- Il colore secondario del testo chiaro è stato scurito a **`#617365`**:
+  contrasto calcolato circa **4,74:1** sullo sfondo `#F6F8F6` e
+  **5,06:1** sul bianco. Molti microtesti operativi da 9–10sp sono stati
+  aumentati; la scala della tipografia supporta lo zoom testuale Android.
+- In **Oggi** la mascotte compare una sola volta nella testata anziché
+  duplicarsi nel riquadro principale: il riquadro usa un'icona di allenamento
+  distinta. Le card secondarie seguono le superfici del tema.
+- Restano da **verificare fisicamente su Samsung**, durante il collaudo
+  V1.0: display e font ingranditi, TalkBack, navigazione ad una mano, stato
+  dei pulsanti con tastiera aperta, colori scuri, modalità senza animazioni,
+  rotazione, notifiche e navigazione di ritorno con dialoghi sovrapposti.
+- GitHub Actions esegue **solo** `:app:testDebugUnitTest` e controlla che
+  nessuna APK sia stata generata. Il risultato conferma compilazione e
+  regole di unit test, **non** costituisce una prova di usabilità sul dispositivo.
