@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat
 import it.pulse.workout.data.WorkoutDay
 import it.pulse.workout.data.WorkoutDraft
 import it.pulse.workout.data.WorkoutStore
+import it.pulse.workout.notifications.RestAlertScheduler
 
 /** Servizio attivo SOLO durante una sessione iniziata dall'utente.
  *  La notifica usa un cronometro di sistema: niente loop al secondo in background.
@@ -30,20 +31,38 @@ class WorkoutTimerService : Service() {
         private const val WORKOUT_CHANNEL = "buttigogym_workout_timer_v2"
         private const val REST_CHANNEL = "buttigogym_rest_alerts_v2"
         private const val LIVE_ID = 3010
-        private const val REST_DONE_ID = 3011
         private const val TEST_ID = 3012
         private const val TIMER_PREFS = "buttigogym_timer_service"
         private const val LAST_STATE = "last_state"
 
-        fun notificationsVisible(context: Context): Boolean {
+        fun notificationProblem(context: Context): String? {
             if (Build.VERSION.SDK_INT >= 33 &&
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED) return false
-            if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
+                    != PackageManager.PERMISSION_GRANTED)
+                return "Permesso notifiche non concesso"
+            if (!NotificationManagerCompat.from(context).areNotificationsEnabled())
+                return "Notifiche disattivate per ButtiGoGym"
             val manager = context.getSystemService(NotificationManager::class.java)
-            return listOf(WORKOUT_CHANNEL, REST_CHANNEL).all { channel ->
-                manager.getNotificationChannel(channel)?.importance != NotificationManager.IMPORTANCE_NONE
-            }
+            ensureChannels(manager)
+            if (manager.getNotificationChannel(WORKOUT_CHANNEL)?.importance ==
+                NotificationManager.IMPORTANCE_NONE)
+                return "Canale Timer allenamento disattivato"
+            if (manager.getNotificationChannel(REST_CHANNEL)?.importance ==
+                NotificationManager.IMPORTANCE_NONE)
+                return "Canale Fine recupero disattivato"
+            return null
+        }
+
+        fun notificationsVisible(context: Context): Boolean =
+            notificationProblem(context) == null
+
+        /** Salva un errore effettivo di avvio, senza fingere che il timer sia attivo. */
+        fun recordLaunchFailure(context: Context, error: Throwable) {
+            context.getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE).edit()
+                .putString(LAST_STATE,
+                    "error:" + (error.message ?: error.javaClass.simpleName).take(140))
+                .apply()
+            android.util.Log.w("ButtiGoGym/Timer", "Foreground timer start rejected", error)
         }
 
         /** Stato aggiornato dal servizio in background, leggibile dalla schermata workout. */
@@ -122,24 +141,20 @@ class WorkoutTimerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_SYNC) {
-            sessionStart = intent.getLongExtra(EXTRA_STARTED, 0L)
-            restEnd = intent.getLongExtra(EXTRA_REST_UNTIL, 0L)
-            title = intent.getStringExtra(EXTRA_NAME)?.take(64).orEmpty().ifBlank { "Allenamento" }
-            exercise = intent.getStringExtra(EXTRA_EXERCISE)?.take(70).orEmpty()
-        } else {
-            // Dopo un riavvio del servizio, riprendi solo una sessione realmente salvata.
-            val draft = WorkoutStore(this).loadDraft()
-            if (draft == null) {
-                stopSelf()
-                return START_NOT_STICKY
-            }
-            sessionStart = draft.startedAt
-            restEnd = draft.restUntilMillis
-            title = draft.daySnapshot?.name ?: "Allenamento"
-            exercise = draft.daySnapshot?.exercises
-                ?.getOrNull(draft.guidedExerciseIndex)?.name.orEmpty()
+        // Il draft salvato è la fonte di verità. Intent vecchi dopo reset,
+        // ripristino o riavvio non possono far tornare countdown non validi.
+        val draft = WorkoutStore(this).loadDraft()
+        if (draft == null) {
+            stopSelf()
+            return START_NOT_STICKY
         }
+        sessionStart = draft.startedAt
+        restEnd = draft.restUntilMillis
+        title = (draft.daySnapshot?.name ?: intent?.getStringExtra(EXTRA_NAME))
+            ?.take(64).orEmpty().ifBlank { "Allenamento" }
+        exercise = (draft.daySnapshot?.exercises
+            ?.getOrNull(draft.guidedExerciseIndex)?.name
+            ?: intent?.getStringExtra(EXTRA_EXERCISE)).orEmpty().take(70)
         if (sessionStart <= 0) {
             stopSelf()
             return START_NOT_STICKY
@@ -161,10 +176,7 @@ class WorkoutTimerService : Service() {
             scheduleRestCompletion()
         }.exceptionOrNull()
         if (failure != null) {
-            android.util.Log.e("ButtiGoGym/Timer", "Cannot start foreground workout timer", failure)
-            getSharedPreferences(TIMER_PREFS, Context.MODE_PRIVATE).edit()
-                .putString(LAST_STATE, "error:" + (failure.message ?: failure.javaClass.simpleName).take(140))
-                .apply()
+            recordLaunchFailure(this, failure)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -212,16 +224,16 @@ class WorkoutTimerService : Service() {
                 scheduleRestCompletion()
                 return@Runnable
             }
+            // Evita il doppio avviso se WorkManager ha già consegnato.
+            // Se il servizio è sospeso, il Worker funge da seconda via.
+            val due = restEnd
             restEnd = 0L
-            if (foregroundStarted) manager.notify(LIVE_ID, buildActiveNotification())
-            manager.notify(REST_DONE_ID, NotificationCompat.Builder(this, REST_CHANNEL)
-                .setSmallIcon(R.drawable.ic_workout_notification)
-                .setContentTitle("Recupero terminato")
-                .setContentText("Puoi iniziare la prossima serie")
-                .setContentIntent(openApp())
-                .setAutoCancel(true)
-                .setCategory(NotificationCompat.CATEGORY_REMINDER)
-                .build())
+            runCatching {
+                if (foregroundStarted) manager.notify(LIVE_ID, buildActiveNotification())
+                RestAlertScheduler.notifyIfDue(this, sessionStart, due)
+            }.onFailure {
+                android.util.Log.w("ButtiGoGym/Timer", "Rest notification failed", it)
+            }
         }
         restCallback = callback
         handler.postDelayed(callback, remaining)
