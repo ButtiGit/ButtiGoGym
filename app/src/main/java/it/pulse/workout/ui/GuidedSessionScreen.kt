@@ -66,6 +66,7 @@ fun formatDuration(seconds: Long): String {
 fun GuidedSessionScreen(
     day: WorkoutDay,
     draft: WorkoutDraft,
+    history: List<SessionRecord>,
     onBack: () -> Unit,
     onUpdate: (WorkoutDraft) -> Unit,
     onFinish: () -> Unit,
@@ -100,6 +101,9 @@ fun GuidedSessionScreen(
     val remainingSeconds = ((draft.restUntilMillis - now + 999L) / 1000L).coerceAtLeast(0)
     val elapsed = ((now - draft.startedAt).coerceAtLeast(0L) / 1000L)
     val exercise = day.exercises.getOrNull(draft.guidedExerciseIndex)
+    val progression = remember(exercise, day.id, history) {
+        exercise?.let { WorkoutProgressionAdvisor.advise(it, day.id, history) }
+    }
     var finishDialog by remember { mutableStateOf(false) }
     var resetDialog by remember { mutableStateOf(false) }
 
@@ -374,6 +378,12 @@ fun GuidedSessionScreen(
                     }
                 }
 
+                if (progression != null) {
+                    item(key = "progression-${exercise.id}") {
+                        ProgressionAdvicePanel(progression)
+                    }
+                }
+
                 if (inRest) {
                     item {
                         Surface(shape = RoundedCornerShape(26.dp), color = PulseColors.SoftGreen,
@@ -424,11 +434,13 @@ fun GuidedSessionScreen(
                         GuidedSetForm(
                             exercise = exercise,
                             draft = draft,
-                            onSave = { weight, reps, warmup ->
+                            advice = progression,
+                            onSave = { weight, reps, warmup, actualRir ->
                                 onUpdate(draft.recordSet(
                                     day = day,
                                     weight = weight.replace(',', '.'),
-                                    reps = reps, warmup = warmup, at = System.currentTimeMillis()
+                                    reps = reps, warmup = warmup, at = System.currentTimeMillis(),
+                                    rir = if (warmup) null else actualRir
                                 ))
                             }
                         )
@@ -441,10 +453,10 @@ fun GuidedSessionScreen(
                     RecordedSetsEditor(
                         day = day,
                         recorded = recordedSets,
-                        onCorrect = { target, weight, reps ->
+                        onCorrect = { target, weight, reps, actualRir ->
                             onUpdate(draft.correctRecordedSet(
                                 day, target.exercise.id, target.number, target.warmup,
-                                weight, reps
+                                weight, reps, actualRir
                             ))
                         },
                         onCancel = { target ->
@@ -521,7 +533,8 @@ private fun ExerciseHeroChip(label: String) {
 private fun GuidedSetForm(
     exercise: Exercise,
     draft: WorkoutDraft,
-    onSave: (String, String, Boolean) -> Unit
+    advice: ExerciseProgression?,
+    onSave: (String, String, Boolean, Int?) -> Unit
 ) {
     val preset = draft.entry(exercise, draft.guidedWorkSet)
     var weight by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
@@ -533,6 +546,11 @@ private fun GuidedSetForm(
     var warmup by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
         mutableStateOf(false)
     }
+    var actualRir by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
+        mutableStateOf<Int?>(null)
+    }
+    val previousSet = advice?.previous(draft.guidedWorkSet)
+    val suggestedKg = advice?.suggestedWeight(draft.guidedWorkSet)
     val numericWeight = weight.replace(',', '.').toDoubleOrNull()
     val valid = numericWeight != null && numericWeight in 0.0..10000.0 &&
         (reps.toIntOrNull() ?: 0) in 1..999
@@ -657,11 +675,29 @@ private fun GuidedSetForm(
                     Text("non conta nelle serie", fontSize = 10.sp, color = PulseColors.Muted)
                 }
             }
+            if (!warmup) {
+                Spacer(Modifier.height(9.dp))
+                if (previousSet != null) {
+                    Text("Precedente: ${formatKgForWorkout(previousSet.weightKg)} kg · " +
+                        "${previousSet.repetitions} ${if (exercise.timeBased) "sec" else "rep"} · " +
+                        (previousSet.actualRir?.let { "RIR $it" } ?: "RIR non registrato"),
+                        color = PulseColors.Muted, fontSize = 11.sp)
+                }
+                if (suggestedKg != null) {
+                    Spacer(Modifier.height(6.dp))
+                    TextButton(onClick = { weight = formatKgForWorkout(suggestedKg) }) {
+                        Text("Usa suggerimento: ${formatKgForWorkout(suggestedKg)} kg",
+                            color = PulseColors.Accent, fontSize = 12.sp)
+                    }
+                }
+                Spacer(Modifier.height(9.dp))
+                ActualRirPicker(actualRir, onValueChange = { actualRir = it })
+            }
             Spacer(Modifier.height(15.dp))
             SolidButton(
                 if (warmup) "Salva riscaldamento" else "Completa serie",
                 enabled = valid,
-                onClick = { onSave(weight, reps, warmup) }
+                onClick = { onSave(weight, reps, warmup, actualRir) }
             )
             if (!valid) {
                 Spacer(Modifier.height(7.dp))
