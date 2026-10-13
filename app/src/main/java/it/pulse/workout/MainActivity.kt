@@ -44,6 +44,7 @@ import it.pulse.workout.data.WorkoutDraft
 import it.pulse.workout.data.WorkoutPlan
 import it.pulse.workout.data.WorkoutStore
 import it.pulse.workout.data.WellnessStore
+import it.pulse.workout.notifications.RestAlertScheduler
 import it.pulse.workout.reminders.ReminderScheduler
 import it.pulse.workout.reminders.ReminderKind
 import it.pulse.workout.data.AutomaticStepTracker
@@ -205,6 +206,15 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         notificationsAllowed = granted
         notificationUiTick++
     }
+    // L'utente può cambiare i permessi dalle Impostazioni mentre l'app è in pausa.
+    LaunchedEffect(inForeground) {
+        if (inForeground) {
+            notificationsAllowed = Build.VERSION.SDK_INT < 33 ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            notificationUiTick++
+        }
+    }
 
     // Una sola richiesta dopo l'aggiornamento, perché i promemoria sono già
     // attivi per default: i permessi possono sempre essere gestiti dall'utente.
@@ -305,19 +315,29 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         }
     }
     val timerStatus = remember(notificationUiTick, draft) { WorkoutTimerService.state(context) }
-    val notificationsVisible = remember(notificationUiTick, notificationsAllowed) {
-        WorkoutTimerService.notificationsVisible(context)
+    val timerNotificationProblem = remember(notificationUiTick, notificationsAllowed) {
+        WorkoutTimerService.notificationProblem(context)
+    }
+    val notificationsVisible = timerNotificationProblem == null
+    val waterReminderProblem = remember(notificationUiTick, notificationsAllowed) {
+        ReminderScheduler.channelProblem(context, ReminderKind.WATER)
+    }
+    val moveReminderProblem = remember(notificationUiTick, notificationsAllowed) {
+        ReminderScheduler.channelProblem(context, ReminderKind.MOVE)
     }
 
-    LaunchedEffect(draft, notificationsAllowed) {
+    LaunchedEffect(draft, notificationsAllowed, inForeground) {
         val current = draft
+        // Il Worker prosegue il recupero anche se Android termina il servizio.
+        // Non tenta di far partire un FGS mentre l'app è in background.
+        RestAlertScheduler.sync(context, current)
         if (current == null) {
             WorkoutTimerService.stop(context)
-        } else {
+        } else if (inForeground) {
             val day = current.daySnapshot ?: catalog.days.firstOrNull { it.id == current.dayId }
             if (day != null) {
                 runCatching { WorkoutTimerService.sync(context, current, day) }
-                    .onFailure { android.util.Log.w("ButtiGoGym/Timer", "Timer notification unavailable", it) }
+                    .onFailure { WorkoutTimerService.recordLaunchFailure(context, it) }
             }
         }
     }
@@ -430,6 +450,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                             }
                         },
                         notificationsVisible = notificationsVisible,
+                        notificationProblem = timerNotificationProblem,
                         timerStatus = timerStatus,
                         onEnableNotifications = ::requestTimerNotifications,
                         onNotificationSettings = ::openNotificationSettings,
@@ -438,6 +459,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                             if (active != null) {
                                 runCatching { WorkoutTimerService.sync(context, active, currentDay) }
                                     .onFailure {
+                                        WorkoutTimerService.recordLaunchFailure(context, it)
                                         Toast.makeText(context, "Timer non avviato: ${it.message}",
                                             Toast.LENGTH_LONG).show()
                                     }
@@ -498,6 +520,29 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                         onOpenPlan = { tab = 1 },
                         reminderWaterEnabled = waterRemindersEnabled,
                         reminderMoveEnabled = moveRemindersEnabled,
+                        reminderWaterProblem = waterReminderProblem,
+                        reminderMoveProblem = moveReminderProblem,
+                        onTestWaterReminder = {
+                            val ok = runCatching {
+                                ReminderScheduler.test(context, ReminderKind.WATER)
+                            }.getOrDefault(false)
+                            Toast.makeText(context,
+                                if (ok) "Notifica acqua inviata" else
+                                    (ReminderScheduler.channelProblem(context, ReminderKind.WATER)
+                                        ?: "Verifica notifica non riuscita"),
+                                Toast.LENGTH_LONG).show()
+                        },
+                        onTestMoveReminder = {
+                            val ok = runCatching {
+                                ReminderScheduler.test(context, ReminderKind.MOVE)
+                            }.getOrDefault(false)
+                            Toast.makeText(context,
+                                if (ok) "Notifica movimento inviata" else
+                                    (ReminderScheduler.channelProblem(context, ReminderKind.MOVE)
+                                        ?: "Verifica notifica non riuscita"),
+                                Toast.LENGTH_LONG).show()
+                        },
+                        onOpenReminderNotificationSettings = ::openNotificationSettings,
                         remindersPermissionGranted = notificationsAllowed,
                         onToggleWaterReminder = { value ->
                             waterRemindersEnabled = value
