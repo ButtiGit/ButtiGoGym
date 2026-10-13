@@ -325,21 +325,29 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     val currentDay = draft?.daySnapshot ?: catalog.days.firstOrNull { it.id == draft?.dayId }
     val backupStore = remember { AppBackupStore(context.applicationContext) }
     var backupStatus by rememberSaveable { mutableStateOf("") }
-    var pendingBackup by remember { mutableStateOf<String?>(null) }
+    var backupBusy by remember { mutableStateOf(false) }
+    var pendingBackup by remember { mutableStateOf<Uri?>(null) }
+    var pendingBackupPreview by remember { mutableStateOf<AppBackupStore.Preview?>(null) }
 
     val exportBackup = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(AppBackupStore.MIME_TYPE)
     ) { uri ->
         if (uri != null) {
-            runCatching {
-                val json = backupStore.export()
-                checkNotNull(context.contentResolver.openOutputStream(uri)) {
-                    "Non posso scrivere nel file selezionato"
-                }.use { it.write(json.toByteArray(Charsets.UTF_8)) }
-            }.onSuccess {
-                backupStatus = "Backup salvato. Conserva il file prima di disinstallare."
-            }.onFailure {
-                backupStatus = "Esportazione fallita: ${it.message.orEmpty().take(100)}"
+            backupBusy = true
+            coroutineScope.launch {
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        checkNotNull(context.contentResolver.openOutputStream(uri)) {
+                            "Impossibile aprire il file di destinazione"
+                        }.use { output -> backupStore.exportTo(output) }
+                    }
+                }.onSuccess { preview ->
+                    backupStatus = "Backup ZIP salvato: ${preview.workouts} sessioni, " +
+                        "${preview.photos} foto, ${preview.recaps} recap."
+                }.onFailure { error ->
+                    backupStatus = "Backup non salvato: ${error.message.orEmpty().take(140)}"
+                }
+                backupBusy = false
             }
         }
     }
@@ -347,26 +355,22 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            runCatching {
-                checkNotNull(context.contentResolver.openInputStream(uri)) {
-                    "Non posso leggere il file selezionato"
-                }.use { stream ->
-                    val result = ByteArrayOutputStream()
-                    val buffer = ByteArray(4096)
-                    while (true) {
-                        val count = stream.read(buffer)
-                        if (count < 0) break
-                        require(result.size() + count <= AppBackupStore.MAX_SIZE) {
-                            "File troppo grande"
-                        }
-                        result.write(buffer, 0, count)
+            backupBusy = true
+            coroutineScope.launch {
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        checkNotNull(context.contentResolver.openInputStream(uri)) {
+                            "Impossibile aprire il backup"
+                        }.use { input -> backupStore.inspect(input) }
                     }
-                    result.toString(Charsets.UTF_8.name()).also { backupStore.validate(it) }
+                }.onSuccess { preview ->
+                    pendingBackup = uri
+                    pendingBackupPreview = preview
+                    backupStatus = ""
+                }.onFailure { error ->
+                    backupStatus = "Backup non valido: ${error.message.orEmpty().take(140)}"
                 }
-            }.onSuccess {
-                pendingBackup = it
-            }.onFailure {
-                backupStatus = "Backup non valido: ${it.message.orEmpty().take(100)}"
+                backupBusy = false
             }
         }
     }
@@ -507,11 +511,12 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                         },
                         onEnableReminderNotifications = ::requestTimerNotifications,
                         backupStatus = backupStatus,
+                        backupBusy = backupBusy,
                         onExportBackup = {
-                            exportBackup.launch("ButtiGoGym-backup-${java.time.LocalDate.now()}.json")
+                            exportBackup.launch("ButtiGoGym-backup-${java.time.LocalDate.now()}.zip")
                         },
                         onImportBackup = {
-                            importBackup.launch(arrayOf("application/json", "text/plain"))
+                            importBackup.launch(arrayOf("application/zip", "application/json", "application/octet-stream", "text/plain"))
                         }
                     )
                     1 -> PlanScreen(
@@ -538,31 +543,71 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         }
     }
 
-    pendingBackup?.let { raw ->
+    pendingBackup?.let { uri ->
+        val preview = pendingBackupPreview
         AlertDialog(
-            onDismissRequest = { pendingBackup = null },
-            title = { Text("Ripristinare i tuoi dati?") },
-            text = { Text("Sostituirà lo storico, l'eventuale allenamento in corso, passi salvati e preferenze del piano. Continua solo se vuoi recuperare un backup precedente.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    runCatching {
-                        backupStore.restore(raw)
-                        history = store.history()
-                        draft = store.loadDraft()
-                        wellness = wellnessStore.read()
-                        catalog = repository.initial()
-                        sessionVisible = false
-                        tab = 0
-                    }.onSuccess {
-                        backupStatus = "Backup ripristinato correttamente."
-                    }.onFailure {
-                        backupStatus = "Ripristino fallito: ${it.message.orEmpty().take(100)}"
+            onDismissRequest = {
+                if (!backupBusy) { pendingBackup = null; pendingBackupPreview = null }
+            },
+            title = { Text("Ripristinare il backup?") },
+            text = {
+                Column {
+                    if (preview != null) {
+                        Text("${preview.workouts} allenamenti · ${preview.photos} foto · " +
+                            "${preview.recaps} recap", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        if (preview.schemaVersion == 1) {
+                            Text("Vecchio backup JSON: non contiene foto o recap. " +
+                                "Le immagini già presenti sul telefono resteranno invariate.")
+                            Spacer(Modifier.height(8.dp))
+                        }
                     }
-                    pendingBackup = null
-                }) { Text("Ripristina") }
+                    Text("Sostituirà allenamenti, eventuale sessione in corso, " +
+                        "passi e impostazioni salvate. Verifica di aver selezionato il file corretto. " +
+                        "Il backup non è cifrato: conservalo privatamente.")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !backupBusy,
+                    onClick = {
+                        backupBusy = true
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    checkNotNull(context.contentResolver.openInputStream(uri)) {
+                                        "Impossibile leggere il backup selezionato"
+                                    }.use { input -> backupStore.restoreFrom(input) }
+                                }
+                            }.onSuccess { restored ->
+                                history = store.history()
+                                draft = store.loadDraft()
+                                wellness = wellnessStore.read()
+                                catalog = repository.initial()
+                                waterRemindersEnabled =
+                                    ReminderScheduler.enabled(context, ReminderKind.WATER)
+                                moveRemindersEnabled =
+                                    ReminderScheduler.enabled(context, ReminderKind.MOVE)
+                                ReminderScheduler.sync(context)
+                                sessionVisible = false
+                                tab = 0
+                                backupStatus = "Ripristino riuscito: ${restored.workouts} sessioni, " +
+                                    "${restored.photos} foto, ${restored.recaps} recap."
+                            }.onFailure { error ->
+                                backupStatus = "Ripristino non riuscito: " +
+                                    error.message.orEmpty().take(140)
+                            }
+                            backupBusy = false
+                            pendingBackup = null
+                            pendingBackupPreview = null
+                        }
+                    }
+                ) { Text(if (backupBusy) "Verifico…" else "Ripristina") }
             },
             dismissButton = {
-                TextButton(onClick = { pendingBackup = null }) { Text("Annulla") }
+                TextButton(enabled = !backupBusy, onClick = {
+                    pendingBackup = null; pendingBackupPreview = null
+                }) { Text("Annulla") }
             }
         )
     }
