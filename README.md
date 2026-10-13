@@ -786,3 +786,39 @@ richiederà un intervento distinto, se desiderato.
 Le conferme reali di usabilità (dimensioni dei target touch,
 tastiera Samsung, vibrazione e navigazione a una mano) saranno
 eseguite con l'APK cumulativa solo dopo il completamento di tutte le fasi.
+
+## Roadmap V1.0 — Fase 3 / Modifica 1: grafici di forza, volume e record
+
+**Solo sul branch `feature/v1-phase1-complete-backup`. Nessuna APK generata; `main` non modificato.**
+
+- Da **Myself → Grafici, forza e record** si apre una schermata dedicata
+  con navigazione indietro, senza cambiare la bottom navigation.
+- **Esercizi:** scegli tra quelli presenti negli allenamenti realmente salvati.
+  Analizza **volume (kg × ripetizioni)**, **serie allenanti** o **forza stimata**
+  e visualizza i dati su **8 settimane** oppure **6 mesi**.
+- **Muscoli:** selezione fra i 16 gruppi della mappa anatomica; andamento
+  del volume e delle serie attribuiti ai **soli muscoli primari**, senza
+  contare il lavoro secondario. Se un esercizio ha più muscoli primari,
+  compare in ognuno dei relativi gruppi: i loro volumi **non vanno sommati**
+  come se fossero carichi indipendenti.
+- **Record per esercizio:** peso maggiore realmente registrato, migliore
+  **1RM stimato** con formula di Epley (solo ripetizioni 1–30 e peso positivo),
+  ripetizioni massime in una serie, volume massimo di una sessione,
+  volume/serie e sedute totali.
+- **Confronto nel tempo:** periodo corrente vs precedente, variazione
+  percentuale solo se il precedente è maggiore di zero; in caso contrario
+  appare una spiegazione senza percentuali inventate. Le settimane iniziano
+  il lunedì, i mesi il primo giorno; i periodi senza dati restano a zero.
+- **Origine dei dati:** solo serie `done = true` e non di riscaldamento,
+  con peso e ripetizioni validi. Sono esclusi gli esercizi a tempo
+  (i secondi non sono ripetizioni) e le serie solo precompilate.
+  I dati delle vecchie sedute usano la snapshot salvata nella sessione,
+  non la scheda attualmente personalizzata.
+- **Forza stimata ≠ forza misurata**: il modello Epley è una stima di
+  un massimale teorico, non una prova di 1RM e non misura ipertrofia.
+- Calcoli locali senza server, account o upload; modifica puramente
+  analitica, senza migrazioni del database o alterazioni dello storico.
+- `TrainingAnalyticsTest.kt` include **9 test** su tonnellaggio,
+  PR, snapshot storiche, muscoli primari e secondari, periodi mancanti,
+  forza stimata e confronti con zero. Verifica sulla pipeline test-only,
+  senza produrre APK; collaudo grafico Samsung rinviato all'APK finale.
