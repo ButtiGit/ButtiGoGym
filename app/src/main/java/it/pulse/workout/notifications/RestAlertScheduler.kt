@@ -57,8 +57,14 @@ object RestAlertScheduler {
 
     fun sync(context: Context, draft: WorkoutDraft?) {
         val wm = WorkManager.getInstance(context.applicationContext)
-        if (draft == null || draft.startedAt <= 0 ||
-            draft.restUntilMillis <= System.currentTimeMillis()) {
+        if (draft == null || draft.startedAt <= 0 || draft.restUntilMillis <= 0) {
+            wm.cancelUniqueWork(WORK_NAME)
+            return
+        }
+        if (draft.restUntilMillis <= System.currentTimeMillis()) {
+            // Se Android sospende il timer e l'utente riapre l'app prima
+            // del Worker, tenta subito la consegna senza duplicati.
+            notifyIfDue(context, draft.startedAt, draft.restUntilMillis)
             wm.cancelUniqueWork(WORK_NAME)
             return
         }
