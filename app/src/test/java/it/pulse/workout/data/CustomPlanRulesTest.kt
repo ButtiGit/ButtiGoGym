@@ -74,6 +74,24 @@ class CustomPlanRulesTest {
         }
     }
 
+    @Test fun muscleSelectionMatchesTheAnatomicalProgressMap() {
+        assertEquals(listOf("forearms"), CustomPlanRules.muscleIds("AVAMBRACCI"))
+        assertEquals(listOf("chest"), CustomPlanRules.muscleIds("petto"))
+        assertEquals(listOf("upper_back", "lats"), CustomPlanRules.muscleIds("SCHIENA"))
+        assertEquals(listOf("abs", "obliques"), CustomPlanRules.muscleIds("CORE"))
+        assertTrue(CustomPlanRules.muscleIds("UNKNOWN").isEmpty())
+    }
+
+    @Test fun limitExerciseCountToThirty() {
+        val atLimit = (1..30).map { number ->
+            chest.copy(id = "personal_$number", name = "Esercizio $number")
+        }
+        assertEquals(30, CustomPlanRules.validate(atLimit).size)
+        assertThrows(IllegalArgumentException::class.java) {
+            CustomPlanRules.append(atLimit, chest)
+        }
+    }
+
     @Test fun rejectsInvalidMoveAndUnknownEditWithoutMutatingInput() {
         assertThrows(IllegalArgumentException::class.java) {
             CustomPlanRules.move(original, -1, 0)
