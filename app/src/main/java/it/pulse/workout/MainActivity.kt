@@ -367,7 +367,8 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                     }
                 }.onSuccess { preview ->
                     backupStatus = "Backup ZIP salvato: ${preview.workouts} sessioni, " +
-                        "${preview.photos} foto, ${preview.recaps} recap."
+                        "${preview.photos} foto workout, ${preview.bodyPhotos} foto progresso, " +
+                        "${preview.recaps} recap."
                 }.onFailure { error ->
                     backupStatus = "Backup non salvato: ${error.message.orEmpty().take(140)}"
                 }
@@ -719,8 +720,8 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
             text = {
                 Column {
                     if (preview != null) {
-                        Text("${preview.workouts} allenamenti · ${preview.photos} foto · " +
-                            "${preview.recaps} recap", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Text("${preview.workouts} allenamenti · ${preview.photos} foto WO · " +
+                            "${preview.bodyPhotos} foto fisico · ${preview.recaps} recap", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
                         if (preview.schemaVersion == 1) {
                             Text("Vecchio backup JSON: non contiene foto o recap. " +
@@ -759,7 +760,8 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                                 sessionVisible = false
                                 tab = 0
                                 backupStatus = "Ripristino riuscito: ${restored.workouts} sessioni, " +
-                                    "${restored.photos} foto, ${restored.recaps} recap."
+                                    "${restored.photos} foto WO, ${restored.bodyPhotos} foto fisico, " +
+                                    "${restored.recaps} recap."
                             }.onFailure { error ->
                                 backupStatus = "Ripristino non riuscito: " +
                                     error.message.orEmpty().take(140)

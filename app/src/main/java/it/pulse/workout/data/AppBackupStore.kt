@@ -29,7 +29,8 @@ class AppBackupStore(context: Context) {
         val workouts: Int,
         val photos: Int,
         val recaps: Int,
-        val createdAt: String
+        val createdAt: String,
+        val bodyPhotos: Int = 0
     )
 
     private data class Archive(
@@ -49,6 +50,8 @@ class AppBackupStore(context: Context) {
         private const val MAX_MEDIA_FILES = 800
         private val photoName = Regex("session_[0-9]+_[0-9]+\\.jpg")
         private val recapName = Regex("recap_[0-9]+_[0-9]+\\.png")
+        private val bodyPhotoName =
+            Regex("body_(front|side|back)_[0-9]{8}_[0-9]{10,17}\\.jpg")
         private val namespaces = listOf(
             "pulse_v1", "buttigogym_wellness_v1", "pulse_plan",
             "buttigogym_reminders_v1", "buttigogym_reminder_permission"
@@ -59,7 +62,8 @@ class AppBackupStore(context: Context) {
         fun allowedMediaPath(path: String): Boolean {
             val name = path.substringAfterLast('/')
             return (path == "photos/$name" && photoName.matches(name)) ||
-                (path == "recaps/$name" && recapName.matches(name))
+                (path == "recaps/$name" && recapName.matches(name)) ||
+                (path == "body/$name" && bodyPhotoName.matches(name))
         }
     }
 
@@ -72,8 +76,15 @@ class AppBackupStore(context: Context) {
             "Foto mancanti nello storico: il backup non sarebbe completo"
         }
         val recaps = listFiles("session_recaps", recapName)
+        val bodyPhotos = listFiles("body_progress", bodyPhotoName)
+        val bodyRefs = referencedBodyPhotos(prefs)
+        val bodyActual = bodyPhotos.map { it.name }.toSet()
+        require(bodyRefs.all { it in bodyActual }) {
+            "Foto progresso mancanti: backup non completo"
+        }
         val media = photos.map { "photos/${it.name}" to it } +
-            recaps.map { "recaps/${it.name}" to it }
+            recaps.map { "recaps/${it.name}" to it } +
+            bodyPhotos.map { "body/${it.name}" to it }
         require(media.size <= MAX_MEDIA_FILES) { "Troppe immagini nel backup" }
         var bytes = 0L
         val descriptors = JSONArray()
@@ -137,7 +148,8 @@ class AppBackupStore(context: Context) {
                 // I vecchi JSON non contengono immagini: non cancellare
                 // le foto già salvate sul telefono quando li ripristini.
                 val folders = if (archive.preview.schemaVersion == 2)
-                    listOf("session_photos" to "photos", "session_recaps" to "recaps")
+                    listOf("session_photos" to "photos", "session_recaps" to "recaps",
+                        "body_progress" to "body")
                 else emptyList()
                 folders.forEach { (destinationName, archiveName) ->
                         val target = File(app.filesDir, destinationName)
@@ -181,6 +193,7 @@ class AppBackupStore(context: Context) {
         try {
             File(stage, "photos").mkdirs()
             File(stage, "recaps").mkdirs()
+            File(stage, "body").mkdirs()
             val buffered = BufferedInputStream(input)
             buffered.mark(4)
             val magic1 = buffered.read()
@@ -216,9 +229,7 @@ class AppBackupStore(context: Context) {
                         manifest = JSONObject(String(bytes, Charsets.UTF_8))
                     } else {
                         require(manifest != null) { "Intestazione ZIP mancante" }
-                        val file = File(stage, if (path.startsWith("photos/"))
-                            "photos/${path.substringAfter('/')}" else
-                            "recaps/${path.substringAfter('/')}")
+                        val file = File(stage, path)
                         val digest = MessageDigest.getInstance("SHA-256")
                         var length = 0L
                         file.outputStream().buffered().use { out ->
@@ -247,6 +258,10 @@ class AppBackupStore(context: Context) {
             require(refs.all { "photos/$it" in actual }) {
                 "Il backup non contiene tutte le foto collegate allo storico"
             }
+            require(referencedBodyPhotos(root.getJSONObject("data"))
+                .all { "body/$it" in actual }) {
+                "Il backup non contiene tutte le foto progresso"
+            }
             // Un'estensione .jpg/.png da sola non dimostra che il file sia
             // un'immagine. Non installare file arbitrari dentro l'app.
             actual.keys.forEach { path ->
@@ -256,7 +271,7 @@ class AppBackupStore(context: Context) {
                         require(stream.read(buffer) == buffer.size) { "Immagine non valida" }
                     }
                 }
-                if (path.startsWith("photos/")) {
+                if (path.startsWith("photos/") || path.startsWith("body/")) {
                     require((signature[0].toInt() and 0xff) == 0xff &&
                         (signature[1].toInt() and 0xff) == 0xd8 &&
                         (signature[2].toInt() and 0xff) == 0xff) { "JPEG non valido" }
@@ -332,7 +347,8 @@ class AppBackupStore(context: Context) {
                     val raw = typed.getString("value")
                     if (namespace == "pulse_v1" && key == "history") JSONArray(raw)
                     if (namespace == "pulse_v1" && key == "active_draft") JSONObject(raw)
-                    if (namespace == "buttigogym_wellness_v1" && key == "wellness") JSONObject(raw)
+                    if (namespace == "buttigogym_wellness_v1" &&
+                        key in setOf("wellness", "body_progress_v1")) JSONObject(raw)
                     if (namespace == "pulse_plan" && key == "valid_catalog") JSONObject(raw)
                 }
             }
@@ -352,6 +368,33 @@ class AppBackupStore(context: Context) {
         }.toSet()
     }
 
+    /** Controlla che il backup contenga ogni foto associata a una data e vista. */
+    private fun referencedBodyPhotos(preferences: JSONObject): Set<String> {
+        val wellness = preferences.optJSONObject("buttigogym_wellness_v1")
+            ?: return emptySet()
+        val typed = wellness.optJSONObject("body_progress_v1")
+            ?: return emptySet()
+        val raw = typed.optString("value", "{}")
+        val entries = JSONObject(raw)
+        val dates = entries.keys()
+        val names = mutableSetOf<String>()
+        while (dates.hasNext()) {
+            val date = java.time.LocalDate.parse(dates.next())
+            val entry = entries.getJSONObject(date.toString())
+            val photos = entry.optJSONObject("photos") ?: JSONObject()
+            for (angle in ProgressPhotoAngle.entries) {
+                val name = photos.optString(angle.key, "")
+                if (name.isNotEmpty()) {
+                    require(BodyProgressRules.validPhotoName(name, angle, date)) {
+                        "Riferimento foto progresso non valido"
+                    }
+                    names.add(name)
+                }
+            }
+        }
+        return names
+    }
+
     private fun preview(root: JSONObject): Preview {
         val data = root.getJSONObject("data")
         val pulse = data.getJSONObject("pulse_v1")
@@ -365,7 +408,8 @@ class AppBackupStore(context: Context) {
             JSONArray(historyRaw).length(),
             mediaPaths.count { it.startsWith("photos/") },
             mediaPaths.count { it.startsWith("recaps/") },
-            root.optString("createdAt", "")
+            root.optString("createdAt", ""),
+            mediaPaths.count { it.startsWith("body/") }
         )
     }
 

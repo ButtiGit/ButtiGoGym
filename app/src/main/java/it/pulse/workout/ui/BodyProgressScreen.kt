@@ -553,7 +553,7 @@ private fun BodyMeasurementsEditor(
                         fun parse(raw: String): Double? =
                             raw.trim().takeIf { it.isNotEmpty() }
                                 ?.replace(',', '.')?.toDoubleOrNull()
-                                ?: if (raw.isBlank()) null else error("Numero non valido")
+                                ?: if (raw.isBlank()) null else throw IllegalArgumentException("Numero non valido")
                         val value = parse(weight)
                         val cm = BodyMeasure.entries.mapNotNull { field ->
                             parse(fields.getValue(field).value)?.let { field to it }

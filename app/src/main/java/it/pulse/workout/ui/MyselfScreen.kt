@@ -48,6 +48,11 @@ fun MyselfScreen(
     history: List<SessionRecord>,
     active: WorkoutDraft?
 ) {
+    var bodyDiaryOpen by rememberSaveable { mutableStateOf(false) }
+    if (bodyDiaryOpen) {
+        BodyProgressScreen(onBack = { bodyDiaryOpen = false })
+        return
+    }
     var detailedAnalytics by rememberSaveable { mutableStateOf(false) }
     if (detailedAnalytics) {
         TrainingAnalyticsScreen(history = history, onBack = { detailedAnalytics = false })
@@ -107,6 +112,17 @@ fun MyselfScreen(
                 Spacer(Modifier.width(10.dp))
                 Text("Grafici, forza e record", fontWeight = FontWeight.ExtraBold,
                     fontSize = 15.sp, color = Color.White)
+            }
+        }
+        item {
+            OutlinedButton(
+                onClick = { bodyDiaryOpen = true },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, PulseColors.Accent)
+            ) {
+                Text("Misure, peso e foto progresso",
+                    color = PulseColors.Accent, fontWeight = FontWeight.Bold)
             }
         }
         item {
