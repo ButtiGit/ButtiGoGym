@@ -98,7 +98,9 @@ data class SetEntry(
     val reps: String = "",
     val done: Boolean = false,
     val warmup: Boolean = false,
-    val completedAt: Long = 0L
+    val completedAt: Long = 0L,
+    /** RIR realmente percepito nella serie, distinto dal target della scheda. null = non registrato. */
+    val rir: Int? = null
 )
 
 /** Una singola serie effettivamente salvata, incluso il riscaldamento. */
@@ -174,7 +176,7 @@ data class WorkoutDraft(
     /** Corregge SOLO i valori della serie: non riavvia timer o recupero. */
     fun correctRecordedSet(
         day: WorkoutDay, exerciseId: String, number: Int,
-        warmup: Boolean, weight: String, reps: String
+        warmup: Boolean, weight: String, reps: String, rir: Int? = null
     ): WorkoutDraft {
         val exercise = day.exercises.firstOrNull { it.id == exerciseId }
             ?: error("Esercizio non appartenente a questa sessione")
@@ -185,7 +187,10 @@ data class WorkoutDraft(
             "La serie non è più registrata"
         }
         val (kg, amount) = validatedSetValues(weight, reps)
-        return copy(entries = entries + (key to previous.copy(weight = kg, reps = amount)))
+        require(rir == null || rir in 0..5) { "RIR valido da 0 a 5" }
+        return copy(entries = entries + (key to previous.copy(
+            weight = kg, reps = amount, rir = if (warmup) null else rir
+        )))
     }
 
     /** Annulla una serie completata. Le serie successive rimangono salvate. */
@@ -236,10 +241,12 @@ data class WorkoutDraft(
         weight: String,
         reps: String,
         warmup: Boolean,
-        at: Long
+        at: Long,
+        rir: Int? = null
     ): WorkoutDraft {
         require(guidedExerciseIndex in day.exercises.indices) { "Sessione completata" }
         val (kg, amount) = validatedSetValues(weight, reps)
+        require(rir == null || rir in 0..5) { "RIR valido da 0 a 5" }
         val exercise = day.exercises[guidedExerciseIndex]
         val eventKey = if (warmup) {
             // Evita collisioni se è stata annullata una serie riscaldamento intermedia.
@@ -256,7 +263,8 @@ data class WorkoutDraft(
             }
             key(exercise.id, guidedWorkSet)
         }
-        val completed = SetEntry(kg, amount, done = true, warmup = warmup, completedAt = at)
+        val completed = SetEntry(kg, amount, done = true, warmup = warmup,
+            completedAt = at, rir = if (warmup) null else rir)
         val nextEntries = entries + (eventKey to completed)
         val next = if (warmup) copy(entries = nextEntries) else {
             // Dopo una correzione retroattiva, salta le serie successive già fatte.
