@@ -528,6 +528,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                     GuidedSessionScreen(
                         day = currentDay,
                         draft = draft!!,
+                        history = history,
                         onBack = { sessionVisible = false },
                         onUpdate = { updated ->
                             draft = updated
