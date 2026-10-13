@@ -18,6 +18,8 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,6 +48,11 @@ fun MyselfScreen(
     history: List<SessionRecord>,
     active: WorkoutDraft?
 ) {
+    var detailedAnalytics by rememberSaveable { mutableStateOf(false) }
+    if (detailedAnalytics) {
+        TrainingAnalyticsScreen(history = history, onBack = { detailedAnalytics = false })
+        return
+    }
     var selected by remember { mutableStateOf("chest") }
     var back by remember { mutableStateOf(false) }
     var clock by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -87,6 +94,20 @@ fun MyselfScreen(
                 }
             }
             // Tocca i muscoli sulla mappa per aprire direttamente i progressi.
+        }
+        item {
+            Button(
+                onClick = { detailedAnalytics = true },
+                modifier = Modifier.fillMaxWidth().height(53.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
+            ) {
+                Icon(Icons.Default.BarChart, contentDescription = null,
+                    modifier = Modifier.size(19.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Grafici, forza e record", fontWeight = FontWeight.ExtraBold,
+                    fontSize = 15.sp, color = Color.White)
+            }
         }
         item {
             MyselfCard {
