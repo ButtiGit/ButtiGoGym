@@ -1,7 +1,11 @@
 package it.pulse.workout.ui
 
 import android.os.Build
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,12 +23,18 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -220,119 +230,170 @@ fun GuidedSessionScreen(
                     }
                 }
             } else if (exercise != null) {
-                item {
-                    Panel {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(43.dp).clip(RoundedCornerShape(13.dp))
-                                .background(PulseColors.SoftGreen), contentAlignment = Alignment.Center) {
-                                Text("${draft.guidedExerciseIndex + 1}",
-                                    color = PulseColors.Accent, fontWeight = FontWeight.ExtraBold)
-                            }
-                            Spacer(Modifier.width(13.dp))
-                            Column {
-                                Text("ESERCIZIO ${draft.guidedExerciseIndex + 1} DI ${day.exercises.size}",
-                                    color = PulseColors.Accent, fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                                Text(exercise.muscle, color = PulseColors.Muted, fontSize = 12.sp)
-                            }
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        if (exercise.optional) {
-                            Text("RICHIAMO FACOLTATIVO · PUOI SALTARLO",
-                                color = PulseColors.Accent, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            Spacer(Modifier.height(7.dp))
-                        }
-                        if (exercise.group.isNotBlank()) {
-                            Text(exercise.group.uppercase(Locale.ITALIAN),
-                                color = PulseColors.Accent, fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                            Spacer(Modifier.height(5.dp))
-                        }
-                        Text(exercise.name, color = PulseColors.Foreground,
-                            fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 29.sp)
-                        Spacer(Modifier.height(8.dp))
-                        Text("${exercise.sets} serie allenanti · ${exercise.target}" +
-                                (if (exercise.target.contains("sec")) "" else " rep") +
-                                " · RIR ${exercise.rir}",
-                            color = PulseColors.Muted, fontSize = 13.sp)
-                        if (exercise.note.isNotEmpty()) {
-                            Spacer(Modifier.height(10.dp))
-                            Text(exercise.note, color = PulseColors.Foreground, fontSize = 12.sp)
-                        }
-                        if (exercise.alternative.isNotEmpty()) {
-                            Spacer(Modifier.height(6.dp))
-                            Text("Alternativa: ${exercise.alternative}",
-                                color = PulseColors.Muted, fontSize = 11.sp)
-                        }
-                        if (exercise.optional) {
-                            Spacer(Modifier.height(12.dp))
-                            OutlinedButton(
-                                onClick = { onUpdate(draft.skipOptionalExercise(day)) },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(14.dp),
-                                border = BorderStroke(1.dp, PulseColors.Border)
-                            ) { Text("Salta questo richiamo", color = PulseColors.Accent) }
-                        }
-                        if (exercise.gifUrl.isNotBlank()) {
-                            var showGif by remember(exercise.id) { mutableStateOf(false) }
-                            Spacer(Modifier.height(7.dp))
-                            TextButton(onClick = { showGif = !showGif }) {
-                                Text(if (showGif) "Nascondi dimostrazione" else "▶ Guarda la GIF",
-                                    color = PulseColors.Accent)
-                            }
-                            if (showGif) {
-                                val context = LocalContext.current
-                                val loader = remember(context) {
-                                    ImageLoader.Builder(context).components {
-                                        if (Build.VERSION.SDK_INT >= 28)
-                                            add(ImageDecoderDecoder.Factory())
-                                        else add(GifDecoder.Factory())
-                                    }.build()
+                item(key = "exercise-hero-${exercise.id}") {
+                    var showInstructions by remember(exercise.id) { mutableStateOf(false) }
+                    var showGif by remember(exercise.id) { mutableStateOf(false) }
+                    Surface(
+                        shape = RoundedCornerShape(28.dp),
+                        color = PulseColors.AccentDeep,
+                        modifier = Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(270))
+                    ) {
+                        Column(
+                            Modifier.background(Brush.linearGradient(
+                                listOf(PulseColors.AccentDeep, PulseColors.Accent, Color(0xFF267D36))
+                            )).padding(21.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("ESERCIZIO ${draft.guidedExerciseIndex + 1} / ${day.exercises.size}",
+                                    color = Color.White.copy(alpha = .78f), fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold, letterSpacing = .8.sp)
+                                Spacer(Modifier.weight(1f))
+                                Surface(color = Color.White.copy(alpha = .17f),
+                                    shape = RoundedCornerShape(18.dp)) {
+                                    Text(if (exercise.optional) "EXTRA" else exercise.muscle,
+                                        Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+                                        color = Color.White, fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp, maxLines = 1)
                                 }
-                                AsyncImage(
-                                    model = ImageRequest.Builder(context).data(exercise.gifUrl).build(),
-                                    contentDescription = "Esecuzione ${exercise.name}",
-                                    imageLoader = loader, contentScale = ContentScale.Fit,
-                                    modifier = Modifier.fillMaxWidth().height(190.dp)
-                                        .clip(RoundedCornerShape(15.dp)).background(PulseColors.Raised)
-                                )
+                            }
+                            Spacer(Modifier.height(17.dp))
+                            Text(exercise.name, color = Color.White,
+                                fontSize = 29.sp, fontWeight = FontWeight.Black,
+                                lineHeight = 34.sp)
+                            Spacer(Modifier.height(15.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ExerciseHeroChip("${exercise.sets} × ${exercise.target}" +
+                                    (if (exercise.timeBased) " sec" else " rep"))
+                                ExerciseHeroChip("RIR ${exercise.rir}")
+                                ExerciseHeroChip("${exercise.restSeconds}s pausa")
+                            }
+                            Spacer(Modifier.height(19.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                (1..exercise.sets).forEach { number ->
+                                    val complete = draft.entry(exercise, number).done
+                                    val current = !complete && number == draft.guidedWorkSet
+                                    Box(
+                                        Modifier.size(35.dp).clip(RoundedCornerShape(12.dp))
+                                            .background(
+                                                if (complete) Color.White else
+                                                    if (current) Color.White.copy(alpha = .30f)
+                                                    else Color.White.copy(alpha = .11f)
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (complete) Icon(Icons.Default.Check,
+                                            contentDescription = "Serie $number completata",
+                                            tint = PulseColors.Accent, modifier = Modifier.size(20.dp))
+                                        else Text(number.toString(), color = Color.White,
+                                            fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                Spacer(Modifier.weight(1f))
+                                Text("${(1..exercise.sets).count { draft.entry(exercise, it).done }}/${exercise.sets}",
+                                    color = Color.White.copy(alpha = .85f), fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold)
+                            }
+                            if (exercise.note.isNotBlank() || exercise.alternative.isNotBlank()) {
+                                Spacer(Modifier.height(14.dp))
+                                TextButton(onClick = { showInstructions = !showInstructions }) {
+                                    Icon(Icons.Default.Info, contentDescription = null,
+                                        tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(7.dp))
+                                    Text(if (showInstructions) "Nascondi tecnica" else "Tecnica e alternative",
+                                        color = Color.White, fontSize = 12.sp)
+                                }
+                                if (showInstructions) {
+                                    if (exercise.note.isNotBlank())
+                                        Text(exercise.note, color = Color.White.copy(alpha = .95f),
+                                            fontSize = 12.sp)
+                                    if (exercise.alternative.isNotBlank()) {
+                                        Spacer(Modifier.height(7.dp))
+                                        Text("Alternativa: ${exercise.alternative}",
+                                            color = Color.White.copy(alpha = .8f), fontSize = 11.sp)
+                                    }
+                                }
+                            }
+                            if (exercise.gifUrl.isNotBlank()) {
+                                TextButton(onClick = { showGif = !showGif }) {
+                                    Icon(Icons.Default.PlayCircle, contentDescription = null,
+                                        tint = Color.White, modifier = Modifier.size(17.dp))
+                                    Spacer(Modifier.width(7.dp))
+                                    Text(if (showGif) "Chiudi dimostrazione" else "Guarda il movimento",
+                                        color = Color.White, fontSize = 12.sp)
+                                }
+                            }
+                            if (exercise.optional) {
+                                TextButton(onClick = { onUpdate(draft.skipOptionalExercise(day)) }) {
+                                    Icon(Icons.Default.SkipNext, contentDescription = null,
+                                        tint = Color.White, modifier = Modifier.size(18.dp))
+                                    Text("Salta il richiamo", color = Color.White, fontSize = 12.sp)
+                                }
                             }
                         }
+                    }
+                    if (showGif && exercise.gifUrl.isNotBlank()) {
+                        Spacer(Modifier.height(9.dp))
+                        val context = LocalContext.current
+                        val loader = remember(context) {
+                            ImageLoader.Builder(context).components {
+                                if (Build.VERSION.SDK_INT >= 28)
+                                    add(ImageDecoderDecoder.Factory())
+                                else add(GifDecoder.Factory())
+                            }.build()
+                        }
+                        AsyncImage(
+                            model = ImageRequest.Builder(context).data(exercise.gifUrl).build(),
+                            contentDescription = "Esecuzione ${exercise.name}",
+                            imageLoader = loader, contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxWidth().height(206.dp)
+                                .clip(RoundedCornerShape(22.dp)).background(PulseColors.Surface)
+                        )
                     }
                 }
 
                 if (inRest) {
                     item {
-                        Panel {
-                            Text("RECUPERO", color = PulseColors.Accent, fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                            Spacer(Modifier.height(13.dp))
-                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                Text(formatDuration(remainingSeconds), fontSize = 61.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = PulseColors.Accent, letterSpacing = (-2).sp)
+                        Surface(shape = RoundedCornerShape(26.dp), color = PulseColors.SoftGreen,
+                            modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("RECUPERO", color = PulseColors.Accent,
+                                    fontSize = 12.sp, fontWeight = FontWeight.ExtraBold,
+                                    letterSpacing = 1.2.sp)
+                                Spacer(Modifier.height(8.dp))
+                                Text(formatDuration(remainingSeconds), fontSize = 68.sp,
+                                    fontWeight = FontWeight.Black, color = PulseColors.Accent,
+                                    letterSpacing = (-2).sp)
+                                Spacer(Modifier.height(10.dp))
+                                val ratio by animateFloatAsState(
+                                    targetValue = (remainingSeconds.toFloat() /
+                                        exercise.restSeconds.coerceAtLeast(1)).coerceIn(0f, 1f),
+                                    animationSpec = tween(650), label = "Recupero rimanente"
+                                )
+                                LinearProgressIndicator(progress = { ratio },
+                                    modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
+                                    color = PulseColors.Accent, trackColor = Color.White)
+                                Spacer(Modifier.height(16.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                                    OutlinedButton(
+                                        onClick = { onUpdate(draft.copy(restUntilMillis =
+                                            (draft.restUntilMillis - 15_000L).coerceAtLeast(now))) },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(14.dp),
+                                        border = BorderStroke(1.dp, PulseColors.Border)
+                                    ) { Text("−15 s", color = PulseColors.Accent) }
+                                    OutlinedButton(
+                                        onClick = { onUpdate(draft.copy(restUntilMillis =
+                                            draft.restUntilMillis + 15_000L)) },
+                                        modifier = Modifier.weight(1f),
+                                        shape = RoundedCornerShape(14.dp),
+                                        border = BorderStroke(1.dp, PulseColors.Border)
+                                    ) { Text("+15 s", color = PulseColors.Accent) }
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                SolidButton("Pronto, salta recupero", onClick = {
+                                    onUpdate(draft.copy(restUntilMillis = 0L))
+                                })
                             }
-                            Spacer(Modifier.height(4.dp))
-                            Text("Timer attivo anche nelle notifiche",
-                                color = PulseColors.Muted, fontSize = 12.sp)
-                            Spacer(Modifier.height(19.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                                OutlinedButton(
-                                    onClick = { onUpdate(draft.copy(restUntilMillis = (draft.restUntilMillis - 15_000L).coerceAtLeast(now))) },
-                                    modifier = Modifier.weight(1f),
-                                    border = BorderStroke(1.dp, PulseColors.Border),
-                                    shape = RoundedCornerShape(14.dp)
-                                ) { Text("−15 s", color = PulseColors.Accent) }
-                                OutlinedButton(
-                                    onClick = { onUpdate(draft.copy(restUntilMillis = draft.restUntilMillis + 15_000L)) },
-                                    modifier = Modifier.weight(1f),
-                                    border = BorderStroke(1.dp, PulseColors.Border),
-                                    shape = RoundedCornerShape(14.dp)
-                                ) { Text("+15 s", color = PulseColors.Accent) }
-                            }
-                            Spacer(Modifier.height(10.dp))
-                            SolidButton("Salta recupero", onClick = {
-                                onUpdate(draft.copy(restUntilMillis = 0L))
-                            })
                         }
                     }
                 } else {
@@ -420,6 +481,15 @@ fun GuidedSessionScreen(
                 TextButton(onClick = { finishDialog = false }) { Text("Continua") }
             }
         )
+    }
+}
+
+@Composable
+private fun ExerciseHeroChip(label: String) {
+    Surface(color = Color.White.copy(alpha = .16f), shape = RoundedCornerShape(9.dp)) {
+        Text(label, Modifier.padding(horizontal = 8.dp, vertical = 7.dp),
+            color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold,
+            maxLines = 1)
     }
 }
 
