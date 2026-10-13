@@ -122,14 +122,21 @@ fun GuidedSessionScreen(
     val haptics = LocalHapticFeedback.current
     val previousExerciseIndex = draft.adjacentPendingExercise(day, -1)
     val nextExerciseIndex = draft.adjacentPendingExercise(day, 1)
-    var quickInput by remember(exercise?.id, draft.guidedWorkSet, draft.startedAt) {
-        mutableStateOf(
-            exercise?.let { current ->
-                draft.entry(current, draft.guidedWorkSet).let { preset ->
-                    QuickSetValues(weight = preset.weight, reps = preset.reps)
-                }
-            } ?: QuickSetValues()
-        )
+    // Conserva i valori NON ancora salvati se si cambia esercizio.
+    // Il reset della sessione svuota automaticamente la mappa.
+    var pendingSetInputs by remember(draft.startedAt) {
+        mutableStateOf<Map<String, QuickSetValues>>(emptyMap())
+    }
+    val inputKey = "${exercise?.id.orEmpty()}:${draft.guidedWorkSet}"
+    val quickInput = pendingSetInputs[inputKey] ?: (
+        exercise?.let { current ->
+            draft.entry(current, draft.guidedWorkSet).let { preset ->
+                QuickSetValues(weight = preset.weight, reps = preset.reps)
+            }
+        } ?: QuickSetValues()
+    )
+    fun changeQuickInput(next: QuickSetValues) {
+        pendingSetInputs = pendingSetInputs + (inputKey to next)
     }
     fun navigate(index: Int) {
         keyboard?.hide()
@@ -148,6 +155,7 @@ fun GuidedSessionScreen(
             rir = if (quickInput.warmup) null else quickInput.actualRir
         )
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        pendingSetInputs = pendingSetInputs - inputKey
         onUpdate(updated)
     }
     LaunchedEffect(draft.guidedExerciseIndex, draft.guidedWorkSet) {
@@ -484,7 +492,7 @@ fun GuidedSessionScreen(
                             draft = draft,
                             advice = progression,
                             input = quickInput,
-                            onInputChange = { quickInput = it }
+                            onInputChange = ::changeQuickInput
                         )
                     }
                 }
