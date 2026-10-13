@@ -516,7 +516,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                             exportBackup.launch("ButtiGoGym-backup-${java.time.LocalDate.now()}.zip")
                         },
                         onImportBackup = {
-                            importBackup.launch(arrayOf("application/zip", "application/json", "application/octet-stream", "text/plain"))
+                            importBackup.launch(arrayOf("*/*"))
                         }
                     )
                     1 -> PlanScreen(
