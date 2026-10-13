@@ -172,6 +172,20 @@ class AppBackupStore(context: Context) {
                     applyPreferences(namespace, incoming.getJSONObject(namespace),
                         legacy = archive.preview.schemaVersion == 1)
                 }
+                // Un backup JSON V1 precede il diario fisico. Conserva le
+                // misure e i riferimenti alle foto già salvati localmente:
+                // le immagini V1 non erano incluse nel vecchio formato.
+                if (archive.preview.schemaVersion == 1) {
+                    val prior = snapshot["buttigogym_wellness_v1"]
+                        ?.get("body_progress_v1") as? String
+                    if (prior != null) {
+                        check(app.getSharedPreferences("buttigogym_wellness_v1",
+                            Context.MODE_PRIVATE).edit()
+                            .putString("body_progress_v1", prior).commit()) {
+                            "Impossibile preservare il diario fisico"
+                        }
+                    }
+                }
             } catch (error: Exception) {
                 installed.forEach { it.deleteRecursively() }
                 moved.asReversed().forEach { (target, old) ->
