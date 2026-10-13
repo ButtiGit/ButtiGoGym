@@ -227,13 +227,49 @@ data class WorkoutDraft(
         return cancelRecordedSet(day, latest.exercise.id, latest.number, latest.warmup)
     }
 
+    /** Seleziona un esercizio che ha almeno una serie allenante da svolgere.
+     *  Le serie già completate restano intatte e il recupero corrente viene annullato.
+     *  Il tap su un esercizio già interamente completato non modifica lo stato.
+     */
+    fun navigateToExercise(day: WorkoutDay, index: Int): WorkoutDraft {
+        require(index in day.exercises.indices) { "Esercizio non valido" }
+        val exercise = day.exercises[index]
+        val firstPending = (1..exercise.sets).firstOrNull { !entry(exercise, it).done }
+            ?: return this
+        return copy(guidedExerciseIndex = index, guidedWorkSet = firstPending,
+            restUntilMillis = 0L)
+    }
+
+    /** Prossimo/precedente esercizio con serie ancora da registrare. */
+    fun adjacentPendingExercise(day: WorkoutDay, direction: Int): Int? {
+        require(direction == -1 || direction == 1)
+        var index = guidedExerciseIndex + direction
+        while (index in day.exercises.indices) {
+            val exercise = day.exercises[index]
+            if ((1..exercise.sets).any { !entry(exercise, it).done }) return index
+            index += direction
+        }
+        return null
+    }
+
+    /** Non dichiara completa la seduta se una navigazione ha lasciato
+     *  serie OBBLIGATORIE da svolgere in esercizi precedenti.
+     */
+    private fun rewindForMissingMandatorySets(day: WorkoutDay): WorkoutDraft {
+        if (guidedExerciseIndex < day.exercises.size) return this
+        val incomplete = day.exercises.indexOfFirst { exercise ->
+            !exercise.optional && (1..exercise.sets).any { !entry(exercise, it).done }
+        }
+        return if (incomplete < 0) this else navigateToExercise(day, incomplete)
+    }
+
     /** Salta un richiamo facoltativo senza registrare serie artificiali. */
     fun skipOptionalExercise(day: WorkoutDay): WorkoutDraft {
         require(day.exercises.getOrNull(guidedExerciseIndex)?.optional == true) {
             "Non puoi saltare un esercizio principale"
         }
         return copy(guidedExerciseIndex = guidedExerciseIndex + 1, guidedWorkSet = 1,
-            restUntilMillis = 0L)
+            restUntilMillis = 0L).rewindForMissingMandatorySets(day)
     }
 
     fun recordSet(
@@ -281,9 +317,10 @@ data class WorkoutDraft(
             copy(entries = nextEntries, guidedExerciseIndex = nextExerciseIndex,
                 guidedWorkSet = nextSet)
         }
-        val hasNext = next.guidedExerciseIndex < day.exercises.size
+        val safeNext = next.rewindForMissingMandatorySets(day)
+        val hasNext = safeNext.guidedExerciseIndex < day.exercises.size
         val seconds = if (warmup) exercise.restSeconds.coerceAtMost(90) else exercise.restSeconds
-        return next.copy(restUntilMillis = if (hasNext) at + seconds * 1000L else 0L)
+        return safeNext.copy(restUntilMillis = if (hasNext) at + seconds * 1000L else 0L)
     }
 
     companion object {
