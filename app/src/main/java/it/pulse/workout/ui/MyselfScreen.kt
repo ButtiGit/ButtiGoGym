@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,8 +47,21 @@ private val neverColor = Color(0xFFE1E8E2)
 @Composable
 fun MyselfScreen(
     history: List<SessionRecord>,
-    active: WorkoutDraft?
+    active: WorkoutDraft?,
+    settings: PersonalSettings,
+    latestWeightKg: Double?,
+    onSaveSettings: (PersonalSettings, Double?) -> String?
 ) {
+    var settingsOpen by rememberSaveable { mutableStateOf(false) }
+    if (settingsOpen) {
+        PersonalSettingsScreen(
+            settings = settings,
+            latestWeightKg = latestWeightKg,
+            onSave = onSaveSettings,
+            onBack = { settingsOpen = false }
+        )
+        return
+    }
     var bodyDiaryOpen by rememberSaveable { mutableStateOf(false) }
     if (bodyDiaryOpen) {
         BodyProgressScreen(onBack = { bodyDiaryOpen = false })
@@ -93,11 +107,15 @@ fun MyselfScreen(
                     contentDescription = "Logo ButtiGoGym",
                     modifier = Modifier.size(60.dp).clip(RoundedCornerShape(18.dp)))
                 Spacer(Modifier.width(13.dp))
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text("I TUOI PROGRESSI", color = PulseColors.Accent,
                         fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
                     Text("Myself", color = PulseColors.Foreground,
                         fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.3).sp)
+                }
+                IconButton(onClick = { settingsOpen = true }) {
+                    Icon(Icons.Default.Settings, "Impostazioni personali",
+                        tint = PulseColors.Accent)
                 }
             }
             // Tocca i muscoli sulla mappa per aprire direttamente i progressi.
@@ -220,7 +238,7 @@ fun MyselfScreen(
                                 Surface(
                                     modifier = Modifier.clickable { back = side },
                                     shape = RoundedCornerShape(12.dp),
-                                    color = if (back == side) Color.White else Color.Transparent
+                                    color = if (back == side) PulseColors.Surface else Color.Transparent
                                 ) {
                                     Text(label, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                                         color = if (back == side) PulseColors.Accent else PulseColors.Muted,
@@ -404,7 +422,7 @@ private fun tintFor(state: MuscleRecovery): Color = when(state) {
 @Composable
 private fun MyselfCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(25.dp),
-        color = Color.White, border = BorderStroke(1.dp, PulseColors.Border)) {
+        color = PulseColors.Surface, border = BorderStroke(1.dp, PulseColors.Border)) {
         Column(Modifier.padding(18.dp), content = content)
     }
 }
@@ -460,7 +478,7 @@ private fun SmallStat(label: String, value: String, modifier: Modifier) {
 
 @Composable
 private fun StatusCount(label: String, count: Int, tint: Color, modifier: Modifier) {
-    Column(modifier.background(Color.White, RoundedCornerShape(16.dp))
+    Column(modifier.background(PulseColors.Surface, RoundedCornerShape(16.dp))
         .padding(vertical = 13.dp, horizontal = 10.dp)) {
         Box(Modifier.size(9.dp).background(tint, CircleShape))
         Spacer(Modifier.height(7.dp))

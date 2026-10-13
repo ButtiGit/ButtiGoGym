@@ -44,6 +44,10 @@ import it.pulse.workout.data.WorkoutDraft
 import it.pulse.workout.data.WorkoutPlan
 import it.pulse.workout.data.WorkoutStore
 import it.pulse.workout.data.WellnessStore
+import it.pulse.workout.data.BodyProgressStore
+import it.pulse.workout.data.PersonalSettings
+import it.pulse.workout.data.PersonalSettingsStore
+import it.pulse.workout.data.AppearancePreference
 import it.pulse.workout.updates.GitHubReleaseRepository
 import it.pulse.workout.updates.SafeApkUpdater
 import it.pulse.workout.updates.AppUpdateStatus
@@ -58,6 +62,9 @@ import it.pulse.workout.ui.DashboardScreen
 import it.pulse.workout.ui.PlanScreen
 import it.pulse.workout.ui.PulseColors
 import it.pulse.workout.ui.PulseTheme
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.SideEffect
 import it.pulse.workout.ui.GuidedSessionScreen
 
 class MainActivity : ComponentActivity() {
@@ -71,7 +78,7 @@ class MainActivity : ComponentActivity() {
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         openWorkoutFromNotification.value =
             intent?.getBooleanExtra(WorkoutTimerService.EXTRA_OPEN_WORKOUT, false) == true
-        setContent { PulseTheme { PulseApp(openWorkoutFromNotification) } }
+        setContent { PulseRoot(openWorkoutFromNotification) }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -83,8 +90,69 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Settings own the root theme and recompose every tab immediately after Save or ZIP restore.
+ * Personal preferences live in the existing backup-covered reminder namespace.
+ */
 @Composable
-private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
+private fun PulseRoot(openWorkoutFromNotification: MutableState<Boolean>) {
+    val context = LocalContext.current
+    val preferences = remember(context) { PersonalSettingsStore(context) }
+    val bodyStore = remember(context) { BodyProgressStore(context) }
+    var settings by remember { mutableStateOf(preferences.read()) }
+    var latestWeight by remember { mutableStateOf(bodyStore.latestWeightKg()) }
+    val systemDark = isSystemInDarkTheme()
+    val dark = when (settings.appearance) {
+        AppearancePreference.DARK -> true
+        AppearancePreference.LIGHT -> false
+        AppearancePreference.SYSTEM -> systemDark
+    }
+
+    SideEffect {
+        (context as? android.app.Activity)?.window?.let { window ->
+            window.statusBarColor = if (dark) android.graphics.Color.rgb(13, 21, 16)
+                else android.graphics.Color.rgb(246, 248, 246)
+            window.navigationBarColor = if (dark) android.graphics.Color.rgb(23, 33, 26)
+                else android.graphics.Color.WHITE
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = if (dark) 0 else
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        }
+    }
+    PulseTheme(darkTheme = dark) {
+        PulseApp(openWorkoutFromNotification, settings, latestWeight,
+            onSaveSettings = { next, newWeight ->
+                runCatching {
+                    val old = settings
+                    val saved = preferences.save(next)
+                    try {
+                        if (newWeight != latestWeight) bodyStore.recordTodayWeight(newWeight)
+                        ReminderScheduler.sync(context)
+                    } catch (error: Exception) {
+                        preferences.save(old)
+                        ReminderScheduler.sync(context)
+                        throw error
+                    }
+                    latestWeight = bodyStore.latestWeightKg()
+                    settings = saved
+                }.exceptionOrNull()?.message
+            },
+            onSettingsRestored = {
+                settings = preferences.read()
+                latestWeight = bodyStore.latestWeightKg()
+            }
+        )
+    }
+}
+
+@Composable
+private fun PulseApp(
+    openWorkoutFromNotification: MutableState<Boolean>,
+    settings: PersonalSettings,
+    latestWeightKg: Double?,
+    onSaveSettings: (PersonalSettings, Double?) -> String?,
+    onSettingsRestored: () -> Unit
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember { WorkoutStore(context.applicationContext) }
     val wellnessStore = remember { WellnessStore(context.applicationContext) }
@@ -530,6 +598,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                         day = currentDay,
                         draft = draft!!,
                         history = history,
+                        hapticFeedbackEnabled = settings.hapticFeedback,
                         onBack = { sessionVisible = false },
                         onUpdate = { updated ->
                             draft = updated
@@ -587,6 +656,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                         active = draft,
                         history = history,
                         wellness = wellness,
+                        personalSettings = settings,
                         stepStatus = stepStatus,
                         healthConnected = healthConnected,
                         healthSyncing = healthSyncing,
@@ -696,7 +766,13 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                         },
                         onStart = ::start
                     )
-                    2 -> MyselfScreen(history = history, active = draft)
+                    2 -> MyselfScreen(
+                        history = history,
+                        active = draft,
+                        settings = settings,
+                        latestWeightKg = latestWeightKg,
+                        onSaveSettings = onSaveSettings
+                    )
                     else -> HistoryScreen(
                         history = history,
                         days = catalog.days,
@@ -757,6 +833,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                                 moveRemindersEnabled =
                                     ReminderScheduler.enabled(context, ReminderKind.MOVE)
                                 ReminderScheduler.sync(context)
+                                onSettingsRestored()
                                 sessionVisible = false
                                 tab = 0
                                 backupStatus = "Ripristino riuscito: ${restored.workouts} sessioni, " +

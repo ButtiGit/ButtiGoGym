@@ -70,6 +70,23 @@ class BodyProgressStore(context: Context) {
         }
     }
 
+    /** Latest recorded weight: one source of truth for settings and body diary. */
+    fun latestWeightKg(): Double? = entries().lastOrNull { it.weightKg != null }?.weightKg
+
+    /** Changes today's weight without erasing today's circumference measurements or photos. */
+    fun recordTodayWeight(weightKg: Double?) {
+        val day = LocalDate.now()
+        val oldEntries = entries()
+        val previous = oldEntries.firstOrNull { it.date == day }
+        val modified = (previous ?: BodyProgressEntry(day)).copy(weightKg = weightKg)
+        val updated = if (modified.hasContent()) {
+            BodyProgressRules.insertOrReplace(oldEntries, modified)
+        } else {
+            oldEntries.filterNot { it.date == day }
+        }
+        persist(updated)
+    }
+
     /** Preserva foto esistenti quando l'utente corregge soltanto le misure. */
     fun saveMeasurements(
         date: LocalDate, weightKg: Double?, values: Map<BodyMeasure, Double>

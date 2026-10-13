@@ -886,3 +886,29 @@ eseguite con l'APK cumulativa solo dopo il completamento di tutte le fasi.
   algoritmo deduce quanti grammi di muscolo siano cresciuti.
 - `MuscleBalanceAnalyticsTest.kt` copre finestre temporali, serie dirette/indirette,
   gruppi senza stimolo, mancanza di storico, esclusione warmup e serie a tempo.
+
+## Roadmap V1.0 — Fase 4 / Modifica 1: preferenze personali
+
+Solo sul branch `feature/v1-phase1-complete-backup`, senza release/APK e senza modificare `main`.
+
+- In **Myself → Impostazioni personali** si possono configurare obiettivo (massa
+  definita, ipertrofia, forza, ricomposizione, benessere), frequenza 1–7
+  allenamenti/settimana, tema chiaro/scuro/sistema e feedback aptico nelle serie.
+- La frequenza modifica il traguardo della dashboard e lo streak settimanale,
+  contando sedute su date distinte per obiettivi diversi dal tradizionale split a 3 giorni.
+  La modifica dell'obiettivo **non** cambia automaticamente la scheda salvata.
+- Il **peso attuale** deriva dall'ultima pesata registrata nel diario fisico:
+  salvarlo dalle impostazioni registra una misurazione datata oggi, preservando
+  eventuali circonferenze e foto. Non esiste una copia concorrente nel profilo.
+- I promemoria acqua/movimento rispettano giorni scelti e fascia di lavoro
+  personalizzata. Resta l'intervallo 30/60 minuti; nuove impostazioni aggiornano
+  immediatamente la pianificazione WorkManager. Gli orari sono indicativi: Android
+  può posticipare gli avvisi. Non viene richiesto un servizio continuo.
+- Le preferenze sono locali nel namespace `buttigogym_reminders_v1`, già
+  compreso nel backup ZIP V2: backup precedenti continuano a essere compatibili
+  e il ripristino ricarica tema, obiettivi e frequenza senza riavviare l'app.
+- Dark mode usa una palette centrale accessibile e colori di sistema coerenti.
+  Le vibrazioni dell'interfaccia di allenamento possono essere disabilitate,
+  senza modificare quelle delle notifiche gestite dal sistema Android.
+- Test JVM aggiunti per validazione profilo, calendario locale dei promemoria
+  e traguardi settimanali. Il collaudo su Samsung resta previsto nella Fase 4.

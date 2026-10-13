@@ -137,7 +137,14 @@ object StreakCalculator {
     private const val HISTORY_LIMIT = 365
     private val requiredWorkoutIds = setOf("mon", "wed", "fri")
 
-    fun calculate(today: LocalDate, data: WellnessData, history: List<SessionRecord>): StreakSummary {
+    fun calculate(
+        today: LocalDate,
+        data: WellnessData,
+        history: List<SessionRecord>,
+        weeklyWorkoutTarget: Int = 3
+    ): StreakSummary {
+        require(weeklyWorkoutTarget in 1..7)
+
         val timezone = ZoneId.systemDefault()
         val byDate = history.filter { it.completedSets > 0 }.groupBy {
             Instant.ofEpochMilli(it.completedAt).atZone(timezone).toLocalDate()
@@ -175,17 +182,28 @@ object StreakCalculator {
         fun weekStart(day: LocalDate): LocalDate =
             day.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val workoutsInWeek: (LocalDate) -> Int = { start ->
-            history.asSequence().filter { it.completedSets > 0 && it.dayId in requiredWorkoutIds }
+            history.asSequence().filter { it.completedSets > 0 }
                 .filter {
                     val date = Instant.ofEpochMilli(it.completedAt).atZone(timezone).toLocalDate()
                     date >= start && date < start.plusDays(7)
-                }.map { it.dayId }.distinct().count()
+                }
+                // Preserve historical 3-split streaks; custom goals count distinct
+                // training dates (including optional workouts), never duplicate saves.
+                .let { sessions ->
+                    if (weeklyWorkoutTarget == 3) sessions
+                        .filter { it.dayId in requiredWorkoutIds }
+                        .map { it.dayId }.distinct().count()
+                    else sessions.map {
+                        Instant.ofEpochMilli(it.completedAt).atZone(timezone).toLocalDate()
+                    }.distinct().count()
+                }
         }
         val currentWeek = weekStart(today)
         val completedThisWeek = workoutsInWeek(currentWeek)
-        var cursor = if (completedThisWeek == 3) currentWeek else currentWeek.minusWeeks(1)
+        var cursor = if (completedThisWeek >= weeklyWorkoutTarget)
+            currentWeek else currentWeek.minusWeeks(1)
         var weeks = 0
-        while (weeks < 104 && workoutsInWeek(cursor) == 3) {
+        while (weeks < 104 && workoutsInWeek(cursor) >= weeklyWorkoutTarget) {
             weeks++
             cursor = cursor.minusWeeks(1)
         }

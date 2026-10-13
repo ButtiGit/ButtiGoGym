@@ -76,6 +76,7 @@ fun GuidedSessionScreen(
     day: WorkoutDay,
     draft: WorkoutDraft,
     history: List<SessionRecord>,
+    hapticFeedbackEnabled: Boolean = true,
     onBack: () -> Unit,
     onUpdate: (WorkoutDraft) -> Unit,
     onFinish: () -> Unit,
@@ -141,7 +142,7 @@ fun GuidedSessionScreen(
     fun navigate(index: Int) {
         keyboard?.hide()
         focusManager.clearFocus()
-        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        if (hapticFeedbackEnabled) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         onUpdate(draft.navigateToExercise(day, index))
     }
     fun saveQuickSet() {
@@ -154,7 +155,7 @@ fun GuidedSessionScreen(
             at = System.currentTimeMillis(),
             rir = if (quickInput.warmup) null else quickInput.actualRir
         )
-        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        if (hapticFeedbackEnabled) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         pendingSetInputs = pendingSetInputs - inputKey
         onUpdate(updated)
     }
@@ -596,7 +597,7 @@ fun GuidedSessionScreen(
                         when {
                             allDone -> finishDialog = true
                             inRest -> {
-                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                if (hapticFeedbackEnabled) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 onUpdate(draft.copy(restUntilMillis = 0L))
                             }
                             else -> saveQuickSet()

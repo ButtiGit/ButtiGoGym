@@ -67,6 +67,7 @@ fun DashboardScreen(
     active: WorkoutDraft?,
     history: List<SessionRecord>,
     wellness: WellnessData,
+    personalSettings: PersonalSettings,
     stepStatus: String,
     healthConnected: Boolean,
     healthSyncing: Boolean,
@@ -104,8 +105,8 @@ fun DashboardScreen(
     onImportBackup: () -> Unit
 ) {
     val today = LocalDate.now()
-    val summary = remember(today, wellness, history) {
-        StreakCalculator.calculate(today, wellness, history)
+    val summary = remember(today, wellness, history, personalSettings.weeklyWorkouts) {
+        StreakCalculator.calculate(today, wellness, history, personalSettings.weeklyWorkouts)
     }
     val current = active?.daySnapshot ?: days.firstOrNull { it.id == active?.dayId } ?: upcoming
     var stepsDialog by remember { mutableStateOf(false) }
@@ -149,7 +150,8 @@ fun DashboardScreen(
                     }
                 }
                 Surface(color = PulseColors.SoftGreen, shape = CircleShape) {
-                    Text("LEAN BULK", Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                    Text(personalSettings.goal.compactLabel,
+                        Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                         fontSize = 10.sp, fontWeight = FontWeight.Bold, color = PulseColors.Accent)
                 }
             }
@@ -236,8 +238,11 @@ fun DashboardScreen(
             DashboardSectionTitle("Progressi")
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                ProgressMetric("SEDUTE", "${summary.workoutDaysThisWeek}/3",
-                    "questa settimana", summary.workoutDaysThisWeek / 3f, Modifier.weight(1f))
+                ProgressMetric("SEDUTE",
+                    "${summary.workoutDaysThisWeek}/${personalSettings.weeklyWorkouts}",
+                    "questa settimana",
+                    (summary.workoutDaysThisWeek.toFloat() / personalSettings.weeklyWorkouts),
+                    Modifier.weight(1f))
                 ProgressMetric("SERIE", totalSetsThisWeek.toString(),
                     "questa settimana", totalSetsThisWeek / 62f, Modifier.weight(1f))
                 ProgressMetric("TEMPO", "${trainingMinutes}m",
@@ -246,7 +251,7 @@ fun DashboardScreen(
             Spacer(Modifier.height(10.dp))
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(19.dp), color = Color.White,
+                shape = RoundedCornerShape(19.dp), color = PulseColors.Surface,
                 border = BorderStroke(1.dp, PulseColors.Border)
             ) {
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
