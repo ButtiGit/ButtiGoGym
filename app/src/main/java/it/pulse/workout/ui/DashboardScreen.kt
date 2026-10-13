@@ -79,6 +79,11 @@ fun DashboardScreen(
     onOpenPlan: () -> Unit,
     reminderWaterEnabled: Boolean,
     reminderMoveEnabled: Boolean,
+    reminderWaterProblem: String?,
+    reminderMoveProblem: String?,
+    onTestWaterReminder: () -> Unit,
+    onTestMoveReminder: () -> Unit,
+    onOpenReminderNotificationSettings: () -> Unit,
     remindersPermissionGranted: Boolean,
     onToggleWaterReminder: (Boolean) -> Unit,
     onToggleMoveReminder: (Boolean) -> Unit,
@@ -503,17 +508,48 @@ fun DashboardScreen(
                     Switch(checked = reminderMoveEnabled, onCheckedChange = onToggleMoveReminder,
                         colors = SwitchDefaults.colors(checkedTrackColor = PulseColors.Accent))
                 }
-                if (!remindersPermissionGranted && (reminderWaterEnabled || reminderMoveEnabled)) {
+                if ((reminderWaterEnabled || reminderMoveEnabled)) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (reminderWaterEnabled) {
+                            OutlinedButton(onClick = onTestWaterReminder,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(13.dp),
+                                border = BorderStroke(1.dp, PulseColors.Border)) {
+                                Text("Prova acqua", color = PulseColors.Accent, fontSize = 11.sp)
+                            }
+                        }
+                        if (reminderMoveEnabled) {
+                            OutlinedButton(onClick = onTestMoveReminder,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(13.dp),
+                                border = BorderStroke(1.dp, PulseColors.Border)) {
+                                Text("Prova movimento", color = PulseColors.Accent, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+                val reminderProblem = if (!remindersPermissionGranted)
+                    "Permesso notifiche non concesso"
+                    else listOfNotNull(
+                        reminderWaterProblem.takeIf { reminderWaterEnabled },
+                        reminderMoveProblem.takeIf { reminderMoveEnabled }
+                    ).distinct().joinToString(" · ").takeIf { it.isNotBlank() }
+                if (reminderProblem != null && (reminderWaterEnabled || reminderMoveEnabled)) {
                     Spacer(Modifier.height(12.dp))
                     Surface(color = PulseColors.Raised, shape = RoundedCornerShape(13.dp)) {
                         Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Notifications, contentDescription = null,
                                 tint = PulseColors.Accent, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(7.dp))
-                            Text("Consenti notifiche", color = PulseColors.Foreground,
-                                fontSize = 12.sp, modifier = Modifier.weight(1f))
-                            TextButton(onClick = onEnableReminderNotifications) {
-                                Text("Attiva", color = PulseColors.Accent)
+                            Text(reminderProblem, color = PulseColors.Foreground,
+                                fontSize = 11.sp, modifier = Modifier.weight(1f))
+                            TextButton(onClick = {
+                                if (!remindersPermissionGranted) onEnableReminderNotifications()
+                                else onOpenReminderNotificationSettings()
+                            }) {
+                                Text(if (!remindersPermissionGranted) "Attiva" else "Impostazioni",
+                                    color = PulseColors.Accent)
                             }
                         }
                     }
