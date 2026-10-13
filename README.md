@@ -469,3 +469,35 @@ STABLE già installata.
 L'integrazione e la compatibilità sono verificate dai test JVM, dall'APK
 firmato e dal manifest. La ricezione effettiva delle notifiche deve
 essere testata su un telefono reale: usa il pulsante di prova.
+
+## V0.9.5 — Workout UI e promemoria quotidiani
+
+### Schermata esercizi
+- Scheda esercizio con testata verde sfumata: nome, muscolo, target,
+  RIR, recupero e serie già completate mostrati come indicatori;
+  note tecniche, alternative e GIF restano accessibili ma non ingombranti.
+- Editor della singola serie con campi grandi, controllo rapido dei carichi
+  (**−2,5/+2,5 kg**) e ripetizioni (**−1/+1**), riscaldamento separato,
+  pulsante di completamento più chiaro.
+- Recupero in una card verde dedicata con countdown, barra animata,
+  −15/+15 secondi e pulsante per saltarlo.
+
+### Notifiche acqua e movimento
+- **Acqua:** tutti i giorni, orari locali 08:30, 09:00, 09:30, ... 18:00.
+- **Movimento:** tutti i giorni dalle 09:30 alle 17:30, ogni ora.
+  Il primo invito a muoversi arriva un'ora dopo l'inizio della fascia 08:30.
+- Due **Switch** autonomi in Home > Promemoria, persistenti dopo riavvio
+  e normale aggiornamento APK. Entrambi sono attivi per default.
+- Si richiede `POST_NOTIFICATIONS` su Android 13+ al primo avvio
+  della versione con promemoria. Puoi negare il permesso e riattivarlo
+  in seguito dalle impostazioni Android, senza compromettere l'app.
+- Scheduler Android Jetpack WorkManager, senza servizio sempre in esecuzione:
+  notifica *inexact*, potenzialmente ritardata o saltata da Doze,
+  ottimizzazioni del produttore o batteria. Gli slot rimangono allineati
+  all'orologio locale, non a quando viene aperta l'app.
+- Nessun promemoria notturno, nessuna notifica retroattiva se WorkManager
+  riparte molto tardi. Notifiche separate per acqua e movimento.
+- Gli orari sono applicati **anche il sabato e la domenica**.
+  Attualmente non esiste l'impostazione "solo giorni lavorativi".
+- Installazione come aggiornamento con `versionCode=17`, `versionName=0.9.5`
+  e firma stabile già configurata su GitHub Actions.
