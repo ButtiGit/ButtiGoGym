@@ -134,8 +134,12 @@ class AppBackupStore(context: Context) {
             val moved = mutableListOf<Pair<File, File>>()
             val installed = mutableListOf<File>()
             try {
-                listOf("session_photos" to "photos", "session_recaps" to "recaps")
-                    .forEach { (destinationName, archiveName) ->
+                // I vecchi JSON non contengono immagini: non cancellare
+                // le foto già salvate sul telefono quando li ripristini.
+                val folders = if (archive.preview.schemaVersion == 2)
+                    listOf("session_photos" to "photos", "session_recaps" to "recaps")
+                else emptyList()
+                folders.forEach { (destinationName, archiveName) ->
                         val target = File(app.filesDir, destinationName)
                         val old = File(previous, destinationName)
                         if (target.exists()) {
@@ -153,7 +157,8 @@ class AppBackupStore(context: Context) {
                 val groups = if (archive.preview.schemaVersion == 1)
                     legacyNamespaces else namespaces
                 groups.forEach { namespace ->
-                    applyPreferences(namespace, incoming.getJSONObject(namespace))
+                    applyPreferences(namespace, incoming.getJSONObject(namespace),
+                        legacy = archive.preview.schemaVersion == 1)
                 }
             } catch (error: Exception) {
                 installed.forEach { it.deleteRecursively() }
@@ -374,12 +379,15 @@ class AppBackupStore(context: Context) {
             .filter { it.isFile && namePattern.matches(it.name) }
             .sortedBy { it.name }
 
-    private fun applyPreferences(namespace: String, values: JSONObject) {
+    private fun applyPreferences(namespace: String, values: JSONObject, legacy: Boolean = false) {
         val editor = app.getSharedPreferences(namespace, Context.MODE_PRIVATE).edit().clear()
         val keys = values.keys()
         while (keys.hasNext()) {
             val key = keys.next()
-            val typed = values.getJSONObject(key)
+            val typed = if (legacy) JSONObject().apply {
+                put("type", "string")
+                put("value", values.getString(key))
+            } else values.getJSONObject(key)
             when (typed.getString("type")) {
                 "string" -> editor.putString(key, typed.getString("value"))
                 "boolean" -> editor.putBoolean(key, typed.getBoolean("value"))
@@ -406,8 +414,7 @@ class AppBackupStore(context: Context) {
                 is Int -> editor.putInt(key, value)
                 is Long -> editor.putLong(key, value)
                 is Float -> editor.putFloat(key, value)
-                is Set<*> -> @Suppress("UNCHECKED_CAST")
-                    editor.putStringSet(key, value as Set<String>)
+                is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
             }
         }
         check(editor.commit()) { "Ripristino delle preferenze precedenti fallito" }
