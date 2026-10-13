@@ -101,6 +101,14 @@ data class SetEntry(
     val completedAt: Long = 0L
 )
 
+/** Una singola serie effettivamente salvata, incluso il riscaldamento. */
+data class RecordedWorkoutSet(
+    val exercise: Exercise,
+    val number: Int,
+    val warmup: Boolean,
+    val entry: SetEntry
+)
+
 data class WorkoutDraft(
     val dayId: String,
     val startedAt: Long,
@@ -126,9 +134,93 @@ data class WorkoutDraft(
     fun update(exercise: Exercise, setIndex: Int, entry: SetEntry): WorkoutDraft =
         copy(entries = entries + (key(exercise.id, setIndex) to entry))
 
+    /** Mostra le serie salvate di TUTTI gli esercizi, anche quelli già superati. */
+    fun recordedSets(day: WorkoutDay): List<RecordedWorkoutSet> =
+        day.exercises.flatMap { exercise ->
+            val savedWarmups = entries.mapNotNull { (key, entry) ->
+                val prefix = "warmup:${exercise.id}:"
+                if (key.startsWith(prefix) && entry.done && entry.warmup) {
+                    val number = key.removePrefix(prefix).toIntOrNull()
+                    number?.takeIf { it >= 1 }?.let {
+                        RecordedWorkoutSet(exercise, it, true, entry)
+                    }
+                } else null
+            }.sortedBy { it.number }
+            val working = (1..exercise.sets).mapNotNull { number ->
+                entry(exercise, number).takeIf { it.done }?.let {
+                    RecordedWorkoutSet(exercise, number, false, it)
+                }
+            }
+            savedWarmups + working
+        }
+
     fun warmups(exercise: Exercise): List<SetEntry> =
         entries.entries.filter { it.key.startsWith("warmup:${exercise.id}:") && it.value.done }
             .sortedBy { it.value.completedAt }.map { it.value }
+
+    private fun validatedSetValues(weight: String, reps: String): Pair<String, String> {
+        val normalizedWeight = weight.trim().replace(',', '.')
+        val kg = normalizedWeight.toDoubleOrNull()
+        require(kg != null && kg.isFinite() && kg in 0.0..10_000.0) {
+            "Inserisci un peso compreso tra 0 e 10.000 kg"
+        }
+        val normalizedReps = reps.trim()
+        require((normalizedReps.toIntOrNull() ?: 0) in 1..999) {
+            "Inserisci un valore compreso tra 1 e 999"
+        }
+        return normalizedWeight to normalizedReps
+    }
+
+    /** Corregge SOLO i valori della serie: non riavvia timer o recupero. */
+    fun correctRecordedSet(
+        day: WorkoutDay, exerciseId: String, number: Int,
+        warmup: Boolean, weight: String, reps: String
+    ): WorkoutDraft {
+        val exercise = day.exercises.firstOrNull { it.id == exerciseId }
+            ?: error("Esercizio non appartenente a questa sessione")
+        require(number >= 1 && (warmup || number <= exercise.sets))
+        val key = if (warmup) "warmup:$exerciseId:$number" else key(exerciseId, number)
+        val previous = entries[key]
+        require(previous != null && previous.done && previous.warmup == warmup) {
+            "La serie non è più registrata"
+        }
+        val (kg, amount) = validatedSetValues(weight, reps)
+        return copy(entries = entries + (key to previous.copy(weight = kg, reps = amount)))
+    }
+
+    /** Annulla una serie completata. Le serie successive rimangono salvate. */
+    fun cancelRecordedSet(
+        day: WorkoutDay, exerciseId: String, number: Int, warmup: Boolean
+    ): WorkoutDraft {
+        val exerciseIndex = day.exercises.indexOfFirst { it.id == exerciseId }
+        require(exerciseIndex >= 0) { "Esercizio non trovato" }
+        val exercise = day.exercises[exerciseIndex]
+        require(number >= 1 && (warmup || number <= exercise.sets))
+        val eventKey = if (warmup) "warmup:$exerciseId:$number" else key(exerciseId, number)
+        val previous = entries[eventKey]
+        require(previous != null && previous.done && previous.warmup == warmup) {
+            "La serie è già stata annullata"
+        }
+        val revisedEntries = if (warmup) entries - eventKey else
+            entries + (eventKey to previous.copy(done = false, warmup = false, completedAt = 0L))
+        // In caso di annullamento di una serie precedente, torniamo a quella.
+        // Non cancelliamo le serie successive già salvate.
+        val rewind = !warmup && (exerciseIndex < guidedExerciseIndex ||
+            (exerciseIndex == guidedExerciseIndex && number < guidedWorkSet))
+        return copy(
+            entries = revisedEntries,
+            guidedExerciseIndex = if (rewind) exerciseIndex else guidedExerciseIndex,
+            guidedWorkSet = if (rewind) number else guidedWorkSet,
+            restUntilMillis = 0L
+        )
+    }
+
+    /** Un tap annulla davvero la registrazione più recente, anche se era un warmup. */
+    fun undoLastRecordedSet(day: WorkoutDay): WorkoutDraft {
+        val latest = recordedSets(day).filter { it.entry.completedAt > 0L }
+            .maxByOrNull { it.entry.completedAt } ?: return this
+        return cancelRecordedSet(day, latest.exercise.id, latest.number, latest.warmup)
+    }
 
     /** Salta un richiamo facoltativo senza registrare serie artificiali. */
     fun skipOptionalExercise(day: WorkoutDay): WorkoutDraft {
@@ -147,26 +239,43 @@ data class WorkoutDraft(
         at: Long
     ): WorkoutDraft {
         require(guidedExerciseIndex in day.exercises.indices) { "Sessione completata" }
-        require(weight.toDoubleOrNull() != null && weight.toDouble() >= 0.0)
-        require((reps.toIntOrNull() ?: 0) in 1..999)
+        val (kg, amount) = validatedSetValues(weight, reps)
         val exercise = day.exercises[guidedExerciseIndex]
-        val completed = SetEntry(weight, reps, done = true, warmup = warmup, completedAt = at)
         val eventKey = if (warmup) {
-            "warmup:${exercise.id}:${warmups(exercise).size + 1}"
+            // Evita collisioni se è stata annullata una serie riscaldamento intermedia.
+            val prefix = "warmup:${exercise.id}:"
+            val last = entries.keys.mapNotNull {
+                if (it.startsWith(prefix)) it.removePrefix(prefix).toIntOrNull()
+                else null
+            }.maxOrNull() ?: 0
+            "$prefix${last + 1}"
         } else {
+            require(guidedWorkSet in 1..exercise.sets)
+            require(!entry(exercise, guidedWorkSet).done) {
+                "Questa serie è già completata"
+            }
             key(exercise.id, guidedWorkSet)
         }
+        val completed = SetEntry(kg, amount, done = true, warmup = warmup, completedAt = at)
         val nextEntries = entries + (eventKey to completed)
-        val next = if (warmup) {
-            copy(entries = nextEntries)
-        } else if (guidedWorkSet < exercise.sets) {
-            copy(entries = nextEntries, guidedWorkSet = guidedWorkSet + 1)
-        } else {
-            copy(entries = nextEntries, guidedExerciseIndex = guidedExerciseIndex + 1, guidedWorkSet = 1)
+        val next = if (warmup) copy(entries = nextEntries) else {
+            // Dopo una correzione retroattiva, salta le serie successive già fatte.
+            var nextExerciseIndex = guidedExerciseIndex
+            var nextSet = guidedWorkSet + 1
+            while (nextExerciseIndex < day.exercises.size) {
+                val target = day.exercises[nextExerciseIndex]
+                while (nextSet <= target.sets &&
+                    nextEntries[key(target.id, nextSet)]?.done == true) nextSet++
+                if (nextSet <= target.sets) break
+                nextExerciseIndex++
+                nextSet = 1
+            }
+            copy(entries = nextEntries, guidedExerciseIndex = nextExerciseIndex,
+                guidedWorkSet = nextSet)
         }
-        val remaining = next.guidedExerciseIndex < day.exercises.size
+        val hasNext = next.guidedExerciseIndex < day.exercises.size
         val seconds = if (warmup) exercise.restSeconds.coerceAtMost(90) else exercise.restSeconds
-        return next.copy(restUntilMillis = if (remaining) at + seconds * 1000L else 0L)
+        return next.copy(restUntilMillis = if (hasNext) at + seconds * 1000L else 0L)
     }
 
     companion object {
