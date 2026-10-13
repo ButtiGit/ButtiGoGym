@@ -44,6 +44,8 @@ import it.pulse.workout.data.WorkoutDraft
 import it.pulse.workout.data.WorkoutPlan
 import it.pulse.workout.data.WorkoutStore
 import it.pulse.workout.data.WellnessStore
+import it.pulse.workout.reminders.ReminderScheduler
+import it.pulse.workout.reminders.ReminderKind
 import it.pulse.workout.data.AutomaticStepTracker
 import it.pulse.workout.data.HealthConnectStepsRepository
 import it.pulse.workout.ui.HistoryScreen
@@ -183,6 +185,15 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> stepPermissionGranted = granted }
+    var waterRemindersEnabled by remember {
+        mutableStateOf(ReminderScheduler.enabled(context, ReminderKind.WATER))
+    }
+    var moveRemindersEnabled by remember {
+        mutableStateOf(ReminderScheduler.enabled(context, ReminderKind.MOVE))
+    }
+    LaunchedEffect(Unit) {
+        ReminderScheduler.sync(context)
+    }
     var notificationsAllowed by remember {
         mutableStateOf(Build.VERSION.SDK_INT < 33 ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
@@ -193,6 +204,18 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     ) { granted ->
         notificationsAllowed = granted
         notificationUiTick++
+    }
+
+    // Una sola richiesta dopo l'aggiornamento, perché i promemoria sono già
+    // attivi per default: i permessi possono sempre essere gestiti dall'utente.
+    LaunchedEffect(Unit) {
+        val prefs = context.getSharedPreferences("buttigogym_reminder_permission", 0)
+        if (Build.VERSION.SDK_INT >= 33 && !notificationsAllowed &&
+            !prefs.getBoolean("asked", false) &&
+            (waterRemindersEnabled || moveRemindersEnabled)) {
+            prefs.edit().putBoolean("asked", true).apply()
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     fun requestTimerNotifications() {
@@ -469,6 +492,20 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                         onSaveSteps = { steps -> wellness = wellnessStore.updateSteps(java.time.LocalDate.now(), steps) },
                         onToggleRest = { wellness = wellnessStore.toggleRest(java.time.LocalDate.now()) },
                         onOpenPlan = { tab = 1 },
+                        reminderWaterEnabled = waterRemindersEnabled,
+                        reminderMoveEnabled = moveRemindersEnabled,
+                        remindersPermissionGranted = notificationsAllowed,
+                        onToggleWaterReminder = { value ->
+                            waterRemindersEnabled = value
+                            ReminderScheduler.setEnabled(context, ReminderKind.WATER, value)
+                            if (value) requestTimerNotifications()
+                        },
+                        onToggleMoveReminder = { value ->
+                            moveRemindersEnabled = value
+                            ReminderScheduler.setEnabled(context, ReminderKind.MOVE, value)
+                            if (value) requestTimerNotifications()
+                        },
+                        onEnableReminderNotifications = ::requestTimerNotifications,
                         backupStatus = backupStatus,
                         onExportBackup = {
                             exportBackup.launch("ButtiGoGym-backup-${java.time.LocalDate.now()}.json")
