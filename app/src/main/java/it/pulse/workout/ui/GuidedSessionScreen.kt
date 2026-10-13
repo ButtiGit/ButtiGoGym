@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,6 +30,9 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -47,6 +51,10 @@ import coil.decode.ImageDecoderDecoder
 import coil.request.ImageRequest
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import it.pulse.workout.data.*
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -106,6 +114,44 @@ fun GuidedSessionScreen(
     }
     var finishDialog by remember { mutableStateOf(false) }
     var resetDialog by remember { mutableStateOf(false) }
+    var exercisePickerVisible by remember { mutableStateOf(false) }
+    val scrollState = rememberLazyListState()
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val haptics = LocalHapticFeedback.current
+    val previousExerciseIndex = draft.adjacentPendingExercise(day, -1)
+    val nextExerciseIndex = draft.adjacentPendingExercise(day, 1)
+    var quickInput by remember(exercise?.id, draft.guidedWorkSet, draft.startedAt) {
+        mutableStateOf(
+            exercise?.let { current ->
+                draft.entry(current, draft.guidedWorkSet).let { preset ->
+                    QuickSetValues(weight = preset.weight, reps = preset.reps)
+                }
+            } ?: QuickSetValues()
+        )
+    }
+    fun navigate(index: Int) {
+        keyboard?.hide()
+        focusManager.clearFocus()
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        onUpdate(draft.navigateToExercise(day, index))
+    }
+    fun saveQuickSet() {
+        if (inRest || allDone || exercise == null || !quickInput.valid) return
+        keyboard?.hide()
+        focusManager.clearFocus()
+        val updated = draft.recordSet(
+            day = day, weight = quickInput.weight.replace(',', '.'),
+            reps = quickInput.reps, warmup = quickInput.warmup,
+            at = System.currentTimeMillis(),
+            rir = if (quickInput.warmup) null else quickInput.actualRir
+        )
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        onUpdate(updated)
+    }
+    LaunchedEffect(draft.guidedExerciseIndex, draft.guidedWorkSet) {
+        scrollState.animateScrollToItem(0)
+    }
 
     Column(Modifier.fillMaxSize().background(PulseColors.Background)) {
         Row(
@@ -169,6 +215,7 @@ fun GuidedSessionScreen(
         }
 
         LazyColumn(
+            state = scrollState,
             modifier = Modifier.fillMaxWidth().weight(1f),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -253,7 +300,8 @@ fun GuidedSessionScreen(
                             Text(day.cooldown, color = PulseColors.Foreground, fontSize = 13.sp)
                         }
                         Spacer(Modifier.height(22.dp))
-                        SolidButton("Salva allenamento", onClick = { finishDialog = true })
+                        Text("Puoi ancora correggere le serie registrate qui sotto.",
+                            color = PulseColors.Muted, fontSize = 12.sp)
                     }
                 }
             } else if (exercise != null) {
@@ -423,9 +471,8 @@ fun GuidedSessionScreen(
                                     ) { Text("+15 s", color = PulseColors.Accent) }
                                 }
                                 Spacer(Modifier.height(8.dp))
-                                SolidButton("Pronto, salta recupero", onClick = {
-                                    onUpdate(draft.copy(restUntilMillis = 0L))
-                                })
+                                Text("Quando sei pronto, usa il pulsante in basso.",
+                                    color = PulseColors.Muted, fontSize = 11.sp)
                             }
                         }
                     }
@@ -435,14 +482,8 @@ fun GuidedSessionScreen(
                             exercise = exercise,
                             draft = draft,
                             advice = progression,
-                            onSave = { weight, reps, warmup, actualRir ->
-                                onUpdate(draft.recordSet(
-                                    day = day,
-                                    weight = weight.replace(',', '.'),
-                                    reps = reps, warmup = warmup, at = System.currentTimeMillis(),
-                                    rir = if (warmup) null else actualRir
-                                ))
-                            }
+                            input = quickInput,
+                            onInputChange = { quickInput = it }
                         )
                     }
                 }
@@ -481,6 +522,119 @@ fun GuidedSessionScreen(
                 }
             }
         }
+
+        // Azione principale sempre in fondo, anche quando i dettagli scorrono.
+        Surface(
+            color = PulseColors.Surface,
+            shadowElevation = 8.dp,
+            border = BorderStroke(1.dp, PulseColors.Border),
+            modifier = Modifier.fillMaxWidth().imePadding()
+        ) {
+            Column(Modifier.fillMaxWidth().padding(
+                start = 16.dp, end = 16.dp, top = 10.dp, bottom = 12.dp
+            )) {
+                if (!allDone) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { previousExerciseIndex?.let(::navigate) },
+                            enabled = previousExerciseIndex != null,
+                            shape = RoundedCornerShape(13.dp),
+                            modifier = Modifier.size(46.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            border = BorderStroke(1.dp, PulseColors.Border)
+                        ) {
+                            Icon(Icons.Default.ChevronLeft, "Esercizio precedente",
+                                modifier = Modifier.size(24.dp))
+                        }
+                        OutlinedButton(
+                            onClick = { keyboard?.hide(); focusManager.clearFocus(); exercisePickerVisible = true },
+                            modifier = Modifier.weight(1f).height(46.dp),
+                            shape = RoundedCornerShape(13.dp),
+                            border = BorderStroke(1.dp, PulseColors.Border)
+                        ) {
+                            Icon(Icons.Default.List, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text("Scegli esercizio", fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp, maxLines = 1)
+                        }
+                        OutlinedButton(
+                            onClick = { nextExerciseIndex?.let(::navigate) },
+                            enabled = nextExerciseIndex != null,
+                            shape = RoundedCornerShape(13.dp),
+                            modifier = Modifier.size(46.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            border = BorderStroke(1.dp, PulseColors.Border)
+                        ) {
+                            Icon(Icons.Default.ChevronRight, "Esercizio successivo",
+                                modifier = Modifier.size(24.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(9.dp))
+                }
+                SolidButton(
+                    when {
+                        allDone -> "Salva allenamento"
+                        inRest -> "Pronto · termina recupero"
+                        quickInput.warmup -> "Salva riscaldamento"
+                        else -> "Completa serie ${draft.guidedWorkSet}"
+                    },
+                    enabled = allDone || inRest || quickInput.valid,
+                    onClick = {
+                        when {
+                            allDone -> finishDialog = true
+                            inRest -> {
+                                haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onUpdate(draft.copy(restUntilMillis = 0L))
+                            }
+                            else -> saveQuickSet()
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    if (exercisePickerVisible) {
+        AlertDialog(
+            onDismissRequest = { exercisePickerVisible = false },
+            title = { Text("Vai a un esercizio") },
+            text = {
+                Column(
+                    Modifier.heightIn(max = 430.dp)
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                ) {
+                    day.exercises.forEachIndexed { index, candidate ->
+                        val finished = (1..candidate.sets).all { draft.entry(candidate, it).done }
+                        TextButton(
+                            onClick = {
+                                exercisePickerVisible = false
+                                navigate(index)
+                            },
+                            enabled = !finished,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("${index + 1}. ${candidate.name}",
+                                color = if (finished) PulseColors.Muted else PulseColors.Foreground,
+                                modifier = Modifier.weight(1f), maxLines = 2)
+                            Text(if (finished) "Fatto" else
+                                "${(1..candidate.sets).count { draft.entry(candidate, it).done }}/${candidate.sets}",
+                                color = PulseColors.Accent, fontSize = 12.sp)
+                        }
+                    }
+                    Text("Per correggere un esercizio completato, usa Serie registrate.",
+                        color = PulseColors.Muted, fontSize = 11.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { exercisePickerVisible = false }) {
+                    Text("Chiudi", color = PulseColors.Accent)
+                }
+            }
+        )
     }
 
     if (resetDialog) {
