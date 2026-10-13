@@ -2,7 +2,7 @@ name: ButtiGoGym Android APK
 
 on:
   push:
-    branches: [main, fix/reset-and-notification-visibility]
+    branches: [main, feature/workout-exercise-ui-daytime-reminders]
   workflow_dispatch:
 
 permissions:
@@ -79,6 +79,13 @@ jobs:
           grep -q 'buttigogym_workout_timer_v2' app/src/main/java/it/pulse/workout/WorkoutTimerService.kt
           grep -q 'fun restarted(atMillis: Long)' app/src/main/java/it/pulse/workout/data/WorkoutData.kt
           test -s app/src/test/java/it/pulse/workout/data/WorkoutRestartTest.kt
+
+      - name: Validate daytime reminder implementation
+        shell: bash
+        run: |
+          test -s app/src/main/java/it/pulse/workout/reminders/ReminderClock.kt
+          test -s app/src/main/java/it/pulse/workout/reminders/DaytimeReminders.kt
+          test -s app/src/test/java/it/pulse/workout/reminders/ReminderClockTest.kt
 
       - name: Verify photo capture and recap resources
         shell: bash
