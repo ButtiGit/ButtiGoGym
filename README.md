@@ -703,3 +703,45 @@ richiederà un intervento distinto, se desiderato.
 - Questa modifica personalizza gli esercizi nei giorni esistenti. Creazione
   di nuove giornate/settimane e pianificazione a calendario sono successive
   tappe della roadmap.
+
+## Roadmap V1.0 — Fase 2 / Modifica 3: progressione di carichi e ripetizioni
+
+**Solo sul branch `feature/v1-phase1-complete-backup`, senza APK e senza modifiche a `main`.**
+
+- Durante la sessione guidata, ogni esercizio mostra **Progressione** con
+  le serie dell'ultima sessione completata comparabile (stesso giorno,
+  esercizio con ID stabile e tipologia a ripetizioni/tempo), peso, ripetizioni,
+  **RIR reale**, se registrato, e un consiglio sintetico.
+- Il campo RIR della scheda (`Exercise.rir`) rimane l'**obiettivo**.
+  È stato aggiunto `SetEntry.rir: Int?` (da 0 a 5) per il **RIR effettivamente
+  percepito**, selezionabile a ogni serie allenante e modificabile anche
+  dalla finestra **Correggi serie**. È facoltativo; `null` significa
+  non registrato, non viene mai sostituito da un valore inventato e non
+  viene copiato automaticamente dal workout precedente.
+- `WorkoutStore` salva e legge l'eventuale `rir` nell'JSON di
+  `active_draft` e di `history`. I vecchi storici senza questo campo
+  mantengono `rir = null`, senza migrazioni distruttive; i backup ZIP
+  includono già le preferenze che contengono questi dati.
+- **Doppia progressione conservativa:** prima migliorare le ripetizioni
+  nel range previsto; solo quando **tutte le serie** precedenti hanno
+  raggiunto il limite superiore, hanno carichi positivi e **RIR reale ≥2
+  in ognuna**, proporre un **piccolo incremento** (indicativamente
+  +1 kg per alcuni gruppi piccoli, +2,5 kg per gli altri). La proposta
+  è un esempio, non un obbligo: la disponibilità di incrementi dipende
+  dalle attrezzature della palestra e dalla tecnica individuale.
+- Sotto il minimo di ripetizioni con RIR 0–1: non aumentare e valutare
+  recupero o lieve riduzione. Se il RIR manca anche solo in una serie,
+  nessuna proposta di aumento. Le serie a tempo non ricevono proposte
+  di aumento del carico. Serie di riscaldamento, dati incompleti,
+  esercizi di un altro giorno e sessioni non confrontabili non guidano
+  l'aumento.
+- **Usa suggerimento** precompila il campo del peso della singola serie
+  soltanto dopo un tap esplicito. Non completa la serie, non salva il
+  carico consigliato come risultato e non modifica la scheda.
+- La card mostra i dati storici senza sovrascrivere quelli già salvati.
+  I calcoli non sono una prescrizione medica o una misura della crescita
+  muscolare; ascoltare dolore, fatica, tecnica e disponibilità dei pesi.
+- `WorkoutProgressionAdvisorTest.kt`: **10 test** per progressione,
+  RIR reale e mancante, fatica, incremento prudente, intervalli delle
+  ripetizioni, esercizi a tempo, esercizi diversi e correzione di serie.
+  I test sono inclusi nel workflow **test-only**, che non produce APK.
