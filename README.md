@@ -569,3 +569,70 @@ del produttore possono ritardare/saltare notifiche; nessun test JVM può
 garantire la consegna reale sul Samsung. La verifica delle notifiche sul
 dispositivo verrà effettuata quando sarà disponibile la APK cumulativa,
 insieme ai test di permessi, standby e riavvio.
+
+## Roadmap V1.0 — Fase 1 / Modifica 3: aggiornamenti dalle GitHub Releases
+
+**Implementata sul branch V1.0, non ancora pubblicata su `main`.
+Non è stata generata un'APK.**
+
+### Controllo nell'app
+
+- Fonte ufficiale: `https://api.github.com/repos/ButtiGit/ButtiGoGym/releases/latest`.
+  Il controllo non usa commit, build artifact o download non pubblicati.
+- Verifica automatica **al massimo ogni 24 ore**, con cache locale.
+  Nella Home compare una card "Aggiornamenti" con il numero di versione;
+  il controllo manuale forza una nuova richiesta.
+- Se c'è una nuova versione stabile, il banner viene mostrato più in alto
+  nella dashboard: **Scarica** → verifica → **Installa**.
+  La mancata presenza di una GitHub Release (HTTP 404) è un normale stato
+  informativo: **nessuna Release pubblicata**, non un errore dell'app.
+- Confronto corretto dei numeri delle versioni (es. 1.0.10 dopo 1.0.9);
+  ignora versioni precedenti, uguali e prerelease.
+- APK scaricata direttamente da GitHub Releases usando HTTPS; redirect
+  limitati ai domini GitHub attesi; limite dimensione 120 MB.
+  Durante il download compare un avanzamento percentuale.
+- **Verifica preventiva** prima dell'installer Android: SHA-256, quando
+  GitHub fornisce il digest dell'asset, dimensione, package
+  `it.pulse.workout`, versioneName della Release, Android versionCode
+  maggiore e **certificato di firma identico all'app installata**.
+  L'installer Android effettua comunque una seconda verifica definitiva.
+- Per Android 8+ può essere necessario abilitare temporaneamente
+  "Consenti installazione da questa fonte" per ButtiGoGym.
+  L'installazione non è mai silenziosa: serve la conferma dell'utente.
+  I dati sono conservati da Android se il package e il certificato
+  corrispondono e l'installazione procede normalmente.
+- Le APK scaricate sono salvate nella cartella privata `filesDir/updates/`
+  ed esposte all'installer solo tramite Android FileProvider.
+
+### Pubblicazione (da usare SOLO al completamento di tutte le fasi)
+
+Al momento della modifica non esiste ancora una GitHub Release nella
+repository. Il nuovo workflow `.github/workflows/publish-release.yml`
+**non si avvia durante lo sviluppo del branch**: parte esclusivamente
+quando viene pubblicato un tag stabile `vX.Y.Z` su un commit già in `main`.
+
+Procedura di rilascio finale:
+1. Completare e collaudare tutte le fasi, con integrazione del branch V1
+   in `main` dopo l'approvazione.
+2. Incrementare `versionCode` e impostare `versionName` (ad es. `1.0.0`).
+3. Creare e inviare il tag corrispondente (ad es. `v1.0.0`) sul commit
+   esatto di `main`.
+4. GitHub Actions esegue test JVM, compila **assembleRelease** usando
+   i Secrets della firma stabile, verifica firma/versione e crea la
+   GitHub Release con `ButtiGoGym-1.0.0-STABLE.apk` e SHA-256.
+5. Dalla Release successiva in poi l'app avviserà della nuova APK e
+   proporrà di installarla dopo il consenso dell'utente.
+
+La presenza di un tag, da sola, non crea una release utilizzabile se
+il workflow fallisce: la UI mostra solo release effettivamente pubblicate.
+Per mantenere gli aggiornamenti diretti, **non cambiare la chiave privata
+usata nelle versioni STABLE precedenti**.
+
+### Test
+
+`app/src/test/java/it/pulse/workout/updates/AppVersionTest.kt`
+verifica confronti numerici, downgrade e tag prerelease.
+La pipeline di branch `v1-unit-tests-only.yml` compila il progetto
+ed esegue i test JVM, senza assembleDebug/assembleRelease né APK.
+La verifica effettiva dell'installer Samsung va effettuata soltanto
+con la versione cumulativa finale.
