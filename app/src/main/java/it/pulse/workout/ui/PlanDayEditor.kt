@@ -2,6 +2,8 @@ package it.pulse.workout.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,7 +34,7 @@ import it.pulse.workout.data.WorkoutDay
 private val planMuscles = listOf(
     "PETTO", "SCHIENA", "SPALLE", "BICIPITI", "TRICIPITI", "AVAMBRACCI",
     "QUADRICIPITI", "FEMORALI", "GLUTEI", "POLPACCI", "ADDOME", "CORE",
-    "GAMBE", "DORSALI", "TRAPEZI", "ALTRO"
+    "GAMBE", "DORSALI", "TRAPEZI"
 )
 
 /** L'editor usa una bozza: un solo salvataggio quando l'utente conferma. */
@@ -321,7 +323,7 @@ private fun PlanExerciseForm(
         onDismissRequest = onDismiss,
         title = { Text(if (isNew) "Nuovo esercizio" else "Modifica esercizio") },
         text = {
-            Column(Modifier.heightIn(max = 510.dp)) {
+            Column(Modifier.heightIn(max = 510.dp).verticalScroll(rememberScrollState())) {
                 OutlinedTextField(
                     value = name, onValueChange = { if (it.length <= 90) name = it },
                     label = { Text("Nome esercizio") }, singleLine = true,
@@ -396,10 +398,16 @@ private fun PlanExerciseForm(
         confirmButton = {
             Button(
                 onClick = {
+                    val selectedMuscle = muscle.trim().uppercase()
+                    val mappingChanged = isNew || selectedMuscle != exercise.muscle.uppercase()
                     onSave(exercise.copy(
-                        name = name.trim(), muscle = muscle.trim().uppercase(),
+                        name = name.trim(), muscle = selectedMuscle,
                         sets = sets.toInt(), target = target.trim(), restSeconds = rest.toInt(),
-                        rir = rir.trim(), optional = optional, timeBased = timed
+                        rir = rir.trim(), optional = optional, timeBased = timed,
+                        primaryMuscles = if (mappingChanged)
+                            CustomPlanRules.muscleIds(selectedMuscle) else exercise.primaryMuscles,
+                        secondaryMuscles = if (mappingChanged) emptyList()
+                            else exercise.secondaryMuscles
                     ))
                 },
                 enabled = validated,

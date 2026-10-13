@@ -6,6 +6,26 @@ import java.util.UUID
 object CustomPlanRules {
     const val MAX_EXERCISES = 30
 
+    /** Allinea il muscolo scelto nell'editor agli ID del manichino anatomico. */
+    fun muscleIds(label: String): List<String> = when (label.uppercase()) {
+        "PETTO" -> listOf("chest")
+        "SCHIENA" -> listOf("upper_back", "lats")
+        "SPALLE" -> listOf("shoulders")
+        "BICIPITI" -> listOf("biceps")
+        "TRICIPITI" -> listOf("triceps")
+        "AVAMBRACCI" -> listOf("forearms")
+        "QUADRICIPITI" -> listOf("quads")
+        "FEMORALI" -> listOf("hamstrings")
+        "GLUTEI" -> listOf("glutes")
+        "POLPACCI" -> listOf("calves")
+        "ADDOME" -> listOf("abs")
+        "CORE" -> listOf("abs", "obliques")
+        "GAMBE" -> listOf("quads", "hamstrings", "glutes")
+        "DORSALI" -> listOf("lats")
+        "TRAPEZI" -> listOf("traps")
+        else -> emptyList()
+    }
+
     fun validate(exercises: List<Exercise>): List<Exercise> {
         require(exercises.size in 1..MAX_EXERCISES) {
             "Una seduta deve contenere da 1 a $MAX_EXERCISES esercizi"
