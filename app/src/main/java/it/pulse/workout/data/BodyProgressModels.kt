@@ -5,6 +5,7 @@ import java.time.LocalDate
 /** Misure in centimetri, sempre facoltative; nessun dato demo. */
 enum class BodyMeasure(val key: String, val label: String) {
     CHEST("chest", "Torace"),
+    SHOULDERS("shoulders", "Spalle"),
     WAIST("waist", "Vita"),
     HIPS("hips", "Fianchi"),
     ARM("arm", "Braccio"),
