@@ -912,3 +912,36 @@ Solo sul branch `feature/v1-phase1-complete-backup`, senza release/APK e senza m
   senza modificare quelle delle notifiche gestite dal sistema Android.
 - Test JVM aggiunti per validazione profilo, calendario locale dei promemoria
   e traguardi settimanali. Il collaudo su Samsung resta previsto nella Fase 4.
+
+## Roadmap V1.0 — Fase 4 / Modifica 2: calendario e costanza mensile
+
+**Branch `feature/v1-phase1-complete-backup` soltanto. Nessun APK intermedio o modifica a `main`.**
+
+- Dalla dashboard **Oggi → icona Calendario** si apre una schermata mensile, con
+  navigazione fra mesi, selezione del giorno, panoramica delle attività e
+  riepilogo della costanza. Il calendario resta utilizzabile interamente offline.
+- Su ogni data è possibile programmare una seduta dalla scheda attuale
+  (incluse le sedute bonus), sostituirla, segnarla come **riposo intenzionale**
+  o come **saltata**, oppure cancellare uno stato inserito manualmente.
+- **Sposta seduta** apre la selezione della nuova data. La vecchia viene liberata
+  anziché trasformarsi in un'assenza; per sicurezza non si sovrascrive un'altra
+  attività o un riposo, e non si spostano allenamenti già completati.
+- I giorni **completati** provengono dal vero storico, sono mostrati anche se
+  mai pianificati e non possono diventare "saltati". Una seduta programmata
+  e non completata diventa "saltata" **solo dal giorno successivo**; un
+  giorno mai pianificato rimane libero, non un fallimento.
+- La **costanza mensile** usa soltanto attività dovute e programmate o
+  esplicitamente saltate, con percentuale non disponibile se non vi è un
+  denominatore reale. Mostra anche allenamenti extra, riposi e prossime sedute.
+  I riposi non abbassano le percentuali; il giorno in corso non diventa
+  un'assenza automatica.
+- I riposi usano il medesimo registro di **WellnessStore** già utilizzato
+  dalla dashboard, così la marcatura resta coerente. La prima seduta futura
+  pianificata influisce sul riquadro "Prossimo allenamento" in Oggi.
+- I piani/calendario sono una chiave nuova nello stesso namespace
+  `buttigogym_wellness_v1`, già incluso nel backup ZIP V2. Le vecchie
+  esportazioni senza calendario vengono lette come un calendario vuoto;
+  un ripristino ricarica immediatamente anche i nuovi eventi.
+- `WorkoutCalendarRulesTest.kt` copre date, riposi, spostamenti, conflitti,
+  deduplicazione degli allenamenti reali, percentuali e limiti mensili.
+  La verifica sul Samsung reale resta programmata per la fase finale.

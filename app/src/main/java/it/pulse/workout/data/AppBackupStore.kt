@@ -362,7 +362,7 @@ class AppBackupStore(context: Context) {
                     if (namespace == "pulse_v1" && key == "history") JSONArray(raw)
                     if (namespace == "pulse_v1" && key == "active_draft") JSONObject(raw)
                     if (namespace == "buttigogym_wellness_v1" &&
-                        key in setOf("wellness", "body_progress_v1")) JSONObject(raw)
+                        key in setOf("wellness", "body_progress_v1", "workout_calendar_v1")) JSONObject(raw)
                     if (namespace == "pulse_plan" && key == "valid_catalog") JSONObject(raw)
                 }
             }

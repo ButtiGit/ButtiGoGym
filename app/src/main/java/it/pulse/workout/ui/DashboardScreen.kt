@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -79,6 +80,7 @@ fun DashboardScreen(
     onSaveSteps: (Int) -> Unit,
     onToggleRest: () -> Unit,
     onOpenPlan: () -> Unit,
+    onOpenCalendar: () -> Unit,
     reminderWaterEnabled: Boolean,
     reminderMoveEnabled: Boolean,
     reminderWaterProblem: String?,
@@ -148,6 +150,10 @@ fun DashboardScreen(
                             fontSize = 19.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
                         // Il logo e il nome identificano già la schermata.
                     }
+                }
+                IconButton(onClick = onOpenCalendar) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = "Apri calendario allenamenti",
+                        tint = PulseColors.Accent, modifier = Modifier.size(25.dp))
                 }
                 Surface(color = PulseColors.SoftGreen, shape = CircleShape) {
                     Text(personalSettings.goal.compactLabel,

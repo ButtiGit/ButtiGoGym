@@ -43,6 +43,10 @@ import it.pulse.workout.data.WorkoutDay
 import it.pulse.workout.data.WorkoutDraft
 import it.pulse.workout.data.WorkoutPlan
 import it.pulse.workout.data.WorkoutStore
+import it.pulse.workout.data.WorkoutCalendarStore
+import it.pulse.workout.data.WorkoutCalendarRules
+import it.pulse.workout.data.CalendarEntry
+import it.pulse.workout.data.CalendarEntryKind
 import it.pulse.workout.data.WellnessStore
 import it.pulse.workout.data.BodyProgressStore
 import it.pulse.workout.data.PersonalSettings
@@ -59,6 +63,7 @@ import it.pulse.workout.data.HealthConnectStepsRepository
 import it.pulse.workout.ui.HistoryScreen
 import it.pulse.workout.ui.MyselfScreen
 import it.pulse.workout.ui.DashboardScreen
+import it.pulse.workout.ui.WorkoutCalendarScreen
 import it.pulse.workout.ui.PlanScreen
 import it.pulse.workout.ui.PulseColors
 import it.pulse.workout.ui.PulseTheme
@@ -157,6 +162,8 @@ private fun PulseApp(
     val store = remember { WorkoutStore(context.applicationContext) }
     val wellnessStore = remember { WellnessStore(context.applicationContext) }
     var wellness by remember { mutableStateOf(wellnessStore.read()) }
+    val calendarStore = remember { WorkoutCalendarStore(context.applicationContext) }
+    var calendarEntries by remember { mutableStateOf(calendarStore.read()) }
     val healthRepo = remember { HealthConnectStepsRepository(context.applicationContext) }
     val coroutineScope = rememberCoroutineScope()
     var healthConnected by remember { mutableStateOf(false) }
@@ -355,6 +362,7 @@ private fun PulseApp(
     var draft by remember { mutableStateOf(store.loadDraft()) }
     var history by remember { mutableStateOf(store.history()) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var calendarVisible by rememberSaveable { mutableStateOf(false) }
     var sessionVisible by rememberSaveable { mutableStateOf(draft != null) }
     var pendingNewWorkout by remember { mutableStateOf<WorkoutDay?>(null) }
     LaunchedEffect(openWorkoutFromNotification.value, draft) {
@@ -363,6 +371,24 @@ private fun PulseApp(
             openWorkoutFromNotification.value = false
         }
     }
+
+    /**
+     * Save calendar and shared rest marks together, restoring the original
+     * calendar if a wellness preference write fails. Never alter workout history.
+     */
+    fun saveCalendar(next: List<CalendarEntry>, date: java.time.LocalDate?,
+                     rest: Boolean?): String? = runCatching {
+        val before = calendarEntries
+        calendarEntries = calendarStore.save(next)
+        try {
+            if (date != null && rest != null) {
+                wellness = wellnessStore.setRest(date, rest)
+            }
+        } catch (error: Exception) {
+            calendarEntries = calendarStore.save(before)
+            throw error
+        }
+    }.exceptionOrNull()?.message
 
     fun start(day: WorkoutDay) {
         if (draft != null && draft?.dayId != day.id) {
@@ -415,6 +441,14 @@ private fun PulseApp(
     }
 
     val currentDay = draft?.daySnapshot ?: catalog.days.firstOrNull { it.id == draft?.dayId }
+    val today = java.time.LocalDate.now()
+    val calendarCompleted = remember(history) { WorkoutCalendarRules.completedDates(history) }
+    val plannedNext = calendarEntries.asSequence()
+        .filter { it.kind == CalendarEntryKind.WORKOUT && !it.date.isBefore(today) }
+        .filter { !wellness.restedOn(it.date) }
+        .sortedBy { it.date }
+        .mapNotNull { entry -> catalog.days.firstOrNull { it.id == entry.workoutDayId } }
+        .firstOrNull()
     val backupStore = remember { AppBackupStore(context.applicationContext) }
     var backupStatus by rememberSaveable { mutableStateOf("") }
     var backupBusy by remember { mutableStateOf(false) }
@@ -565,7 +599,7 @@ private fun PulseApp(
     Scaffold(
         containerColor = PulseColors.Background,
         bottomBar = {
-            if (!sessionVisible) {
+            if (!sessionVisible && !calendarVisible) {
                 NavigationBar(containerColor = PulseColors.Surface, tonalElevation = 0.dp) {
                     listOf(
                         Triple("Oggi", Icons.Default.Home, 0),
@@ -646,12 +680,62 @@ private fun PulseApp(
                         }
                     )
                 }
+            } else if (calendarVisible) {
+                WorkoutCalendarScreen(
+                    days = catalog.days,
+                    entries = calendarEntries,
+                    history = history,
+                    wellness = wellness,
+                    onBack = { calendarVisible = false },
+                    onSchedule = { date, workoutId ->
+                        if (date in calendarCompleted) "La giornata contiene un allenamento completato"
+                        else if (catalog.days.none { it.id == workoutId }) "Scheda non disponibile"
+                        else saveCalendar(
+                            WorkoutCalendarRules.place(calendarEntries,
+                                CalendarEntry(date, CalendarEntryKind.WORKOUT, workoutId)),
+                            date, false)
+                    },
+                    onRest = { date ->
+                        if (date in calendarCompleted) "Non puoi segnare riposo su una seduta completata"
+                        else saveCalendar(
+                            WorkoutCalendarRules.clear(calendarEntries, date), date, true)
+                    },
+                    onSkip = { date ->
+                        when {
+                            date in calendarCompleted -> "La seduta è già completata"
+                            date.isAfter(java.time.LocalDate.now()) ->
+                                "Puoi segnare saltata solo una seduta di oggi o passata"
+                            else -> saveCalendar(
+                                WorkoutCalendarRules.place(calendarEntries,
+                                    CalendarEntry(date, CalendarEntryKind.SKIPPED,
+                                        calendarEntries.firstOrNull { it.date == date }?.workoutDayId)),
+                                date, false)
+                        }
+                    },
+                    onClear = { date -> saveCalendar(
+                        WorkoutCalendarRules.clear(calendarEntries, date), date, false)
+                    },
+                    onMove = { from, to ->
+                        runCatching {
+                            WorkoutCalendarRules.move(calendarEntries, from, to,
+                                destinationRest = wellness.restedOn(to),
+                                sourceCompleted = from in calendarCompleted)
+                        }.fold(
+                            onSuccess = { revised -> saveCalendar(revised, null, null) },
+                            onFailure = { it.message ?: "Impossibile spostare la seduta" }
+                        )
+                    },
+                    onStart = { day ->
+                        calendarVisible = false
+                        start(day)
+                    }
+                )
             } else {
                 Crossfade(targetState = tab, animationSpec = tween(180),
                     label = "Cambio schermata") { selectedTab ->
                 when (selectedTab) {
                     0 -> DashboardScreen(
-                        upcoming = WorkoutPlan.upcoming(catalog.days),
+                        upcoming = plannedNext ?: WorkoutPlan.upcoming(catalog.days),
                         days = catalog.days,
                         active = draft,
                         history = history,
@@ -686,8 +770,15 @@ private fun PulseApp(
                         },
                         onStart = ::start,
                         onSaveSteps = { steps -> wellness = wellnessStore.updateSteps(java.time.LocalDate.now(), steps) },
-                        onToggleRest = { wellness = wellnessStore.toggleRest(java.time.LocalDate.now()) },
+                        onToggleRest = {
+                            val date = java.time.LocalDate.now()
+                            val newRest = !wellness.restedOn(date)
+                            val revised = if (newRest) WorkoutCalendarRules.clear(calendarEntries, date)
+                                else calendarEntries
+                            saveCalendar(revised, date, newRest)
+                        },
                         onOpenPlan = { tab = 1 },
+                        onOpenCalendar = { calendarVisible = true },
                         reminderWaterEnabled = waterRemindersEnabled,
                         reminderMoveEnabled = moveRemindersEnabled,
                         reminderWaterProblem = waterReminderProblem,
@@ -826,6 +917,8 @@ private fun PulseApp(
                                 history = store.history()
                                 draft = store.loadDraft()
                                 wellness = wellnessStore.read()
+                                calendarEntries = calendarStore.read()
+                                calendarVisible = false
                                 catalog = repository.initial()
                                 customizedDayIds = repository.customizedDayIds()
                                 waterRemindersEnabled =

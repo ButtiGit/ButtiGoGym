@@ -77,12 +77,15 @@ class WellnessStore(context: Context) {
             else save(data.copy(healthStepsByDate = emptyMap()))
     }
 
-    fun toggleRest(day: LocalDate): WellnessData {
+    /** A shared source for dashboard recovery and calendar-marked rest days. */
+    fun setRest(day: LocalDate, resting: Boolean): WellnessData {
         val data = read()
         val dates = data.restDates.toMutableSet()
-        if (!dates.add(day.toString())) dates.remove(day.toString())
+        if (resting) dates.add(day.toString()) else dates.remove(day.toString())
         return save(data.copy(restDates = dates))
     }
+
+    fun toggleRest(day: LocalDate): WellnessData = setRest(day, !read().restedOn(day))
 
     private fun save(data: WellnessData): WellnessData {
         val limit = LocalDate.now().minusDays(730)
