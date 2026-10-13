@@ -636,3 +636,36 @@ La pipeline di branch `v1-unit-tests-only.yml` compila il progetto
 ed esegue i test JVM, senza assembleDebug/assembleRelease né APK.
 La verifica effettiva dell'installer Samsung va effettuata soltanto
 con la versione cumulativa finale.
+
+## Roadmap V1.0 — Fase 2 / Modifica 1: correzione e annullamento serie
+
+**Solo sul branch `feature/v1-phase1-complete-backup`, nessuna APK intermedia.**
+
+- La schermata dell'allenamento mostra una sezione **Serie registrate**
+  con serie normali e riscaldamenti di **tutti** gli esercizi della sessione,
+  compresi quelli già superati e quelli mostrati a fine allenamento.
+  Ogni riga ha **Correggi** e **Annulla**.
+- **Correggi** apre una finestra con peso (kg, supporto virgola decimale)
+  e ripetizioni/secondi. Non cambia l'orario originario della serie, la
+  sequenza guidata o il recupero, e non riscrive le altre serie.
+- **Annulla serie allenante** richiede conferma; conserva i valori come
+  suggerimento per la ripetizione, ma azzera `done` e `completedAt`.
+  Riporta il percorso guidato al set annullato se era già stato superato;
+  le serie successive restano registrate. Quando la serie viene rifatta,
+  il percorso salta automaticamente quelle già completate, senza duplicarle.
+- **Annulla riscaldamento** richiede conferma e rimuove soltanto quella
+  registrazione. La numerazione dei riscaldamenti non collide quando ne
+  viene eliminato uno intermedio.
+- **Annulla ultima** vicino al progresso opera sulla registrazione più recente
+  (anche riscaldamento); non richiede azzerare l'intera sessione.
+- Quando una serie viene annullata, l'attuale recupero viene azzerato;
+  correzioni dei soli numeri non interrompono il recupero.
+- Tutte le modifiche usano il salvataggio automatico già presente nel
+  `WorkoutStore` tramite `onUpdate`, senza modificare lo storico
+  degli allenamenti precedentemente terminati.
+- Sono stati aggiunti test su serie corrette, annullamento, ri-esecuzione
+  con serie successive già presenti, warmup e casi non validi.
+
+Questa funzionalità interviene solo sulla **sessione in corso**.
+La modifica a posteriori di una sessione già salvata nello **Storico**
+richiederà un intervento distinto, se desiderato.
