@@ -70,6 +70,7 @@ fun GuidedSessionScreen(
     onFinish: () -> Unit,
     onReset: () -> Unit,
     notificationsVisible: Boolean,
+    notificationProblem: String?,
     timerStatus: String,
     onEnableNotifications: () -> Unit,
     onNotificationSettings: () -> Unit,
@@ -191,6 +192,10 @@ fun GuidedSessionScreen(
                                 TextButton(onClick = onRetryTimer) {
                                     Text("Riprova", color = PulseColors.Accent, fontSize = 11.sp)
                                 }
+                            }
+                            if (notificationProblem != null) {
+                                Text(notificationProblem,
+                                    color = PulseColors.Muted, fontSize = 11.sp)
                             }
                             if (timerStatus.startsWith("error:")) {
                                 Text(timerStatus.removePrefix("error:"),
