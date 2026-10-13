@@ -198,7 +198,7 @@ fun WorkoutCalendarScreen(
                                         ) { selectDate(date) }
                                         .semantics(mergeDescendants = true) {
                                             contentDescription = "${date.format(italianDay)}, ${status.title()}"
-                                            selected = selectedDay
+                                            this.selected = selectedDay
                                         }
                                         .padding(top = 7.dp, bottom = 4.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
