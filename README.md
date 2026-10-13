@@ -534,3 +534,38 @@ essere testata su un telefono reale: usa il pulsante di prova.
   non vengono esportate e vanno richieste di nuovo se necessario.
 - La compilazione APK verrà effettuata al termine delle fasi della roadmap
   V1.0, seguendo la richiesta dell'utente di lavorare modifica per modifica.
+
+## Roadmap V1.0 — Fase 1 / Modifica 2: notifiche affidabili (branch separato)
+
+**Non rilasciata su main; APK rimandata al completamento della roadmap.**
+
+- **Fine recupero:** il foreground service mantiene il cronometro nativo e
+  prova a inviare l'avviso alla scadenza. Un **OneTimeWorkRequest** indipendente,
+  identificato da inizio sessione e scadenza, tenta il recupero se Android
+  ha terminato o sospeso il servizio. Entrambe le vie condividono la
+  stessa logica: non inviano due notifiche per il medesimo recupero.
+- **Cancellazione e sicurezza:** reset, nuova sessione, cambio di pausa
+  o salvataggio finale invalidano automaticamente gli avvisi vecchi.
+  Il Worker legge il draft attuale dallo storage; rifiuta scadenze stale,
+  notifiche anticipate e avvisi arrivati con più di 15 minuti di ritardo.
+  Se riapri l'app con recupero appena scaduto, tenta la consegna una volta.
+- **Foreground Android:** la sorgente della notifica è il draft salvato,
+  non un Intent potenzialmente vecchio. L'app evita di tentare l'avvio
+  del foreground service quando è in background; gli errori di avvio
+  vengono salvati e mostrati nel workout.
+- **Promemoria acqua/movimento:** check dei permessi globali e del singolo
+  canale Android; un pulsante di **prova acqua** e uno di **prova movimento**,
+  con feedback vero anche se il canale è stato disattivato.
+  Dedupe per slot orario per non ripetere la stessa notifica dopo un retry.
+- **Cambio d'ora:** receiver esplicito per reboot, ora e timezone;
+  ripianifica WorkManager sugli orari locali impostati (08:30–18:00),
+  senza mantenere servizi in esecuzione durante il giorno.
+- **Verifica automatica isolata:** `.github/workflows/v1-unit-tests-only.yml`
+  avvia test JVM e controllo delle classi, senza assemblare o caricare APK.
+  Test dedicati a scadenze anticipate, sessioni resettate e avvisi vecchi.
+
+**Limite Android:** WorkManager è *inexact*. Doze, battery saver e restrizioni
+del produttore possono ritardare/saltare notifiche; nessun test JVM può
+garantire la consegna reale sul Samsung. La verifica delle notifiche sul
+dispositivo verrà effettuata quando sarà disponibile la APK cumulativa,
+insieme ai test di permessi, standby e riavvio.
