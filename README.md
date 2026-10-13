@@ -501,3 +501,36 @@ essere testata su un telefono reale: usa il pulsante di prova.
   Attualmente non esiste l'impostazione "solo giorni lavorativi".
 - Installazione come aggiornamento con `versionCode=17`, `versionName=0.9.5`
   e firma stabile già configurata su GitHub Actions.
+
+## Roadmap V1.0 — Fase 1 / Modifica 1: backup completo (branch separato)
+
+**In lavorazione per la futura APK finale: non ancora rilasciato su main.**
+
+- Backup manuale **ZIP V2**, senza server: `backup.json` e cartelle
+  `photos/`, `recaps/`. Include cronologia, sessione in corso,
+  passi/riposo, scheda offline, impostazioni dei promemoria e
+  foto salvate nell'area privata dell'app.
+- I recap PNG esportati **da questa modifica in avanti** vengono salvati
+  anche in `filesDir/session_recaps/` e quindi inclusi negli ZIP futuri.
+  I recap già esportati in altre cartelle tramite le versioni precedenti
+  non sono automaticamente accessibili: conservarli separatamente.
+- Ripristino in due passaggi: prima **anteprima** del numero di sessioni,
+  foto e recap e verifica integrale dell'archivio, poi conferma esplicita.
+  L'estrazione avviene in una directory temporanea.
+- Validazione di percorsi ZIP contro traversal, estensioni/nome file,
+  dimensioni per file e aggregate, SHA-256 per ogni media,
+  firme JPEG/PNG e presenza delle foto referenziate dallo storico.
+  L'operazione rifiuta archivi incompleti anziché ripristinare dati parziali.
+- Prima di sovrascrivere i dati si conservano temporaneamente le directory
+  originali e uno snapshot delle preferenze; in caso di errore si tenta
+  il rollback. Nessuna procedura può garantire il successo dopo un guasto
+  fisico dello storage o spegnimento improvviso durante il commit.
+- Compatibile con i precedenti **backup JSON V1**, che non includono
+  fotografie né le preferenze delle notifiche; le foto già presenti
+  sul dispositivo non vengono eliminate in questa importazione.
+- ZIP **non cifrato**: contiene dati personali e foto. Va custodito in una
+  cartella privata, non pubblicato online.
+- Health Connect è un archivio di terze parti: le sue autorizzazioni
+  non vengono esportate e vanno richieste di nuovo se necessario.
+- La compilazione APK verrà effettuata al termine delle fasi della roadmap
+  V1.0, seguendo la richiesta dell'utente di lavorare modifica per modifica.
