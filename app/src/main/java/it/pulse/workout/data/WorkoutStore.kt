@@ -90,7 +90,7 @@ class WorkoutStore(context: Context) {
             startedAt = System.currentTimeMillis(),
             entries = previous?.entries.orEmpty()
                 .filterKeys { it in validSetKeys }
-                .mapValues { (_, entry) -> entry.copy(done = false, warmup = false, completedAt = 0L) }
+                .mapValues { (_, entry) -> entry.copy(done = false, warmup = false, completedAt = 0L, rir = null) }
         )
     }
 
@@ -105,7 +105,9 @@ class WorkoutStore(context: Context) {
                 reps = value.optString("reps", ""),
                 done = value.optBoolean("done", false),
                 warmup = value.optBoolean("warmup", false),
-                completedAt = value.optLong("completedAt", 0L)
+                completedAt = value.optLong("completedAt", 0L),
+                rir = if (value.has("rir") && !value.isNull("rir"))
+                    value.optInt("rir", -1).takeIf { it in 0..5 } else null
             )
         }
         return entries
@@ -119,6 +121,7 @@ class WorkoutStore(context: Context) {
                 put("done", entry.done)
                 put("warmup", entry.warmup)
                 put("completedAt", entry.completedAt)
+                entry.rir?.let { put("rir", it) }
             })
         }
     }
