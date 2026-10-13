@@ -157,7 +157,7 @@ fun GuidedSessionScreen(
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 7.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 if (notificationsVisible) Icons.Default.NotificationsActive
@@ -500,75 +500,150 @@ private fun GuidedSetForm(
     onSave: (String, String, Boolean) -> Unit
 ) {
     val preset = draft.entry(exercise, draft.guidedWorkSet)
-    var weight by remember { mutableStateOf(preset.weight) }
-    var reps by remember { mutableStateOf(preset.reps) }
-    var warmup by remember { mutableStateOf(false) }
+    var weight by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
+        mutableStateOf(preset.weight)
+    }
+    var reps by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
+        mutableStateOf(preset.reps)
+    }
+    var warmup by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
+        mutableStateOf(false)
+    }
     val numericWeight = weight.replace(',', '.').toDoubleOrNull()
-    val valid = numericWeight != null && numericWeight >= 0 && numericWeight <= 10000 &&
+    val valid = numericWeight != null && numericWeight in 0.0..10000.0 &&
         (reps.toIntOrNull() ?: 0) in 1..999
-    Panel {
-        Text("SERIE ${draft.guidedWorkSet} DI ${exercise.sets}", color = PulseColors.Accent,
-            fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-        Spacer(Modifier.height(6.dp))
-        Text("Completa la serie e registra i risultati.",
-            color = PulseColors.Muted, fontSize = 13.sp)
-        Spacer(Modifier.height(19.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedTextField(
-                value = weight,
-                onValueChange = { new ->
-                    if (new.length <= 7 && new.all { it.isDigit() || it == ',' || it == '.' })
-                        weight = new
-                },
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                label = { Text("Peso (kg)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                shape = RoundedCornerShape(15.dp)
-            )
-            OutlinedTextField(
-                value = reps,
-                onValueChange = { new ->
-                    if (new.length <= 3 && new.all(Char::isDigit)) reps = new
-                },
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                label = { Text(if (exercise.timeBased) "Secondi" else "Ripetizioni") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                shape = RoundedCornerShape(15.dp)
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = PulseColors.Raised,
-            shape = RoundedCornerShape(15.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
-            ) {
-                Checkbox(
-                    checked = warmup,
-                    onCheckedChange = { warmup = it },
-                    colors = CheckboxDefaults.colors(checkedColor = PulseColors.Accent)
-                )
+
+    fun adjustWeight(amount: Double) {
+        val next = ((numericWeight ?: 0.0) + amount).coerceAtLeast(0.0)
+        weight = String.format(Locale.US, "%.1f", next)
+            .trimEnd('0').trimEnd('.')
+    }
+    fun adjustReps(amount: Int) {
+        val next = ((reps.toIntOrNull() ?: 0) + amount).coerceIn(0, 999)
+        reps = next.toString()
+    }
+
+    Surface(
+        shape = RoundedCornerShape(26.dp),
+        color = PulseColors.Surface,
+        border = BorderStroke(1.dp, PulseColors.Border),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(19.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(46.dp).clip(RoundedCornerShape(15.dp))
+                    .background(PulseColors.SoftGreen),
+                    contentAlignment = Alignment.Center) {
+                    Text(draft.guidedWorkSet.toString().padStart(2, '0'),
+                        fontWeight = FontWeight.Black, fontSize = 22.sp,
+                        color = PulseColors.Accent)
+                }
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Serie di riscaldamento", fontWeight = FontWeight.Bold,
-                        color = PulseColors.Foreground, fontSize = 13.sp)
-                    Text("Registrata, ma non scala le serie allenanti",
-                        color = PulseColors.Muted, fontSize = 11.sp)
+                    Text("SERIE ATTUALE", color = PulseColors.Accent,
+                        fontWeight = FontWeight.Bold, letterSpacing = 1.sp, fontSize = 10.sp)
+                    Text("${draft.guidedWorkSet} di ${exercise.sets}",
+                        color = PulseColors.Foreground, fontWeight = FontWeight.ExtraBold,
+                        fontSize = 19.sp)
+                }
+                Surface(color = PulseColors.Raised, shape = RoundedCornerShape(12.dp)) {
+                    Text(if (exercise.timeBased) "TEMPO" else "FORZA",
+                        Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        color = PulseColors.Muted, fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold)
                 }
             }
-        }
-        Spacer(Modifier.height(16.dp))
-        SolidButton(if (warmup) "Registra riscaldamento" else "Serie completata · Avvia recupero",
-            enabled = valid, onClick = { onSave(weight, reps, warmup) })
-        if (!valid) {
-            Spacer(Modifier.height(8.dp))
-            Text(if (exercise.timeBased) "Indica il peso (anche 0 kg) e la durata in secondi."
-                else "Indica il peso (anche 0 kg) e almeno una ripetizione.",
-                color = PulseColors.Muted, fontSize = 11.sp)
+            Spacer(Modifier.height(18.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text("PESO · KG", color = PulseColors.Muted, fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(7.dp))
+                    OutlinedTextField(
+                        value = weight,
+                        onValueChange = { next ->
+                            if (next.length <= 7 && next.all { it.isDigit() || it == ',' || it == '.' })
+                                weight = next
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("0") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontSize = 25.sp, fontWeight = FontWeight.Bold,
+                            color = PulseColors.Foreground
+                        ),
+                        shape = RoundedCornerShape(15.dp)
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(onClick = { adjustWeight(-2.5) },
+                            contentPadding = PaddingValues(horizontal = 5.dp)) {
+                            Text("−2,5", fontSize = 12.sp, color = PulseColors.Accent)
+                        }
+                        TextButton(onClick = { adjustWeight(2.5) },
+                            contentPadding = PaddingValues(horizontal = 5.dp)) {
+                            Text("+2,5", fontSize = 12.sp, color = PulseColors.Accent)
+                        }
+                    }
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(if (exercise.timeBased) "DURATA · SEC" else "RIPETIZIONI",
+                        color = PulseColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(7.dp))
+                    OutlinedTextField(
+                        value = reps,
+                        onValueChange = { next ->
+                            if (next.length <= 3 && next.all(Char::isDigit)) reps = next
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("0") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontSize = 25.sp, fontWeight = FontWeight.Bold,
+                            color = PulseColors.Foreground
+                        ),
+                        shape = RoundedCornerShape(15.dp)
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        TextButton(onClick = { adjustReps(-1) },
+                            contentPadding = PaddingValues(horizontal = 5.dp)) {
+                            Text("−1", fontSize = 12.sp, color = PulseColors.Accent)
+                        }
+                        TextButton(onClick = { adjustReps(1) },
+                            contentPadding = PaddingValues(horizontal = 5.dp)) {
+                            Text("+1", fontSize = 12.sp, color = PulseColors.Accent)
+                        }
+                    }
+                }
+            }
+            Surface(
+                color = if (warmup) PulseColors.SoftGreen else PulseColors.Raised,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().clickable { warmup = !warmup }
+            ) {
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = warmup, onCheckedChange = { warmup = it },
+                        colors = CheckboxDefaults.colors(checkedColor = PulseColors.Accent))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Riscaldamento", fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold, color = PulseColors.Foreground)
+                    Spacer(Modifier.weight(1f))
+                    Text("non conta nelle serie", fontSize = 10.sp, color = PulseColors.Muted)
+                }
+            }
+            Spacer(Modifier.height(15.dp))
+            SolidButton(
+                if (warmup) "Salva riscaldamento" else "Completa serie",
+                enabled = valid,
+                onClick = { onSave(weight, reps, warmup) }
+            )
+            if (!valid) {
+                Spacer(Modifier.height(7.dp))
+                Text("Inserisci peso (anche 0 kg) e ${if (exercise.timeBased) "secondi" else "ripetizioni"}.",
+                    color = PulseColors.Muted, fontSize = 11.sp)
+            }
         }
     }
 }
