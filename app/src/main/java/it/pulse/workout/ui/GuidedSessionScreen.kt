@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -688,36 +689,15 @@ private fun GuidedSetForm(
     exercise: Exercise,
     draft: WorkoutDraft,
     advice: ExerciseProgression?,
-    onSave: (String, String, Boolean, Int?) -> Unit
+    input: QuickSetValues,
+    onInputChange: (QuickSetValues) -> Unit
 ) {
-    val preset = draft.entry(exercise, draft.guidedWorkSet)
-    var weight by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
-        mutableStateOf(preset.weight)
-    }
-    var reps by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
-        mutableStateOf(preset.reps)
-    }
-    var warmup by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
-        mutableStateOf(false)
-    }
-    var actualRir by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
-        mutableStateOf<Int?>(null)
-    }
     val previousSet = advice?.previous(draft.guidedWorkSet)
     val suggestedKg = advice?.suggestedWeight(draft.guidedWorkSet)
-    val numericWeight = weight.replace(',', '.').toDoubleOrNull()
-    val valid = numericWeight != null && numericWeight in 0.0..10000.0 &&
-        (reps.toIntOrNull() ?: 0) in 1..999
-
-    fun adjustWeight(amount: Double) {
-        val next = ((numericWeight ?: 0.0) + amount).coerceAtLeast(0.0)
-        weight = String.format(Locale.US, "%.1f", next)
-            .trimEnd('0').trimEnd('.')
-    }
-    fun adjustReps(amount: Int) {
-        val next = ((reps.toIntOrNull() ?: 0) + amount).coerceIn(0, 999)
-        reps = next.toString()
-    }
+    // Ripeti il set precedente senza duplicare RIR o segnare la serie come fatta.
+    val previousDone = if (draft.guidedWorkSet > 1)
+        draft.entry(exercise, draft.guidedWorkSet - 1).takeIf { it.done }
+    else null
 
     Surface(
         shape = RoundedCornerShape(26.dp),
@@ -756,10 +736,10 @@ private fun GuidedSetForm(
                         fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(7.dp))
                     OutlinedTextField(
-                        value = weight,
+                        value = input.weight,
                         onValueChange = { next ->
                             if (next.length <= 7 && next.all { it.isDigit() || it == ',' || it == '.' })
-                                weight = next
+                                onInputChange(input.copy(weight = next))
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -772,11 +752,11 @@ private fun GuidedSetForm(
                         shape = RoundedCornerShape(15.dp)
                     )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(onClick = { adjustWeight(-2.5) },
+                        TextButton(onClick = { onInputChange(input.adjustKg(-2.5)) },
                             contentPadding = PaddingValues(horizontal = 5.dp)) {
                             Text("−2,5", fontSize = 12.sp, color = PulseColors.Accent)
                         }
-                        TextButton(onClick = { adjustWeight(2.5) },
+                        TextButton(onClick = { onInputChange(input.adjustKg(2.5)) },
                             contentPadding = PaddingValues(horizontal = 5.dp)) {
                             Text("+2,5", fontSize = 12.sp, color = PulseColors.Accent)
                         }
@@ -787,9 +767,10 @@ private fun GuidedSetForm(
                         color = PulseColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(7.dp))
                     OutlinedTextField(
-                        value = reps,
+                        value = input.reps,
                         onValueChange = { next ->
-                            if (next.length <= 3 && next.all(Char::isDigit)) reps = next
+                            if (next.length <= 3 && next.all(Char::isDigit))
+                                onInputChange(input.copy(reps = next))
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -802,11 +783,11 @@ private fun GuidedSetForm(
                         shape = RoundedCornerShape(15.dp)
                     )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(onClick = { adjustReps(-1) },
+                        TextButton(onClick = { onInputChange(input.adjustReps(-1)) },
                             contentPadding = PaddingValues(horizontal = 5.dp)) {
                             Text("−1", fontSize = 12.sp, color = PulseColors.Accent)
                         }
-                        TextButton(onClick = { adjustReps(1) },
+                        TextButton(onClick = { onInputChange(input.adjustReps(1)) },
                             contentPadding = PaddingValues(horizontal = 5.dp)) {
                             Text("+1", fontSize = 12.sp, color = PulseColors.Accent)
                         }
@@ -814,13 +795,14 @@ private fun GuidedSetForm(
                 }
             }
             Surface(
-                color = if (warmup) PulseColors.SoftGreen else PulseColors.Raised,
+                color = if (input.warmup) PulseColors.SoftGreen else PulseColors.Raised,
                 shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().clickable { warmup = !warmup }
+                modifier = Modifier.fillMaxWidth().clickable { onInputChange(input.copy(warmup = !input.warmup)) }
             ) {
                 Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = warmup, onCheckedChange = { warmup = it },
+                    Checkbox(checked = input.warmup,
+                        onCheckedChange = { onInputChange(input.copy(warmup = it)) },
                         colors = CheckboxDefaults.colors(checkedColor = PulseColors.Accent))
                     Spacer(Modifier.width(4.dp))
                     Text("Riscaldamento", fontSize = 13.sp,
@@ -829,8 +811,14 @@ private fun GuidedSetForm(
                     Text("non conta nelle serie", fontSize = 10.sp, color = PulseColors.Muted)
                 }
             }
-            if (!warmup) {
+            if (!input.warmup) {
                 Spacer(Modifier.height(9.dp))
+                if (previousDone != null) {
+                    TextButton(onClick = { onInputChange(input.withPreviousSet(previousDone)) }) {
+                        Text("Ripeti ultima serie: ${previousDone.weight} kg × ${previousDone.reps}",
+                            color = PulseColors.Accent, fontSize = 12.sp)
+                    }
+                }
                 if (previousSet != null) {
                     Text("Precedente: ${formatKgForWorkout(previousSet.weightKg)} kg · " +
                         "${previousSet.repetitions} ${if (exercise.timeBased) "sec" else "rep"} · " +
@@ -839,21 +827,19 @@ private fun GuidedSetForm(
                 }
                 if (suggestedKg != null) {
                     Spacer(Modifier.height(6.dp))
-                    TextButton(onClick = { weight = formatKgForWorkout(suggestedKg) }) {
+                    TextButton(onClick = {
+                        onInputChange(input.copy(weight = formatKgForWorkout(suggestedKg)))
+                    }) {
                         Text("Usa suggerimento: ${formatKgForWorkout(suggestedKg)} kg",
                             color = PulseColors.Accent, fontSize = 12.sp)
                     }
                 }
                 Spacer(Modifier.height(9.dp))
-                ActualRirPicker(actualRir, onValueChange = { actualRir = it })
+                ActualRirPicker(input.actualRir,
+                    onValueChange = { onInputChange(input.copy(actualRir = it)) })
             }
             Spacer(Modifier.height(15.dp))
-            SolidButton(
-                if (warmup) "Salva riscaldamento" else "Completa serie",
-                enabled = valid,
-                onClick = { onSave(weight, reps, warmup, actualRir) }
-            )
-            if (!valid) {
+            if (!input.valid) {
                 Spacer(Modifier.height(7.dp))
                 Text("Inserisci peso (anche 0 kg) e ${if (exercise.timeBased) "secondi" else "ripetizioni"}.",
                     color = PulseColors.Muted, fontSize = 11.sp)
