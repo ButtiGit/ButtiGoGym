@@ -270,6 +270,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     }
     val repository = remember { WorkoutCatalogRepository(context.applicationContext) }
     var catalog by remember { mutableStateOf(repository.initial()) }
+    var customizedDayIds by remember { mutableStateOf(repository.customizedDayIds()) }
     var refreshState by remember { mutableStateOf("Scheda salvata sul telefono") }
     var refreshing by remember { mutableStateOf(false) }
     suspend fun fetchCatalog() {
@@ -677,7 +678,20 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                         refreshState = refreshState,
                         refreshing = refreshing,
                         guidelines = catalog.guidelines,
+                        customizedDayIds = customizedDayIds,
                         onRefresh = { coroutineScope.launch { fetchCatalog() } },
+                        onSaveDay = { dayId, exercises ->
+                            runCatching {
+                                catalog = repository.saveCustomExercises(catalog, dayId, exercises)
+                                customizedDayIds = repository.customizedDayIds()
+                            }.exceptionOrNull()?.message
+                        },
+                        onRestoreDay = { dayId ->
+                            runCatching {
+                                catalog = repository.resetCustomExercises(dayId)
+                                customizedDayIds = repository.customizedDayIds()
+                            }.exceptionOrNull()?.message
+                        },
                         onStart = ::start
                     )
                     2 -> MyselfScreen(history = history, active = draft)
@@ -735,6 +749,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                                 draft = store.loadDraft()
                                 wellness = wellnessStore.read()
                                 catalog = repository.initial()
+                                customizedDayIds = repository.customizedDayIds()
                                 waterRemindersEnabled =
                                     ReminderScheduler.enabled(context, ReminderKind.WATER)
                                 moveRemindersEnabled =

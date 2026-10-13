@@ -225,9 +225,13 @@ fun PlanScreen(
     refreshState: String,
     refreshing: Boolean,
     guidelines: List<String>,
+    customizedDayIds: Set<String>,
     onRefresh: () -> Unit,
+    onSaveDay: (String, List<Exercise>) -> String?,
+    onRestoreDay: (String) -> String?,
     onStart: (WorkoutDay) -> Unit
 ) {
+    var editingDayId by remember { mutableStateOf<String?>(null) }
     var showGuidelines by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -261,6 +265,7 @@ fun PlanScreen(
                     Eyebrow(day.weekday)
                     Spacer(Modifier.weight(1f))
                     if (activeDayId == day.id) LabelChip("IN CORSO", selected = true)
+                    else if (day.id in customizedDayIds) LabelChip("PERSONALIZZATA")
                     else if (day.optional) LabelChip("FACOLTATIVO")
                 }
                 Spacer(Modifier.height(17.dp))
@@ -274,9 +279,19 @@ fun PlanScreen(
                     (if (day.optionalSetCount > 0) " · +${day.optionalSetCount} SERIE FACOLTATIVE" else ""),
                     PulseColors.Accent)
                 Spacer(Modifier.height(10.dp))
-                TextButton(onClick = { expanded = !expanded }) {
-                    Text(if (expanded) "Chiudi ↑" else "Vedi esercizi ↓",
-                        color = PulseColors.Accent, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { expanded = !expanded }) {
+                        Text(if (expanded) "Chiudi ↑" else "Vedi esercizi ↓",
+                            color = PulseColors.Accent, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    OutlinedButton(
+                        onClick = { editingDayId = day.id },
+                        shape = RoundedCornerShape(13.dp),
+                        border = BorderStroke(1.dp, PulseColors.Accent)
+                    ) {
+                        Text("Modifica", color = PulseColors.Accent, fontWeight = FontWeight.Bold)
+                    }
                 }
                 if (expanded) {
                     HorizontalDivider(color = PulseColors.Border)
@@ -335,6 +350,17 @@ fun PlanScreen(
                 }
             }
         }
+    }
+
+    val selectedDay = days.firstOrNull { it.id == editingDayId }
+    if (selectedDay != null) {
+        PlanDayEditor(
+            day = selectedDay,
+            customized = selectedDay.id in customizedDayIds,
+            onSave = { exercises -> onSaveDay(selectedDay.id, exercises) },
+            onRestore = { onRestoreDay(selectedDay.id) },
+            onClose = { editingDayId = null }
+        )
     }
 }
 
