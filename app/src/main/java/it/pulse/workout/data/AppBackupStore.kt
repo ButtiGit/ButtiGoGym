@@ -247,6 +247,25 @@ class AppBackupStore(context: Context) {
             require(refs.all { "photos/$it" in actual }) {
                 "Il backup non contiene tutte le foto collegate allo storico"
             }
+            // Un'estensione .jpg/.png da sola non dimostra che il file sia
+            // un'immagine. Non installare file arbitrari dentro l'app.
+            actual.keys.forEach { path ->
+                val file = File(stage, path)
+                val signature = file.inputStream().use { stream ->
+                    ByteArray(8).also { buffer ->
+                        require(stream.read(buffer) == buffer.size) { "Immagine non valida" }
+                    }
+                }
+                if (path.startsWith("photos/")) {
+                    require((signature[0].toInt() and 0xff) == 0xff &&
+                        (signature[1].toInt() and 0xff) == 0xd8 &&
+                        (signature[2].toInt() and 0xff) == 0xff) { "JPEG non valido" }
+                } else {
+                    require(signature.contentEquals(byteArrayOf(
+                        0x89.toByte(), 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
+                    ))) { "PNG non valido" }
+                }
+            }
             return Archive(root, stage, preview(root))
         } catch (error: Exception) {
             stage.deleteRecursively()
