@@ -716,7 +716,7 @@ private fun DashboardSectionTitle(title: String, subtitle: String = "") {
 private fun WidgetCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
+        color = PulseColors.Surface,
         shape = RoundedCornerShape(26.dp),
         border = BorderStroke(1.dp, PulseColors.Border),
         shadowElevation = 1.dp
@@ -750,7 +750,7 @@ private fun StreakTile(
     }
     Surface(
         modifier = modifier.height(148.dp),
-        color = if (accentBackground) PulseColors.SoftGreen else Color.White,
+        color = if (accentBackground) PulseColors.SoftGreen else PulseColors.Surface,
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, if (accentBackground) PulseColors.SoftGreen else PulseColors.Border)
     ) {
@@ -761,7 +761,7 @@ private fun StreakTile(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Box(Modifier.size(33.dp).background(
-                    if (accentBackground) Color.White else PulseColors.SoftGreen,
+                    if (accentBackground) PulseColors.Surface else PulseColors.SoftGreen,
                     RoundedCornerShape(11.dp)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -828,7 +828,7 @@ private fun ProgressMetric(
         targetValue = fraction.coerceIn(0f, 1f),
         animationSpec = tween(950), label = "Indicatore $label"
     )
-    Surface(modifier = modifier, color = Color.White, shape = RoundedCornerShape(20.dp),
+    Surface(modifier = modifier, color = PulseColors.Surface, shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, PulseColors.Border)) {
         Column(Modifier.padding(12.dp)) {
             Text(label, fontSize = 9.sp, color = PulseColors.Muted,
