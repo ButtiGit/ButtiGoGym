@@ -33,6 +33,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -610,6 +612,10 @@ private fun PulseApp(
                         NavigationBarItem(
                             selected = tab == index,
                             onClick = { tab = index },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Sezione $label"
+                            },
+                            alwaysShowLabel = true,
                             icon = { Icon(icon, contentDescription = null) },
                             label = { Text(label) },
                             colors = NavigationBarItemDefaults.colors(

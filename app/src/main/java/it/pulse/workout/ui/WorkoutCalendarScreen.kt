@@ -22,6 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -173,7 +177,7 @@ fun WorkoutCalendarScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         week.forEach { date ->
                             if (date == null) {
-                                Spacer(Modifier.weight(1f).height(59.dp))
+                                Spacer(Modifier.weight(1f).height(60.dp))
                             } else {
                                 val status = WorkoutCalendarRules.status(
                                     date, entries, completedDates, restDates, today)
@@ -184,12 +188,19 @@ fun WorkoutCalendarScreen(
                                     else if (filled) PulseColors.Raised else PulseColors.Surface
                                 val outline = if (selectedDay) PulseColors.Accent else PulseColors.Border
                                 Column(
-                                    Modifier.weight(1f).height(59.dp)
+                                    Modifier.weight(1f).heightIn(min = 60.dp)
                                         .background(background, RoundedCornerShape(12.dp))
                                         .border(if (selectedDay) 2.dp else 1.dp, outline,
                                             RoundedCornerShape(12.dp))
-                                        .clickable { selectDate(date) }
-                                        .padding(top = 7.dp),
+                                        .clickable(
+                                            role = Role.Button,
+                                            onClickLabel = "Apri il giorno ${date.dayOfMonth}"
+                                        ) { selectDate(date) }
+                                        .semantics(mergeDescendants = true) {
+                                            contentDescription = "${date.format(italianDay)}, ${status.title()}"
+                                            selected = selectedDay
+                                        }
+                                        .padding(top = 7.dp, bottom = 4.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(date.dayOfMonth.toString(), color = PulseColors.Foreground,
@@ -207,8 +218,9 @@ fun WorkoutCalendarScreen(
                     Spacer(Modifier.height(5.dp))
                 }
                 Spacer(Modifier.height(9.dp))
-                Text("✓ Fatto     ● Programmato     – Riposo     × Saltato",
-                    color = PulseColors.Muted, fontSize = 10.sp)
+                Text("✓ Completato  ·  ● Programmato  ·  – Riposo  ·  × Saltato",
+                    color = PulseColors.Muted,
+                    style = MaterialTheme.typography.bodySmall)
             }
         }
 
@@ -363,7 +375,8 @@ private fun CalendarPanel(content: @Composable ColumnScope.() -> Unit) {
 private fun CalendarStat(title: String, value: Int, modifier: Modifier) {
     Column(modifier.background(PulseColors.Raised, RoundedCornerShape(12.dp))
         .padding(12.dp)) {
-        Text(title, color = PulseColors.Muted, fontSize = 10.sp)
+        Text(title, color = PulseColors.Muted,
+            style = MaterialTheme.typography.labelMedium)
         Text(value.toString(), color = PulseColors.Foreground,
             fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
     }

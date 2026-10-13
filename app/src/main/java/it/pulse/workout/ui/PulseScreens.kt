@@ -250,6 +250,18 @@ fun PlanScreen(
                 Text(refreshState, color = PulseColors.Muted, fontSize = 11.sp)
             Spacer(Modifier.height(22.dp))
         }
+        if (days.isEmpty()) {
+            item {
+                BGEmptyState(
+                    title = "Scheda ancora non disponibile",
+                    description = "Controlla la connessione o riprova ad aggiornare la scheda. " +
+                        "Il tuo storico resta salvato sul telefono.",
+                    symbol = Icons.Default.PlayArrow,
+                    actionLabel = "Riprova aggiornamento",
+                    onAction = onRefresh
+                )
+            }
+        }
         items(days, key = { it.id }) { day ->
             var expanded by remember(day.id) { mutableStateOf(false) }
             PulseCard(Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(BGMotion.duration(240)))) {
@@ -328,7 +340,14 @@ fun PlanScreen(
             Spacer(Modifier.height(9.dp))
             PulseCard(Modifier.fillMaxWidth()
                 .animateContentSize(animationSpec = tween(BGMotion.duration(240)))
-                .clickable { showGuidelines = !showGuidelines }) {
+                .clickable(
+                    onClickLabel = if (showGuidelines) "Nascondi note della scheda"
+                        else "Mostra note della scheda",
+                    role = androidx.compose.ui.semantics.Role.Button
+                ) { showGuidelines = !showGuidelines }
+                .semantics {
+                    stateDescription = if (showGuidelines) "Dettagli aperti" else "Dettagli chiusi"
+                }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Note e progressione", fontSize = 15.sp,
                         fontWeight = FontWeight.Bold, color = PulseColors.Foreground)
@@ -416,7 +435,7 @@ fun HistoryScreen(
                         trackColor = PulseColors.Raised
                     )
                     Spacer(Modifier.height(15.dp))
-                    Eyebrow(if (expanded) "NASCONDI DETTAGLI  ↑" else "VEDI KG E RIPETIZIONI  ↓", PulseColors.Accent)
+                    Eyebrow(if (expanded) "DETTAGLI APERTI  ↑" else "APRI KG E RIPETIZIONI  ↓", PulseColors.Accent)
                     if (expanded) {
                         Spacer(Modifier.height(14.dp))
                         HorizontalDivider(color = PulseColors.Border)

@@ -105,7 +105,7 @@ fun MyselfScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(painterResource(R.drawable.buttigogym_mascot),
                     contentDescription = "Logo ButtiGoGym",
-                    modifier = Modifier.size(60.dp).clip(RoundedCornerShape(18.dp)))
+                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)))
                 Spacer(Modifier.width(13.dp))
                 Column(Modifier.weight(1f)) {
                     Text("I TUOI PROGRESSI", color = PulseColors.Accent,
@@ -121,18 +121,11 @@ fun MyselfScreen(
             // Tocca i muscoli sulla mappa per aprire direttamente i progressi.
         }
         item {
-            Button(
-                onClick = { detailedAnalytics = true },
-                modifier = Modifier.fillMaxWidth().height(53.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-            ) {
-                Icon(Icons.Default.BarChart, contentDescription = null,
-                    modifier = Modifier.size(19.dp))
-                Spacer(Modifier.width(10.dp))
-                Text("Grafici, forza e record", fontWeight = FontWeight.ExtraBold,
-                    fontSize = 15.sp, color = Color.White)
-            }
+            BGPrimaryButton(
+                label = "Grafici, forza e record",
+                icon = Icons.Default.BarChart,
+                onClick = { detailedAnalytics = true }
+            )
         }
         item {
             OutlinedButton(

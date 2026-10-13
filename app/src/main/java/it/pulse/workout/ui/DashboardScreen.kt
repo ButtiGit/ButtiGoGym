@@ -158,7 +158,7 @@ fun DashboardScreen(
                 Surface(color = PulseColors.SoftGreen, shape = CircleShape) {
                     Text(personalSettings.goal.compactLabel,
                         Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        fontSize = 10.sp, fontWeight = FontWeight.Bold, color = PulseColors.Accent)
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PulseColors.Accent)
                 }
             }
         }
@@ -195,9 +195,9 @@ fun DashboardScreen(
                                 fontSize = 10.sp, letterSpacing = 0.7.sp)
                         }
                         Spacer(Modifier.weight(1f))
-                        Image(painter = painterResource(R.drawable.buttigogym_mascot),
-                            contentDescription = null,
-                            modifier = Modifier.size(66.dp).clip(RoundedCornerShape(18.dp)))
+                        Icon(Icons.Default.FitnessCenter,
+                            contentDescription = null, tint = Color.White.copy(alpha = .9f),
+                            modifier = Modifier.size(27.dp))
                     }
                     Spacer(Modifier.height(20.dp))
                     Text(current.name, color = Color.White, fontSize = 25.sp,
@@ -208,7 +208,7 @@ fun DashboardScreen(
                     Spacer(Modifier.height(20.dp))
                     Button(
                         onClick = { onStart(current) },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = BGLayout.controlHeight),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White, contentColor = PulseColors.Accent
@@ -745,8 +745,8 @@ private fun StreakTile(
     val wobble = remember { Animatable(0f) }
     LaunchedEffect(value, animateFlame) {
         wobble.snapTo(0f)
-        if (animateFlame && value > 0) {
-            // 6 × 500 ms: la fiamma si muove tre secondi e poi si ferma.
+        if (animateFlame && value > 0 && BGMotion.duration(1) > 0) {
+            // Disattiva l'animazione quando Android chiede di ridurre il movimento.
             repeat(6) {
                 wobble.animateTo(9f, animationSpec = tween(125))
                 wobble.animateTo(-9f, animationSpec = tween(125))
