@@ -84,6 +84,7 @@ fun DashboardScreen(
     onToggleMoveReminder: (Boolean) -> Unit,
     onEnableReminderNotifications: () -> Unit,
     backupStatus: String,
+    backupBusy: Boolean,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit
 ) {
@@ -542,19 +543,23 @@ fun DashboardScreen(
                 }
                 if (backupExpanded) {
                     Spacer(Modifier.height(12.dp))
-                    Text("Esporta i progressi prima di disinstallare l'app.",
+                    Text("ZIP con allenamenti, foto, recap e preferenze. " +
+                        "Il file non è cifrato: conservalo privatamente.",
                         color = PulseColors.Muted, fontSize = 11.sp)
                     Spacer(Modifier.height(10.dp))
-                    Button(onClick = onExportBackup, modifier = Modifier.fillMaxWidth(),
+                    Button(onClick = onExportBackup, enabled = !backupBusy,
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)) {
-                        Text("Esporta backup", color = Color.White)
+                        Text(if (backupBusy) "Attendi…" else "Esporta backup ZIP",
+                            color = Color.White)
                     }
                     Spacer(Modifier.height(7.dp))
-                    OutlinedButton(onClick = onImportBackup, modifier = Modifier.fillMaxWidth(),
+                    OutlinedButton(onClick = onImportBackup, enabled = !backupBusy,
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                         border = BorderStroke(1.dp, PulseColors.Border)) {
-                        Text("Ripristina backup", color = PulseColors.Accent)
+                        Text("Ripristina ZIP o vecchio JSON", color = PulseColors.Accent)
                     }
                 }
                 if (backupStatus.isNotBlank()) {
