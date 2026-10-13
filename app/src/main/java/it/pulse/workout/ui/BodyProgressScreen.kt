@@ -134,23 +134,11 @@ fun BodyProgressScreen(onBack: () -> Unit) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(PulseColors.Background),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 40.dp),
+        contentPadding = PaddingValues(start = BGLayout.pageHorizontal, end = BGLayout.pageHorizontal, top = 16.dp, bottom = 40.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Indietro",
-                        tint = PulseColors.Foreground)
-                }
-                Spacer(Modifier.width(4.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("MYSELF", color = PulseColors.Accent, fontSize = 10.sp,
-                        fontWeight = FontWeight.ExtraBold)
-                    Text("Evoluzione fisica", color = PulseColors.Foreground,
-                        fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
-                }
-            }
+            BGBackHeader("Myself", "Evoluzione fisica", onBack)
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -178,19 +166,14 @@ fun BodyProgressScreen(onBack: () -> Unit) {
         }
         if (entries.isEmpty()) {
             item {
-                Surface(
-                    color = PulseColors.Surface, shape = RoundedCornerShape(20.dp),
-                    border = BorderStroke(1.dp, PulseColors.Border)
-                ) {
-                    Column(Modifier.fillMaxWidth().padding(20.dp)) {
-                        Text("Inizia da oggi", color = PulseColors.Foreground,
-                            fontSize = 19.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(6.dp))
-                        Text("Registra una misura o scatta una foto. Potrai confrontare " +
-                            "i cambiamenti scegliendo due date diverse.",
-                            color = PulseColors.Muted, fontSize = 13.sp)
-                    }
-                }
+                BGEmptyState(
+                    title = "Il tuo punto di partenza",
+                    description = "Registra una misura o aggiungi una foto. " +
+                        "Poi scegli due date per confrontare i cambiamenti.",
+                    symbol = Icons.Default.CameraAlt,
+                    actionLabel = "Registra la prima misura",
+                    onAction = { chooseDate { editorDate = it } }
+                )
             }
         } else {
             item {

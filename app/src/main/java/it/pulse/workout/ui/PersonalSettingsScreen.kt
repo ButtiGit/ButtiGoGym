@@ -60,23 +60,11 @@ fun PersonalSettingsScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(PulseColors.Background),
-        contentPadding = PaddingValues(18.dp),
+        contentPadding = PaddingValues(BGLayout.pageHorizontal),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Indietro",
-                        tint = PulseColors.Foreground)
-                }
-                Spacer(Modifier.width(6.dp))
-                Column {
-                    Text("MYSELF / PROFILO", color = PulseColors.Accent, fontSize = 10.sp,
-                        fontWeight = FontWeight.ExtraBold)
-                    Text("Impostazioni personali", color = PulseColors.Foreground,
-                        fontWeight = FontWeight.ExtraBold, fontSize = 24.sp)
-                }
-            }
+            BGBackHeader("Myself / profilo", "Impostazioni personali", onBack)
         }
         item {
             SettingsPanel("Obiettivo") {
@@ -265,13 +253,10 @@ fun PersonalSettingsScreen(
 
 @Composable
 private fun SettingsPanel(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Surface(shape = RoundedCornerShape(20.dp), color = PulseColors.Surface,
-        border = BorderStroke(1.dp, PulseColors.Border)) {
-        Column(Modifier.fillMaxWidth().padding(17.dp)) {
-            Text(title, fontWeight = FontWeight.ExtraBold, color = PulseColors.Foreground,
-                fontSize = 18.sp)
-            Spacer(Modifier.height(12.dp))
-            content()
-        }
+    BGCard(padding = 18.dp) {
+        Text(title, style = MaterialTheme.typography.titleMedium,
+            color = PulseColors.Foreground)
+        Spacer(Modifier.height(12.dp))
+        content()
     }
 }

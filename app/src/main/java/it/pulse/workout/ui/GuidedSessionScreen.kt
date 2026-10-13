@@ -89,6 +89,7 @@ fun GuidedSessionScreen(
     onTestNotification: () -> Unit,
     onRetryTimer: () -> Unit
 ) {
+    androidx.activity.compose.BackHandler(onBack = onBack)
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(draft.startedAt) {
         while (true) {

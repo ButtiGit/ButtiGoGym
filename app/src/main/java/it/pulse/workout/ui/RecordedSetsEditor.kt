@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
@@ -47,7 +49,16 @@ internal fun RecordedSetsEditor(
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 13.dp)) {
             Row(
-                Modifier.fillMaxWidth().clickable { expanded = !expanded },
+                Modifier.fillMaxWidth()
+                    .heightIn(min = BGLayout.minTouch)
+                    .clickable(
+                        onClickLabel = if (expanded) "Nascondi serie salvate"
+                            else "Mostra serie salvate",
+                        role = androidx.compose.ui.semantics.Role.Button
+                    ) { expanded = !expanded }
+                    .semantics {
+                        stateDescription = if (expanded) "Espanso" else "Compresso"
+                    },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {

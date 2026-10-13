@@ -731,7 +731,7 @@ private fun PulseApp(
                     }
                 )
             } else {
-                Crossfade(targetState = tab, animationSpec = tween(180),
+                Crossfade(targetState = tab, animationSpec = tween(it.pulse.workout.ui.BGMotion.duration(180)),
                     label = "Cambio schermata") { selectedTab ->
                 when (selectedTab) {
                     0 -> DashboardScreen(

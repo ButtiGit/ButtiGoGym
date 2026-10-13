@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
@@ -93,14 +95,7 @@ private fun LabelChip(label: String, selected: Boolean = false) {
 
 @Composable
 private fun PulseCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier = modifier,
-        color = PulseColors.Surface,
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, PulseColors.Border)
-    ) {
-        Column(Modifier.padding(20.dp), content = content)
-    }
+    BGCard(modifier = modifier, padding = 20.dp, content = content)
 }
 
 @Composable
@@ -257,7 +252,7 @@ fun PlanScreen(
         }
         items(days, key = { it.id }) { day ->
             var expanded by remember(day.id) { mutableStateOf(false) }
-            PulseCard(Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(330))) {
+            PulseCard(Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(BGMotion.duration(240)))) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(if (day.optional) "★" else "0${days.indexOf(day) + 1}",
                         color = PulseColors.Accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -332,7 +327,7 @@ fun PlanScreen(
         item {
             Spacer(Modifier.height(9.dp))
             PulseCard(Modifier.fillMaxWidth()
-                .animateContentSize(animationSpec = tween(320))
+                .animateContentSize(animationSpec = tween(BGMotion.duration(240)))
                 .clickable { showGuidelines = !showGuidelines }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Note e progressione", fontSize = 15.sp,
@@ -385,21 +380,27 @@ fun HistoryScreen(
         }
         if (history.isEmpty()) {
             item {
-                PulseCard(Modifier.fillMaxWidth()) {
-                    Text("Si comincia da qui.", color = PulseColors.Foreground,
-                        fontWeight = FontWeight.ExtraBold, fontSize = 21.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Text("Completa il primo allenamento per vedere qui i tuoi progressi.",
-                        color = PulseColors.Muted, fontSize = 14.sp)
-                }
+                BGEmptyState(
+                    title = "Ogni storia inizia con una serie",
+                    description = "Apri Scheda, completa il tuo primo allenamento e ritroverai " +
+                        "qui carichi, ripetizioni, durata e foto.",
+                    symbol = Icons.Default.PlayArrow
+                )
             }
         } else {
             items(history, key = { it.id }) { record ->
                 val day = record.daySnapshot ?: days.firstOrNull { it.id == record.dayId }
                 var expanded by remember(record.id) { mutableStateOf(false) }
                 PulseCard(Modifier.fillMaxWidth()
-                    .animateContentSize(animationSpec = tween(300))
-                    .clickable { expanded = !expanded }) {
+                    .animateContentSize(animationSpec = tween(BGMotion.duration(240)))
+                    .clickable(
+                        onClickLabel = if (expanded) "Nascondi dettagli allenamento"
+                            else "Mostra dettagli allenamento",
+                        role = androidx.compose.ui.semantics.Role.Button
+                    ) { expanded = !expanded }
+                    .semantics {
+                        stateDescription = if (expanded) "Dettagli aperti" else "Dettagli chiusi"
+                    }) {
                     Eyebrow(italianDate(record.completedAt).uppercase(Locale.ITALIAN), PulseColors.Accent)
                     Spacer(Modifier.height(10.dp))
                     Text(day?.name ?: "Allenamento", color = PulseColors.Foreground,

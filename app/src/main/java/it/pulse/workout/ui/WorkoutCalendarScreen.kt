@@ -122,22 +122,13 @@ fun WorkoutCalendarScreen(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(PulseColors.Background),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 14.dp, bottom = 48.dp),
+        contentPadding = PaddingValues(start = BGLayout.pageHorizontal, end = BGLayout.pageHorizontal, top = 14.dp, bottom = 48.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Torna a Oggi",
-                        tint = PulseColors.Foreground)
-                }
-                Column(Modifier.weight(1f)) {
-                    Text("LA TUA SETTIMANA, SENZA STRESS", color = PulseColors.Accent,
-                        fontSize = 10.sp, fontWeight = FontWeight.ExtraBold)
-                    Text("Calendario", color = PulseColors.Foreground,
-                        fontSize = 29.sp, fontWeight = FontWeight.ExtraBold)
-                }
-                IconButton(onClick = { selectDate(today) }) {
+            BGBackHeader("Programma e recupera", "Calendario", onBack) {
+                IconButton(onClick = { selectDate(today) },
+                    modifier = Modifier.size(BGLayout.minTouch)) {
                     Icon(Icons.Default.CalendarToday, "Vai a oggi",
                         tint = PulseColors.Accent)
                 }
@@ -365,10 +356,7 @@ fun WorkoutCalendarScreen(
 
 @Composable
 private fun CalendarPanel(content: @Composable ColumnScope.() -> Unit) {
-    Surface(color = PulseColors.Surface, shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, PulseColors.Border)) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), content = content)
-    }
+    BGCard(padding = 16.dp, content = content)
 }
 
 @Composable

@@ -74,26 +74,13 @@ fun TrainingAnalyticsScreen(history: List<SessionRecord>, onBack: () -> Unit) {
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(PulseColors.Background),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 19.dp),
+        contentPadding = PaddingValues(horizontal = BGLayout.pageHorizontal, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Torna alla mappa muscolare",
-                        tint = PulseColors.Foreground)
-                }
-                Spacer(Modifier.width(6.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("STORICO E RISULTATI", color = PulseColors.Accent,
-                        fontSize = 10.sp, fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 1.0.sp)
-                    Text("Grafici & record", color = PulseColors.Foreground,
-                        fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
-                }
+            BGBackHeader("Storico e risultati", "Grafici & record", onBack) {
                 Icon(Icons.Default.BarChart, null, tint = PulseColors.Accent,
-                    modifier = Modifier.size(27.dp))
+                    modifier = Modifier.size(24.dp))
             }
         }
 
@@ -108,12 +95,12 @@ fun TrainingAnalyticsScreen(history: List<SessionRecord>, onBack: () -> Unit) {
 
         item {
             if (scope == AnalyticsScope.EXERCISE && available.isEmpty()) {
-                AnalyticsContainer {
-                    Text("Non ci sono ancora esercizi nello storico.",
-                        color = PulseColors.Foreground, fontWeight = FontWeight.Bold)
-                    Text("Completa un allenamento per iniziare a vedere i tuoi grafici.",
-                        color = PulseColors.Muted, fontSize = 12.sp)
-                }
+                BGEmptyState(
+                    title = "Qui vedrai i tuoi progressi",
+                    description = "Completa una seduta dalla scheda: grafici e record si aggiorneranno " +
+                        "soltanto con le serie salvate.",
+                    symbol = Icons.Default.BarChart
+                )
             } else {
                 AnalyticsContainer {
                     Text(if (scope == AnalyticsScope.EXERCISE) "ESERCIZIO" else "GRUPPO MUSCOLARE",
