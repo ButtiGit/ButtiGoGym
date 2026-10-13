@@ -79,12 +79,17 @@ class WorkoutStore(context: Context) {
     /** Riutilizza kg/reps dell'ultimo allenamento, senza segnare già completate le serie. */
     fun newDraft(day: WorkoutDay): WorkoutDraft {
         val previous = history().firstOrNull { it.dayId == day.id }
+        // Quando la scheda cambia, non trasciniamo le serie di esercizi rimossi
+        // o le serie extra se il numero di set è diminuito.
+        val validSetKeys = day.exercises.flatMap { exercise ->
+            (1..exercise.sets).map { number -> WorkoutDraft.key(exercise.id, number) }
+        }.toSet()
         return WorkoutDraft(
             dayId = day.id,
             daySnapshot = day,
             startedAt = System.currentTimeMillis(),
             entries = previous?.entries.orEmpty()
-                .filterKeys { !it.startsWith("warmup:") }
+                .filterKeys { it in validSetKeys }
                 .mapValues { (_, entry) -> entry.copy(done = false, warmup = false, completedAt = 0L) }
         )
     }
