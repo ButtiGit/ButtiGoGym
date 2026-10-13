@@ -1,6 +1,7 @@
 package it.pulse.workout.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -61,6 +62,10 @@ internal fun ActualRirPicker(
 
 @Composable
 internal fun ProgressionAdvicePanel(advice: ExerciseProgression) {
+    // Dettagli su richiesta, così i campi serie rimangono vicini al nome dell'esercizio.
+    var expanded by remember(advice.previousDateMillis, advice.direction) {
+        mutableStateOf(false)
+    }
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = PulseColors.Surface,
@@ -68,7 +73,10 @@ internal fun ProgressionAdvicePanel(advice: ExerciseProgression) {
         border = BorderStroke(1.dp, PulseColors.Border)
     ) {
         Column(Modifier.padding(15.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth().clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(Icons.Default.AutoGraph, contentDescription = null,
                     tint = PulseColors.Accent, modifier = Modifier.size(19.dp))
                 Spacer(Modifier.width(8.dp))
@@ -78,6 +86,9 @@ internal fun ProgressionAdvicePanel(advice: ExerciseProgression) {
                     Text(advice.headline, color = PulseColors.Foreground,
                         fontSize = 15.sp, fontWeight = FontWeight.ExtraBold)
                 }
+                Text(if (expanded) "−" else "+", color = PulseColors.Accent,
+                    fontSize = 22.sp, fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp))
                 if (advice.direction == ProgressionDirection.CONSIDER_INCREASE) {
                     Surface(color = PulseColors.SoftGreen,
                         shape = RoundedCornerShape(11.dp)) {
@@ -87,9 +98,11 @@ internal fun ProgressionAdvicePanel(advice: ExerciseProgression) {
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
-            Text(advice.explanation, color = PulseColors.Muted, fontSize = 12.sp)
-            if (advice.previousSets.isNotEmpty()) {
+            if (expanded) {
+                Spacer(Modifier.height(8.dp))
+                Text(advice.explanation, color = PulseColors.Muted, fontSize = 12.sp)
+            }
+            if (expanded && advice.previousSets.isNotEmpty()) {
                 Spacer(Modifier.height(13.dp))
                 Text("ULTIMA SESSIONE" +
                     (advice.previousDateMillis?.let {
