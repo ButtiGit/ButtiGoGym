@@ -104,7 +104,7 @@ fun TrainingAnalyticsScreen(history: List<SessionRecord>, onBack: () -> Unit) {
             } else {
                 AnalyticsContainer {
                     Text(if (scope == AnalyticsScope.EXERCISE) "ESERCIZIO" else "GRUPPO MUSCOLARE",
-                        color = PulseColors.Muted, fontSize = 10.sp,
+                        color = PulseColors.Muted, fontSize = 12.sp,
                         fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
                     Box {
@@ -197,11 +197,11 @@ fun TrainingAnalyticsScreen(history: List<SessionRecord>, onBack: () -> Unit) {
                 }
                 if (activeMeasure == AnalyticsMeasure.ESTIMATED_STRENGTH) {
                     Text("Forza = 1RM stimato con Epley; non è un massimale misurato.",
-                        color = PulseColors.Muted, fontSize = 10.sp)
+                        color = PulseColors.Muted, fontSize = 12.sp)
                 }
                 if (scope == AnalyticsScope.MUSCLE) {
                     Text("Volume attribuito alle serie dei muscoli primari; uno stesso esercizio può coinvolgerne più di uno.",
-                        color = PulseColors.Muted, fontSize = 10.sp)
+                        color = PulseColors.Muted, fontSize = 12.sp)
                 }
             }
         }
@@ -301,7 +301,7 @@ private fun AnalyticsMetricChoice(label: String, selected: Boolean, onClick: () 
 private fun AnalyticsNumberCard(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier.background(PulseColors.Raised, RoundedCornerShape(15.dp))
         .padding(12.dp)) {
-        Text(label, color = PulseColors.Muted, fontSize = 10.sp, maxLines = 2)
+        Text(label, color = PulseColors.Muted, fontSize = 12.sp, maxLines = 2)
         Spacer(Modifier.height(6.dp))
         Text(value, color = PulseColors.Foreground, fontSize = 15.sp,
             fontWeight = FontWeight.ExtraBold, maxLines = 1,
@@ -363,7 +363,7 @@ private fun AnalyticsTrendChart(points: List<AnalyticsPoint>, measure: Analytics
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         points.forEach { point ->
             Text(point.label.replace(" ", "\n"),
-                color = PulseColors.Muted, fontSize = 9.sp,
+                color = PulseColors.Muted, fontSize = 11.sp,
                 modifier = Modifier.weight(1f),
                 maxLines = 2, lineHeight = 11.sp)
         }

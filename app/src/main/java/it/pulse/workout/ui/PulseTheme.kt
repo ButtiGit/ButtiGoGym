@@ -26,7 +26,7 @@ private data class PulsePalette(
 private val LightPalette = PulsePalette(
     Color(0xFFF6F8F6), Color.White, Color(0xFFF1F5F2),
     Color(0xFFE9F3EA), Color(0xFF106119), Color(0xFF083C15),
-    Color(0xFFF1A6B7), Color(0xFF1A2920), Color(0xFF738276),
+    Color(0xFFF1A6B7), Color(0xFF1A2920), Color(0xFF617365),
     Color(0xFFE5ECE6), Color.White
 )
 private val DarkPalette = PulsePalette(

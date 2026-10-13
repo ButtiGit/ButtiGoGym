@@ -388,7 +388,7 @@ fun DashboardScreen(
                     }
                     Spacer(Modifier.height(6.dp))
                     if (stepStatus.startsWith("Consenti") || !stepStatus.startsWith("Passi automatici"))
-                        Text(stepStatus, color = PulseColors.Muted, fontSize = 10.sp)
+                        Text(stepStatus, color = PulseColors.Muted, fontSize = 12.sp)
                     if (stepStatus.startsWith("Consenti")) {
                         TextButton(onClick = onRequestStepAccess) {
                             Text("Attiva contapassi del telefono", color = PulseColors.Accent)
@@ -454,7 +454,7 @@ fun DashboardScreen(
             WidgetCard {
                 val animatedWeek by animateFloatAsState(
                     (summary.workoutDaysThisWeek / 3f).coerceIn(0f, 1f),
-                    animationSpec = tween(900), label = "Sedute settimanali"
+                    animationSpec = tween(BGMotion.duration(650)), label = "Sedute settimanali"
                 )
                 LinearProgressIndicator(
                     progress = { animatedWeek },
@@ -593,7 +593,7 @@ fun DashboardScreen(
                 }
                 Spacer(Modifier.height(6.dp))
                 Text("Gli avvisi seguono l'orario del telefono. Android può ritardarli.",
-                    color = PulseColors.Muted, fontSize = 10.sp)
+                    color = PulseColors.Muted, fontSize = 12.sp)
             }
         }
 
@@ -787,7 +787,7 @@ private fun StreakTile(
                     fontWeight = FontWeight.ExtraBold, color = PulseColors.Foreground,
                     lineHeight = 34.sp)
                 Spacer(Modifier.width(5.dp))
-                Text(unit, color = PulseColors.Muted, fontSize = 10.sp,
+                Text(unit, color = PulseColors.Muted, fontSize = 12.sp,
                     modifier = Modifier.padding(bottom = 5.dp))
             }
             Text(title, color = PulseColors.Foreground, fontSize = 13.sp,
@@ -802,7 +802,7 @@ private fun StreakTile(
 private fun StepsRing(value: Int, modifier: Modifier) {
     val ratio = (value.toFloat() / StreakCalculator.STEP_GOAL).coerceIn(0f, 1f)
     val progress by animateFloatAsState(ratio,
-        animationSpec = tween(durationMillis = 1000), label = "Progressi passi")
+        animationSpec = tween(durationMillis = BGMotion.duration(750)), label = "Progressi passi")
     val ringTrack = PulseColors.SoftGreen
     val ringProgress = PulseColors.Accent
     Box(modifier, contentAlignment = Alignment.Center) {
@@ -832,17 +832,17 @@ private fun ProgressMetric(
 ) {
     val animated by animateFloatAsState(
         targetValue = fraction.coerceIn(0f, 1f),
-        animationSpec = tween(950), label = "Indicatore $label"
+        animationSpec = tween(BGMotion.duration(750)), label = "Indicatore $label"
     )
     Surface(modifier = modifier, color = PulseColors.Surface, shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, PulseColors.Border)) {
         Column(Modifier.padding(12.dp)) {
-            Text(label, fontSize = 9.sp, color = PulseColors.Muted,
+            Text(label, fontSize = 11.sp, color = PulseColors.Muted,
                 fontWeight = FontWeight.Bold, letterSpacing = .9.sp)
             Spacer(Modifier.height(8.dp))
             Text(value, fontWeight = FontWeight.Black, fontSize = 23.sp,
                 color = PulseColors.Foreground, maxLines = 1)
-            Text(hint, color = PulseColors.Muted, fontSize = 9.sp,
+            Text(hint, color = PulseColors.Muted, fontSize = 11.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(

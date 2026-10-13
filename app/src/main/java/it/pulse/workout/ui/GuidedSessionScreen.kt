@@ -161,7 +161,8 @@ fun GuidedSessionScreen(
         onUpdate(updated)
     }
     LaunchedEffect(draft.guidedExerciseIndex, draft.guidedWorkSet) {
-        scrollState.animateScrollToItem(0)
+        if (BGMotion.duration(1) > 0) scrollState.animateScrollToItem(0)
+        else scrollState.scrollToItem(0)
     }
 
     Column(Modifier.fillMaxSize().background(PulseColors.Background)) {
@@ -279,7 +280,7 @@ fun GuidedSessionScreen(
                             }
                             if (timerStatus.startsWith("error:")) {
                                 Text(timerStatus.removePrefix("error:"),
-                                    color = PulseColors.Muted, fontSize = 10.sp)
+                                    color = PulseColors.Muted, fontSize = 12.sp)
                             }
                         } else {
                             TextButton(onClick = onTestNotification) {
@@ -322,7 +323,7 @@ fun GuidedSessionScreen(
                     Surface(
                         shape = RoundedCornerShape(28.dp),
                         color = PulseColors.AccentDeep,
-                        modifier = Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(270))
+                        modifier = Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(BGMotion.duration(240)))
                     ) {
                         Column(
                             Modifier.background(Brush.linearGradient(
@@ -459,7 +460,7 @@ fun GuidedSessionScreen(
                                 val ratio by animateFloatAsState(
                                     targetValue = (remainingSeconds.toFloat() /
                                         exercise.restSeconds.coerceAtLeast(1)).coerceIn(0f, 1f),
-                                    animationSpec = tween(650), label = "Recupero rimanente"
+                                    animationSpec = tween(BGMotion.duration(650)), label = "Recupero rimanente"
                                 )
                                 LinearProgressIndicator(progress = { ratio },
                                     modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
@@ -735,7 +736,7 @@ private fun GuidedSetForm(
                 Surface(color = PulseColors.Raised, shape = RoundedCornerShape(12.dp)) {
                     Text(if (exercise.timeBased) "TEMPO" else "FORZA",
                         Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                        color = PulseColors.Muted, fontSize = 10.sp,
+                        color = PulseColors.Muted, fontSize = 12.sp,
                         fontWeight = FontWeight.Bold)
                 }
             }

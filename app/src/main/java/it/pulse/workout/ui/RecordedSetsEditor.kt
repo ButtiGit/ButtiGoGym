@@ -131,7 +131,7 @@ internal fun RecordedSetsEditor(
                     }
                 }
                 Text("Le correzioni modificano solo la sessione in corso.",
-                    color = PulseColors.Muted, fontSize = 10.sp)
+                    color = PulseColors.Muted, fontSize = 12.sp)
             }
         }
     }

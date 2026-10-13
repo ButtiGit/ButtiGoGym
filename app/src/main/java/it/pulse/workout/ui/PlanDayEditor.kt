@@ -114,7 +114,7 @@ fun PlanDayEditor(
                                     Text("${exercise.sets} × ${exercise.target} · ${exercise.restSeconds}s riposo",
                                         color = PulseColors.Muted, fontSize = 11.sp)
                                     if (exercise.optional)
-                                        Text("FACOLTATIVO", color = PulseColors.Accent, fontSize = 9.sp,
+                                        Text("FACOLTATIVO", color = PulseColors.Accent, fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold)
                                 }
                                 Column {

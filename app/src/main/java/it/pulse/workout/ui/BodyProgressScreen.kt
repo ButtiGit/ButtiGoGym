@@ -227,7 +227,7 @@ fun BodyProgressScreen(onBack: () -> Unit) {
                             }
                             Spacer(Modifier.height(6.dp))
                             Text("Le variazioni non indicano da sole guadagno o perdita di muscolo.",
-                                color = PulseColors.Muted, fontSize = 10.sp)
+                                color = PulseColors.Muted, fontSize = 12.sp)
                         } else {
                             Text("Seleziona due date diverse per confrontare le misure.",
                                 color = PulseColors.Muted, fontSize = 11.sp)

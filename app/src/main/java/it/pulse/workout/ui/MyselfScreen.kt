@@ -213,7 +213,7 @@ fun MyselfScreen(
                 Spacer(Modifier.height(10.dp))
                 Text("Sono conteggi descrittivi, non un punteggio di simmetria o un obiettivo di volume. " +
                     "Una serie multi-muscolo può essere diretta per più gruppi.",
-                    color = PulseColors.Muted, fontSize = 10.sp)
+                    color = PulseColors.Muted, fontSize = 12.sp)
             }
         }
         item {
@@ -251,7 +251,7 @@ fun MyselfScreen(
                 }
                 Spacer(Modifier.height(7.dp))
                 Text("Anatomia MuscleMap · licenza MIT · Jsplice/MuscleMap",
-                    color = PulseColors.Muted, fontSize = 10.sp)
+                    color = PulseColors.Muted, fontSize = 12.sp)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -316,7 +316,7 @@ fun MyselfScreen(
                         color = PulseColors.Foreground, fontWeight = FontWeight.Bold,
                         fontSize = 12.sp)
                     Text("Stima riferita a un esercizio, non alla forza del singolo muscolo.",
-                        color = PulseColors.Muted, fontSize = 10.sp)
+                        color = PulseColors.Muted, fontSize = 12.sp)
                 }
                 Spacer(Modifier.height(20.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -365,11 +365,11 @@ fun MyselfScreen(
                         Text(value.group.label, color = PulseColors.Foreground,
                             fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         Text("Streak ${value.streakWeeks} sett. · ${shortStatus(value)}",
-                            color = PulseColors.Muted, fontSize = 10.sp)
+                            color = PulseColors.Muted, fontSize = 12.sp)
                         Spacer(Modifier.height(3.dp))
                         Text("7gg: ${value.directSets7Days} dirette · " +
                             "${value.indirectSets7Days} indirette",
-                            color = PulseColors.Muted, fontSize = 10.sp)
+                            color = PulseColors.Muted, fontSize = 12.sp)
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text("LV ${value.level}", color = PulseColors.Accent,
@@ -383,11 +383,11 @@ fun MyselfScreen(
         item {
             Text("Recupero stimato (36–72 h), XP e livelli gamificati. " +
                 "Serie e volume descrivono il lavoro, non misurano ipertrofia o recupero biologico.",
-                color = PulseColors.Muted, fontSize = 10.sp, lineHeight = 15.sp)
+                color = PulseColors.Muted, fontSize = 12.sp, lineHeight = 15.sp)
             if (active != null) {
                 Spacer(Modifier.height(8.dp))
                 Text("Il workout in corso conta dopo il salvataggio.",
-                    color = PulseColors.Muted, fontSize = 10.sp)
+                    color = PulseColors.Muted, fontSize = 12.sp)
             }
         }
     }
@@ -423,7 +423,7 @@ private fun MyselfCard(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun LevelTrack(progress: Float, height: androidx.compose.ui.unit.Dp = 9.dp) {
     val animated by animateFloatAsState(progress.coerceIn(0f,1f),
-        animationSpec = tween(950), label = "Avanzamento livello")
+        animationSpec = tween(BGMotion.duration(750)), label = "Avanzamento livello")
     LinearProgressIndicator(
         progress = { animated },
         modifier = Modifier.fillMaxWidth().height(height).clip(CircleShape),
@@ -462,7 +462,7 @@ private fun MuscleBalancePair(
 private fun SmallStat(label: String, value: String, modifier: Modifier) {
     Column(modifier.background(PulseColors.Raised, RoundedCornerShape(13.dp))
         .padding(horizontal = 8.dp, vertical = 12.dp)) {
-        Text(label, color = PulseColors.Muted, fontSize = 10.sp, maxLines = 1)
+        Text(label, color = PulseColors.Muted, fontSize = 12.sp, maxLines = 1)
         Spacer(Modifier.height(5.dp))
         Text(value, color = PulseColors.Foreground, fontWeight = FontWeight.ExtraBold,
             fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -477,7 +477,7 @@ private fun StatusCount(label: String, count: Int, tint: Color, modifier: Modifi
         Spacer(Modifier.height(7.dp))
         Text("$count", color = PulseColors.Foreground, fontSize = 23.sp,
             fontWeight = FontWeight.ExtraBold)
-        Text(label, color = PulseColors.Muted, fontSize = 9.sp,
+        Text(label, color = PulseColors.Muted, fontSize = 11.sp,
             maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -486,7 +486,7 @@ private fun LegendDot(label: String, tint: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(8.dp).background(tint, CircleShape))
         Spacer(Modifier.width(4.dp))
-        Text(label, fontSize = 9.sp, color = PulseColors.Muted)
+        Text(label, fontSize = 11.sp, color = PulseColors.Muted)
     }
 }
 
