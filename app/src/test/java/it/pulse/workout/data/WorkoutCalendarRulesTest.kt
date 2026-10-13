@@ -100,6 +100,16 @@ class WorkoutCalendarRulesTest {
         assertEquals(setOf(today), WorkoutCalendarRules.completedDates(history,zone))
     }
 
+    @Test fun todaysPlannedCompletedSessionIsNotClassifiedAsExtra() {
+        val scheduled = listOf(workout("2026-10-13"))
+        val summary = WorkoutCalendarRules.summary(
+            YearMonth.of(2026, 10), scheduled, setOf(today), emptySet(), today)
+        assertEquals(1, summary.completedDays)
+        assertEquals(0, summary.unplannedCompleted)
+        assertEquals(0, summary.plannedDue) // Today has not become an overdue plan.
+        assertNull(summary.adherencePercent)
+    }
+
     @Test fun monthlyFiguresNeverIncludeNextOrPreviousMonth() {
         val entries = listOf(workout("2026-09-30"), workout("2026-10-12"),
             workout("2026-11-01"))

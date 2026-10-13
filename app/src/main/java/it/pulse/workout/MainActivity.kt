@@ -445,7 +445,7 @@ private fun PulseApp(
     val calendarCompleted = remember(history) { WorkoutCalendarRules.completedDates(history) }
     val plannedNext = calendarEntries.asSequence()
         .filter { it.kind == CalendarEntryKind.WORKOUT && !it.date.isBefore(today) }
-        .filter { !wellness.restedOn(it.date) }
+        .filter { !wellness.restedOn(it.date) && it.date !in calendarCompleted }
         .sortedBy { it.date }
         .mapNotNull { entry -> catalog.days.firstOrNull { it.id == entry.workoutDayId } }
         .firstOrNull()

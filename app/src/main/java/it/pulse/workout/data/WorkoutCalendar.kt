@@ -131,7 +131,11 @@ object WorkoutCalendarRules {
             },
             plannedDue = due.size,
             plannedCompleted = plannedCompleted,
-            unplannedCompleted = completed.count { it !in due }
+            // Completed on a scheduled date (even today) is never an "extra".
+            unplannedCompleted = completed.count { date ->
+                entries.none { it.date == date &&
+                    it.kind in setOf(CalendarEntryKind.WORKOUT, CalendarEntryKind.SKIPPED) }
+            }
         )
     }
 }
