@@ -44,6 +44,9 @@ import it.pulse.workout.data.WorkoutDraft
 import it.pulse.workout.data.WorkoutPlan
 import it.pulse.workout.data.WorkoutStore
 import it.pulse.workout.data.WellnessStore
+import it.pulse.workout.updates.GitHubReleaseRepository
+import it.pulse.workout.updates.SafeApkUpdater
+import it.pulse.workout.updates.AppUpdateStatus
 import it.pulse.workout.notifications.RestAlertScheduler
 import it.pulse.workout.reminders.ReminderScheduler
 import it.pulse.workout.reminders.ReminderKind
@@ -395,6 +398,100 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         }
     }
 
+    // GitHub Releases è la sola sorgente di aggiornamenti installabili.
+    // Non verifica automaticamente più di una volta ogni 24 ore.
+    val releaseRepository = remember { GitHubReleaseRepository(context.applicationContext) }
+    val secureUpdater = remember { SafeApkUpdater(context.applicationContext) }
+    val installedVersion = remember { releaseRepository.installedVersion() }
+    var updateStatus by remember { mutableStateOf(releaseRepository.cachedOrNotChecked()) }
+    var updateChecking by remember { mutableStateOf(false) }
+    var updateDownloading by remember { mutableStateOf(false) }
+    var updateProgress by remember { mutableIntStateOf(0) }
+    var downloadedUpdateApk by remember { mutableStateOf<java.io.File?>(null) }
+
+    fun checkUpdates(force: Boolean) {
+        if (updateChecking || updateDownloading) return
+        updateChecking = true
+        coroutineScope.launch {
+            try {
+                val found = withContext(Dispatchers.IO) { releaseRepository.check(force) }
+                updateStatus = found
+                downloadedUpdateApk = null
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                updateStatus = AppUpdateStatus.Error(
+                    "Controllo non riuscito: ${error.message.orEmpty().take(110)}"
+                )
+            } finally {
+                updateChecking = false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { checkUpdates(force = false) }
+
+    fun downloadUpdate() {
+        val release = (updateStatus as? AppUpdateStatus.Available)?.release ?: return
+        if (updateChecking || updateDownloading) return
+        updateDownloading = true
+        updateProgress = 0
+        downloadedUpdateApk = null
+        coroutineScope.launch {
+            try {
+                val file = secureUpdater.download(release) { percent -> updateProgress = percent }
+                downloadedUpdateApk = file
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                updateStatus = AppUpdateStatus.Error(
+                    "Download non riuscito: ${error.message.orEmpty().take(150)}"
+                )
+            } finally {
+                updateDownloading = false
+            }
+        }
+    }
+
+    val installPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        val release = (updateStatus as? AppUpdateStatus.Available)?.release
+        val file = downloadedUpdateApk
+        if (secureUpdater.canRequestInstallation() && release != null && file != null) {
+            runCatching {
+                secureUpdater.verifyPackage(file, release)
+                context.startActivity(secureUpdater.installationIntent(file))
+            }.onFailure { error ->
+                updateStatus = AppUpdateStatus.Error(
+                    "Installer Android non disponibile: ${error.message.orEmpty().take(130)}"
+                )
+            }
+        } else {
+            Toast.makeText(context,
+                "Per aggiornare, consenti l'installazione da ButtiGoGym nelle impostazioni Android.",
+                Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun installUpdate() {
+        val release = (updateStatus as? AppUpdateStatus.Available)?.release ?: return
+        val file = downloadedUpdateApk ?: return
+        runCatching {
+            // Ricontrollo al click: impedisce di installare file sovrascritti.
+            secureUpdater.verifyPackage(file, release)
+            if (secureUpdater.canRequestInstallation()) {
+                context.startActivity(secureUpdater.installationIntent(file))
+            } else {
+                installPermissionLauncher.launch(secureUpdater.settingsIntent())
+            }
+        }.onFailure { error ->
+            updateStatus = AppUpdateStatus.Error(
+                "Impossibile aprire l'aggiornamento: ${error.message.orEmpty().take(120)}"
+            )
+        }
+    }
+
     Scaffold(
         containerColor = PulseColors.Background,
         bottomBar = {
@@ -555,6 +652,15 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                             if (value) requestTimerNotifications()
                         },
                         onEnableReminderNotifications = ::requestTimerNotifications,
+                        updateInstalledVersion = installedVersion,
+                        updateStatus = updateStatus,
+                        updateChecking = updateChecking,
+                        updateDownloading = updateDownloading,
+                        updateProgress = updateProgress,
+                        updateVerified = downloadedUpdateApk != null,
+                        onCheckUpdate = { checkUpdates(force = true) },
+                        onDownloadUpdate = ::downloadUpdate,
+                        onInstallUpdate = ::installUpdate,
                         backupStatus = backupStatus,
                         backupBusy = backupBusy,
                         onExportBackup = {

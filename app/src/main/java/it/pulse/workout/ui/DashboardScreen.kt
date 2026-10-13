@@ -52,6 +52,7 @@ import it.pulse.workout.data.*
 import java.text.NumberFormat
 import java.time.DayOfWeek
 import java.time.Instant
+import it.pulse.workout.updates.AppUpdateStatus
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -88,6 +89,15 @@ fun DashboardScreen(
     onToggleWaterReminder: (Boolean) -> Unit,
     onToggleMoveReminder: (Boolean) -> Unit,
     onEnableReminderNotifications: () -> Unit,
+    updateInstalledVersion: String,
+    updateStatus: AppUpdateStatus,
+    updateChecking: Boolean,
+    updateDownloading: Boolean,
+    updateProgress: Int,
+    updateVerified: Boolean,
+    onCheckUpdate: () -> Unit,
+    onDownloadUpdate: () -> Unit,
+    onInstallUpdate: () -> Unit,
     backupStatus: String,
     backupBusy: Boolean,
     onExportBackup: () -> Unit,
@@ -203,6 +213,22 @@ fun DashboardScreen(
                             contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                 }
+            }
+        }
+
+        if (updateStatus is AppUpdateStatus.Available) {
+            item {
+                ReleaseUpdatePanel(
+                    installedVersion = updateInstalledVersion,
+                    status = updateStatus,
+                    checking = updateChecking,
+                    downloading = updateDownloading,
+                    downloadProgress = updateProgress,
+                    verified = updateVerified,
+                    onCheck = onCheckUpdate,
+                    onDownload = onDownloadUpdate,
+                    onInstall = onInstallUpdate
+                )
             }
         }
 
@@ -557,6 +583,23 @@ fun DashboardScreen(
                 Spacer(Modifier.height(6.dp))
                 Text("Gli avvisi seguono l'orario del telefono. Android può ritardarli.",
                     color = PulseColors.Muted, fontSize = 10.sp)
+            }
+        }
+
+        item {
+            if (updateStatus !is AppUpdateStatus.Available) {
+                ReleaseUpdatePanel(
+                    installedVersion = updateInstalledVersion,
+                    status = updateStatus,
+                    checking = updateChecking,
+                    downloading = updateDownloading,
+                    downloadProgress = updateProgress,
+                    verified = updateVerified,
+                    onCheck = onCheckUpdate,
+                    onDownload = onDownloadUpdate,
+                    onInstall = onInstallUpdate
+                )
+                Spacer(Modifier.height(12.dp))
             }
         }
 
