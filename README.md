@@ -822,3 +822,42 @@ eseguite con l'APK cumulativa solo dopo il completamento di tutte le fasi.
   PR, snapshot storiche, muscoli primari e secondari, periodi mancanti,
   forza stimata e confronti con zero. Verifica sulla pipeline test-only,
   senza produrre APK; collaudo grafico Samsung rinviato all'APK finale.
+
+## Roadmap V1.0 — Fase 3 / Modifica 2: diario fisico e confronti prima/dopo
+
+**Solo sul branch `feature/v1-phase1-complete-backup`, senza APK intermedie e senza modifiche a `main`.**
+
+- Nella sezione **Myself → Misure, peso e foto progresso** è disponibile un
+  diario personale con registrazioni per data (anche giorni precedenti).
+- **Peso corporeo (kg)** e circonferenze **spalle, torace, vita, fianchi,
+  braccio, avambraccio, coscia e polpaccio** espresse in cm. Ogni campo è
+  facoltativo: l'utente non è costretto a inserire misure inventate.
+  I dati possono essere corretti e un'intera data eliminata con conferma.
+- **Foto progresso full-resolution** tramite fotocamera Android o galleria,
+  viste separate **fronte, profilo e retro** per la medesima data.
+  Sono ridimensionate, orientate e memorizzate solo in
+  `filesDir/body_progress/` come JPEG privati. Sostituire una vista
+  rimuove la vecchia immagine solo dopo il salvataggio del nuovo file.
+  È possibile creare una registrazione contenente **soltanto foto**.
+- Confronto di **due date** scelte dall'utente: foto dello stesso angolo
+  mostrate affiancate, differenza delle misure in cm e del peso in kg.
+  Se manca un valore in una delle due date mostra `—`; non inventa
+  percentuali muscolari, variazioni di massa magra o altre stime cliniche.
+- Il diario è persistito sotto la chiave
+  `buttigogym_wellness_v1/body_progress_v1`: il registro passi/riposi
+  e lo storico degli allenamenti non vengono alterati.
+- Il **backup ZIP V2** esistente include automaticamente tutte le
+  misure nel namespace wellness e ora include anche i JPEG del diario,
+  con hash SHA-256, validazione dei percorsi ed estrazione privata.
+  L'anteprima del backup distingue **foto workout** e **foto progresso**.
+  I precedenti ZIP V2 che non contengono foto fisico restano leggibili.
+  Nel ripristino dei backup JSON V1 il diario più recente rimane
+  conservato, perché quei file non possedevano queste funzionalità.
+- Le immagini non sono caricate dai servizi dell'app: la gestione rimane
+  locale. **Gli ZIP esportati non sono cifrati**, quindi non condividere
+  pubblicamente i backup con foto o dati corporei.
+- `BodyProgressRulesTest.kt` verifica confronti mancanti, foto-only,
+  sostituzione per data, input non validi e nomi sicuri;
+  `AppBackupArchiveRulesTest.kt` verifica i nuovi percorsi ZIP.
+- Il flusso di salvataggio, galleria e fotocamera dovrà essere collaudato
+  sul Samsung con l'APK finale, come concordato.
