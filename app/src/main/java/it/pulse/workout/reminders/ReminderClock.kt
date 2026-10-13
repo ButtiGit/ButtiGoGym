@@ -1,6 +1,7 @@
 package it.pulse.workout.reminders
 
-import java.time.LocalDate
+import it.pulse.workout.data.PersonalSettings
+import it.pulse.workout.data.PersonalSettingsRules
 import java.time.LocalDateTime
 import java.time.LocalTime
 
@@ -9,35 +10,39 @@ enum class ReminderKind(val key: String, val description: String) {
     MOVE("move", "Alzati e muoviti")
 }
 
-/**
- * Orari locali, ogni giorno: acqua 08:30–18:00 (inclusi);
- * movimento 09:30–17:30, ossia dopo ogni ora trascorsa dalle 08:30.
- * Nessuna notifica notturna; allineamento agli orari, non al momento
- * in cui l'utente apre l'app.
- */
+/** Local wall-clock schedule; water every 30 minutes, movement every 60 minutes. */
 object ReminderClock {
-    private val start = LocalTime.of(8, 30)
+    fun times(kind: ReminderKind, settings: PersonalSettings = PersonalSettings()): List<LocalTime> {
+        val valid = PersonalSettingsRules.validate(settings)
+        val firstOffset = if (kind == ReminderKind.WATER) 0 else 60
+        val step = if (kind == ReminderKind.WATER) 30 else 60
+        val minutes = java.time.Duration.between(valid.reminderStart, valid.reminderEnd).toMinutes()
+        return generateSequence(firstOffset.toLong()) { it + step }
+            .takeWhile { if (kind == ReminderKind.MOVE) it < minutes else it <= minutes }
+            .map { valid.reminderStart.plusMinutes(it) }.toList()
+    }
 
-    fun times(kind: ReminderKind): List<LocalTime> =
-        when (kind) {
-            ReminderKind.WATER -> (0..19).map { start.plusMinutes(it * 30L) }
-            ReminderKind.MOVE -> (1..9).map { start.plusHours(it.toLong()) }
-        }
-
-    fun nextAfter(kind: ReminderKind, now: LocalDateTime): LocalDateTime {
-        val today = now.toLocalDate()
-        for (day in 0..1L) {
-            val date = today.plusDays(day)
-            for (time in times(kind)) {
-                val candidate = LocalDateTime.of(date, time)
+    fun nextAfter(
+        kind: ReminderKind, now: LocalDateTime, settings: PersonalSettings = PersonalSettings()
+    ): LocalDateTime {
+        val valid = PersonalSettingsRules.validate(settings)
+        val hours = times(kind, valid)
+        for (days in 0..7L) {
+            val day = now.toLocalDate().plusDays(days)
+            if (day.dayOfWeek !in valid.reminderDays) continue
+            for (time in hours) {
+                val candidate = LocalDateTime.of(day, time)
                 if (candidate.isAfter(now)) return candidate
             }
         }
         error("Non è stato possibile calcolare un promemoria futuro")
     }
 
-    fun dueAt(kind: ReminderKind, expected: LocalDateTime): Boolean =
-        expected.toLocalTime() in times(kind)
+    fun dueAt(
+        kind: ReminderKind, expected: LocalDateTime, settings: PersonalSettings = PersonalSettings()
+    ): Boolean =
+        expected.dayOfWeek in settings.reminderDays &&
+            expected.toLocalTime() in times(kind, settings)
 
     fun slotKey(kind: ReminderKind, whenDue: LocalDateTime): String =
         "${kind.key}_${whenDue.toLocalDate()}_${whenDue.toLocalTime()}"

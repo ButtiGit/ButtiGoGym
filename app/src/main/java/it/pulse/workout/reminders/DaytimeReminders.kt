@@ -16,6 +16,7 @@ import androidx.work.Worker
 import androidx.work.WorkerParameters
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import it.pulse.workout.data.PersonalSettingsStore
 import it.pulse.workout.MainActivity
 import it.pulse.workout.R
 import java.time.LocalDateTime
@@ -74,7 +75,7 @@ object ReminderScheduler {
             wm.cancelUniqueWork(name)
             return
         }
-        val due = ReminderClock.nextAfter(kind, now)
+        val due = ReminderClock.nextAfter(kind, now, PersonalSettingsStore(context).read())
         // java.time locale -> istante considerando l'eventuale cambio ora legale.
         val dueMillis = due.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val delay = (dueMillis - System.currentTimeMillis()).coerceAtLeast(1000L)
@@ -93,10 +94,10 @@ object ReminderScheduler {
         val manager = context.getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(NotificationChannel(
             CHANNEL_WATER, "Bere acqua", NotificationManager.IMPORTANCE_DEFAULT
-        ).apply { description = "Promemoria idratazione ogni mezz'ora dalle 08:30 alle 18:00" })
+        ).apply { description = "Promemoria idratazione nei giorni e orari scelti dall'utente" })
         manager.createNotificationChannel(NotificationChannel(
             CHANNEL_MOVE, "Alzarsi e muoversi", NotificationManager.IMPORTANCE_DEFAULT
-        ).apply { description = "Promemoria movimento ogni ora nella fascia 08:30–18:00" })
+        ).apply { description = "Promemoria movimento nei giorni e orari scelti dall'utente" })
     }
 
     /** Un solo avviso per slot, anche dopo reboot o ri-esecuzione del Worker. */
@@ -161,7 +162,12 @@ class DaytimeReminderWorker(context: Context, parameters: WorkerParameters) :
         try {
             // WorkManager è inexact: se Android ci risveglia molto in ritardo,
             // non inviare promemoria della mattina nel pomeriggio.
-            if (due > 0 && elapsed >= -60_000 && elapsed <= 12 * 60_000L) {
+            val scheduled = if (due > 0L) java.time.LocalDateTime.ofInstant(
+                java.time.Instant.ofEpochMilli(due), ZoneId.systemDefault()
+            ) else null
+            if (scheduled != null &&
+                ReminderClock.dueAt(kind, scheduled, PersonalSettingsStore(applicationContext).read()) &&
+                elapsed >= -60_000L && elapsed <= 12 * 60_000L) {
                 ReminderScheduler.post(applicationContext, kind, due)
             }
         } catch (error: Exception) {
