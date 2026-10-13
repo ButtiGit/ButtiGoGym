@@ -745,3 +745,44 @@ richiederà un intervento distinto, se desiderato.
   RIR reale e mancante, fatica, incremento prudente, intervalli delle
   ripetizioni, esercizi a tempo, esercizi diversi e correzione di serie.
   I test sono inclusi nel workflow **test-only**, che non produce APK.
+
+## Roadmap V1.0 — Fase 2 / Modifica 4: sessione guidata più veloce
+
+**Sviluppata esclusivamente su `feature/v1-phase1-complete-backup`; nessuna APK generata e `main` invariato.**
+
+- **Barra fissa in basso**, facilmente raggiungibile con una mano:
+  `Completa serie`, `Salva riscaldamento`, `Pronto · termina recupero`
+  oppure `Salva allenamento` in base allo stato della sessione. La barra
+  resta separata dal contenuto scorrevole e considera la tastiera Android
+  tramite `imePadding()`. Il pulsante si disabilita se i dati sono invalidi.
+- **Navigazione esercizi:** freccia indietro/avanti per trovare il precedente
+  o successivo esercizio che abbia ancora serie da svolgere. Il comando
+  centrale **Scegli esercizio** mostra tutte le esercitazioni della giornata,
+  indicando le serie svolte. Quelle già completate sono disabilitate per
+  impedire di duplicare i set; possono essere corrette da **Serie registrate**.
+  Cambiare esercizio non segna nuove serie `done` e annulla il recupero.
+- **Conservazione degli input:** peso, ripetizioni e RIR ancora non salvati
+  rimangono in una bozza UI distinta per esercizio e serie finché la sessione
+  rimane aperta, anche passando temporaneamente a un esercizio diverso.
+  Una serie completata li consolida tramite `WorkoutStore`; il reset
+  sessione elimina le bozze UI. Gli input **non ancora registrati non sono
+  inclusi nel backup e non sopravvivono alla chiusura forzata del processo**.
+- **Registrazione rapida:** pulsanti ±2,5 kg e ±1 rep; con **Ripeti ultima
+  serie** si copiano kg e ripetizioni della serie allenante precedente,
+  ma non si inventa il RIR effettivo. L'eventuale incremento consigliato
+  rimane manuale (tasto **Usa suggerimento**).
+- La card **Progressione** ora mostra un titolo sintetico e apre dettagli
+  storici solo al tap; le informazioni secondarie non nascondono più i
+  comandi dell'esercizio. Dopo una serie o un cambio esercizio, la lista
+  torna all'inizio. Feedback aptico leggero sui principali passaggi.
+- **Protezione contro il completamento prematuro:** se si naviga avanti
+  o si salta un richiamo facoltativo, il workout torna alle serie dei
+  gruppi obbligatori rimaste incomplete prima di mostrare la fine sessione.
+  Le serie già registrate non vengono duplicate.
+- `GuidedWorkoutNavigationTest.kt`: test su navigazione, serie terminate,
+  rewind, skip facoltativi e input rapidi. GitHub Actions `v1-unit-tests-only`
+  verifica le classi e i test **senza costruire alcun APK**.
+
+Le conferme reali di usabilità (dimensioni dei target touch,
+tastiera Samsung, vibrazione e navigazione a una mano) saranno
+eseguite con l'APK cumulativa solo dopo il completamento di tutte le fasi.
