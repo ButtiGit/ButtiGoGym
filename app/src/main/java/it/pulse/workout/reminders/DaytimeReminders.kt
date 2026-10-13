@@ -18,7 +18,6 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import it.pulse.workout.MainActivity
 import it.pulse.workout.R
-import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
@@ -28,6 +27,8 @@ object ReminderScheduler {
     private const val PREFS = "buttigogym_reminders_v1"
     private const val CHANNEL_WATER = "buttigogym_water_v1"
     private const val CHANNEL_MOVE = "buttigogym_move_v1"
+    private const val DELIVERED = "buttigogym_reminder_last_delivery"
+    private val deliveryLock = Any()
 
     fun enabled(context: Context, kind: ReminderKind): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -49,6 +50,20 @@ object ReminderScheduler {
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
                 == PackageManager.PERMISSION_GRANTED) &&
             context.getSystemService(NotificationManager::class.java).areNotificationsEnabled()
+
+    fun channelProblem(context: Context, kind: ReminderKind): String? {
+        if (!notificationsGranted(context)) return "Permesso o notifiche dell'app disattivati"
+        ensureChannels(context)
+        val id = channelId(kind)
+        val channel = context.getSystemService(NotificationManager::class.java)
+            .getNotificationChannel(id)
+        return if (channel?.importance == NotificationManager.IMPORTANCE_NONE)
+            "Canale ${if (kind == ReminderKind.WATER) "Bere acqua" else "Alzarsi e muoversi"} disattivato"
+        else null
+    }
+
+    private fun channelId(kind: ReminderKind): String =
+        if (kind == ReminderKind.WATER) CHANNEL_WATER else CHANNEL_MOVE
 
     private fun uniqueName(kind: ReminderKind) = "buttigogym_remind_${kind.key}"
 
@@ -84,39 +99,48 @@ object ReminderScheduler {
         ).apply { description = "Promemoria movimento ogni ora nella fascia 08:30–18:00" })
     }
 
-    fun post(context: Context, kind: ReminderKind, slotMillis: Long) {
-        if (!notificationsGranted(context) || !enabled(context, kind)) return
-        ensureChannels(context)
-        val (title, message, channel, id) = when (kind) {
-            ReminderKind.WATER -> listOf("Un sorso d'acqua 💧",
-                "È il momento di bere un po' d'acqua.", CHANNEL_WATER, "5201")
-            ReminderKind.MOVE -> listOf("Alzati un momento 🚶",
-                "Fai due passi e sgranchisci le gambe.", CHANNEL_MOVE, "5202")
-        }
-        val intent = Intent(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-        val pending = PendingIntent.getActivity(context, id.toInt(), intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val notification = NotificationCompat.Builder(context, channel)
-            .setSmallIcon(R.drawable.ic_workout_notification)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setContentIntent(pending)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setWhen(slotMillis)
-            .setShowWhen(true)
-            .build()
-        context.getSystemService(NotificationManager::class.java).notify(id.toInt(), notification)
-    }
+    /** Un solo avviso per slot, anche dopo reboot o ri-esecuzione del Worker. */
+    fun post(context: Context, kind: ReminderKind, slotMillis: Long): Boolean =
+        synchronized(deliveryLock) {
+            if (!enabled(context, kind) || channelProblem(context, kind) != null)
+                return@synchronized false
+            val prefs = context.getSharedPreferences(DELIVERED, Context.MODE_PRIVATE)
+            val key = kind.key
+            if (prefs.getLong(key, Long.MIN_VALUE) == slotMillis)
+                return@synchronized false
 
-    /** Consente all'utente di provare i canali dalle impostazioni dell'app. */
-    fun test(context: Context, kind: ReminderKind): Boolean {
-        if (!notificationsGranted(context)) return false
+            val title = if (kind == ReminderKind.WATER) "Un sorso d'acqua 💧"
+                        else "Alzati un momento 🚶"
+            val message = if (kind == ReminderKind.WATER)
+                "È il momento di bere un po' d'acqua."
+                else "Fai due passi e sgranchisci le gambe."
+            val id = if (kind == ReminderKind.WATER) 5201 else 5202
+            val intent = Intent(context, MainActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            val pending = PendingIntent.getActivity(context, id, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val notification = NotificationCompat.Builder(context, channelId(kind))
+                .setSmallIcon(R.drawable.ic_workout_notification)
+                .setContentTitle(title)
+                .setContentText(message)
+                .setContentIntent(pending)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
+                .setWhen(slotMillis)
+                .setShowWhen(true)
+                .build()
+            return@synchronized runCatching {
+                context.getSystemService(NotificationManager::class.java)
+                    .notify(id, notification)
+                prefs.edit().putLong(key, slotMillis).commit()
+            }.getOrDefault(false)
+        }
+
+    /** Un test che riporta fallimento se il canale è bloccato. */
+    fun test(context: Context, kind: ReminderKind): Boolean =
         post(context, kind, System.currentTimeMillis())
-        return true
-    }
+
 }
 
 class DaytimeReminderWorker(context: Context, parameters: WorkerParameters) :
