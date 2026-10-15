@@ -1014,3 +1014,23 @@ Solo sul branch `feature/v1-phase1-complete-backup`, senza release/APK e senza m
 - Nota: l'esportazione può durare di più su archivi molto grandi o provider
   documentali lenti. Se non è possibile rileggere il file, l'app non dichiara
   concluso il backup e lo segnala. Test su dispositivo ancora necessari.
+
+## Fase 2 · Lean Bulk Tracker (15 ottobre 2026)
+
+- `Myself → Misure, peso e foto progresso` presenta Avatar Build: primo traguardo
+  64–65 kg, ultimo peso, media 7 giorni e pulsante di inserimento rapido.
+- Le pesate condividono il diario già esistente: lo storico, le circonferenze e le
+  foto dello stesso giorno non vengono cancellati.
+- Ritmo di crescita calcolato solo dopo 3 settimane consecutive con almeno
+  3 pesate per ciascuna: crescita desiderata 0,15–0,25 kg/settimana,
+  fascia di tolleranza 0,10–0,30 per non inseguire oscillazioni idriche.
+  Suggerimenti +100/-100 kcal sono manuali e non più di una volta ogni 14 giorni.
+- Riferimento iniziale 2.450 kcal, 120 g proteine, 335 g carboidrati, 70 g grassi.
+  Una quota calorica aggiornata è salvata in `buttigogym_wellness_v1` ed è
+  inclusa nel backup ZIP. Il tracciamento dei pasti rimane esterno all'app.
+- `Verifica aggiornamenti` avvia il flusso di check GitHub Release → download →
+  verifica APK e firma → installer Android con consenso utente. Il controllo
+  automatico all'apertura è informativo e non scarica nulla. Per funzionare
+  serve una GitHub Release stabile firmata con la chiave già in uso:
+  al momento NON esiste una Release scaricabile. Il branch resta privo di APK.
+- Test di calcolo aggiunti in `LeanBulkTrackerTest`.

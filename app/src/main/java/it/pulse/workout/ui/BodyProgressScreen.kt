@@ -37,6 +37,7 @@ import it.pulse.workout.data.BodyMeasure
 import it.pulse.workout.data.BodyProgressEntry
 import it.pulse.workout.data.BodyProgressRules
 import it.pulse.workout.data.BodyProgressStore
+import it.pulse.workout.data.LeanBulkTargetStore
 import it.pulse.workout.data.ProgressPhotoAngle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -56,6 +57,9 @@ private fun metric(value: Double?, suffix: String): String =
 fun BodyProgressScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val store = remember(context) { BodyProgressStore(context) }
+    val targetStore = remember(context) { LeanBulkTargetStore(context) }
+    var currentKcal by remember { mutableIntStateOf(targetStore.currentKcal()) }
+    var lastAdjustment by remember { mutableStateOf(targetStore.lastAdjustedOn()) }
     var entries by remember { mutableStateOf(store.entries()) }
     var editorDate by remember { mutableStateOf<LocalDate?>(null) }
     var deleteDate by remember { mutableStateOf<LocalDate?>(null) }
@@ -139,6 +143,26 @@ fun BodyProgressScreen(onBack: () -> Unit) {
     ) {
         item {
             BGBackHeader("Myself", "Evoluzione fisica", onBack)
+        }
+        item {
+            LeanBulkTrackerCard(
+                entries = entries,
+                currentKcal = currentKcal,
+                lastAdjustment = lastAdjustment,
+                onSaveWeight = { kg ->
+                    runCatching {
+                        store.recordTodayWeight(kg)
+                        entries = store.entries()
+                    }.exceptionOrNull()?.message
+                },
+                onApplyCalories = { kcal ->
+                    runCatching {
+                        targetStore.saveTarget(kcal)
+                        currentKcal = targetStore.currentKcal()
+                        lastAdjustment = targetStore.lastAdjustedOn()
+                    }.exceptionOrNull()?.message
+                }
+            )
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

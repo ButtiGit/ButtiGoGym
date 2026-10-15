@@ -68,7 +68,7 @@ fun ReleaseUpdatePanel(
                 status == AppUpdateStatus.NoRelease -> "Ancora nessuna GitHub Release pubblicata."
                 status == AppUpdateStatus.Current -> "Hai già l'ultima versione disponibile."
                 status is AppUpdateStatus.Error -> status.explanation
-                else -> "Controlla le versioni pubblicate su GitHub."
+                else -> "Controlla GitHub: se c'è una nuova versione, verrà verificata e installata con conferma Android."
             }
             Text(message, color = PulseColors.Foreground,
                 fontWeight = if (newRelease != null) FontWeight.SemiBold else FontWeight.Normal,
@@ -121,8 +121,8 @@ fun ReleaseUpdatePanel(
                 }
             }
             if (newRelease != null) {
-                Text("APK da GitHub, firma controllata prima di aprire l'installer. " +
-                    "L'installazione richiede la tua conferma.",
+                Text("APK da GitHub, firma verificata. Il controllo manuale avvia " +
+                    "il download quando disponibile; Android chiede conferma per installare.",
                     color = PulseColors.Muted, fontSize = 10.sp)
             }
         }
