@@ -120,7 +120,7 @@ fun WorkoutDraft.substituteCurrentExercise(
         it[index] = replacement
     })
     // Elimina solo campi precompilati della vecchia variante, mai altre serie.
-    val staleKeys = (1..original.sets).map { key(original.id, it) }.toSet()
+    val staleKeys = (1..original.sets).map { WorkoutDraft.key(original.id, it) }.toSet()
     return copy(daySnapshot = updated, entries = entries.filterKeys { it !in staleKeys },
         guidedWorkSet = 1, restUntilMillis = 0L)
 }
