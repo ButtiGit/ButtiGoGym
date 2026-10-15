@@ -76,6 +76,8 @@ import it.pulse.workout.ui.GuidedSessionScreen
 import it.pulse.workout.ui.PreWorkoutCheckInDialog
 import it.pulse.workout.data.PreWorkoutCheckInStore
 import it.pulse.workout.data.WeeklyTrainingReportCalculator
+import it.pulse.workout.data.WeeklyMissionCalculator
+import it.pulse.workout.reminders.WeeklyMotivationScheduler
 
 class MainActivity : ComponentActivity() {
     private val openWorkoutFromNotification = mutableStateOf(false)
@@ -138,9 +140,11 @@ private fun PulseRoot(openWorkoutFromNotification: MutableState<Boolean>) {
                     try {
                         if (newWeight != latestWeight) bodyStore.recordTodayWeight(newWeight)
                         ReminderScheduler.sync(context)
+                        WeeklyMotivationScheduler.sync(context)
                     } catch (error: Exception) {
                         preferences.save(old)
                         ReminderScheduler.sync(context)
+                        WeeklyMotivationScheduler.sync(context)
                         throw error
                     }
                     latestWeight = bodyStore.latestWeightKg()
@@ -275,8 +279,12 @@ private fun PulseApp(
     var moveRemindersEnabled by remember {
         mutableStateOf(ReminderScheduler.enabled(context, ReminderKind.MOVE))
     }
+    var weeklyReminderEnabled by remember {
+        mutableStateOf(WeeklyMotivationScheduler.enabled(context))
+    }
     LaunchedEffect(Unit) {
         ReminderScheduler.sync(context)
+        WeeklyMotivationScheduler.sync(context)
     }
     var notificationsAllowed by remember {
         mutableStateOf(Build.VERSION.SDK_INT < 33 ||
@@ -479,6 +487,15 @@ private fun PulseApp(
     }
     val weeklyReport = remember(history, weightEntries, settings.weeklyWorkouts, today) {
         WeeklyTrainingReportCalculator.evaluate(history, weightEntries,
+            settings.weeklyWorkouts, today)
+    }
+    val thisWeekCheckIns = remember(checkInToday, today, tab) {
+        val monday = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(
+            java.time.DayOfWeek.MONDAY))
+        (0L..6L).mapNotNull { offset -> checkInStore.readOn(monday.plusDays(offset)) }
+    }
+    val weeklyMissions = remember(history, weightEntries, thisWeekCheckIns, settings.weeklyWorkouts, today) {
+        WeeklyMissionCalculator.summarize(history, weightEntries, thisWeekCheckIns,
             settings.weeklyWorkouts, today)
     }
     val calendarCompleted = remember(history) { WorkoutCalendarRules.completedDates(history) }
@@ -808,6 +825,19 @@ private fun PulseApp(
                         wellness = wellness,
                         personalSettings = settings,
                         weeklyReport = weeklyReport,
+                        weeklyMissions = weeklyMissions,
+                        weeklyReminderEnabled = weeklyReminderEnabled,
+                        onToggleWeeklyReminder = { enabled ->
+                            runCatching { WeeklyMotivationScheduler.setEnabled(context, enabled) }
+                                .onSuccess {
+                                    weeklyReminderEnabled = enabled
+                                    if (enabled) requestTimerNotifications()
+                                }
+                                .onFailure {
+                                    Toast.makeText(context, "Impossibile impostare il riepilogo",
+                                        Toast.LENGTH_LONG).show()
+                                }
+                        },
                         todayCheckIn = checkInToday?.takeIf { it.date == today },
                         onOpenCheckIn = {
                             pendingCheckInStart = null
@@ -994,6 +1024,8 @@ private fun PulseApp(
                                 calendarEntries = calendarStore.read()
                                 calendarVisible = false
                                 checkInToday = checkInStore.readOn(java.time.LocalDate.now())
+                                weeklyReminderEnabled = WeeklyMotivationScheduler.enabled(context)
+                                WeeklyMotivationScheduler.sync(context)
                                 catalog = repository.initial()
                                 customizedDayIds = repository.customizedDayIds()
                                 waterRemindersEnabled =

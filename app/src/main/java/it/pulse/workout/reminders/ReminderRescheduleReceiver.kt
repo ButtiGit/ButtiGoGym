@@ -19,6 +19,7 @@ class ReminderRescheduleReceiver : BroadcastReceiver() {
             Intent.ACTION_TIMEZONE_CHANGED -> {
                 runCatching {
                     ReminderScheduler.sync(context.applicationContext)
+                    WeeklyMotivationScheduler.sync(context.applicationContext)
                     RestAlertScheduler.sync(context.applicationContext,
                         WorkoutStore(context).loadDraft())
                 }.onFailure { error ->

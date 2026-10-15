@@ -70,6 +70,9 @@ fun DashboardScreen(
     wellness: WellnessData,
     personalSettings: PersonalSettings,
     weeklyReport: WeeklyTrainingReport,
+    weeklyMissions: WeeklyMissionSummary,
+    weeklyReminderEnabled: Boolean,
+    onToggleWeeklyReminder: (Boolean) -> Unit,
     todayCheckIn: PreWorkoutCheckIn?,
     onOpenCheckIn: () -> Unit,
     stepStatus: String,
@@ -265,6 +268,10 @@ fun DashboardScreen(
         }
 
         item {
+            WeeklyMissionsCard(weeklyMissions, weeklyReminderEnabled, onToggleWeeklyReminder)
+        }
+
+        item {
             WeeklyReportCard(weeklyReport, todayCheckIn, onOpenCheckIn)
         }
 
@@ -311,12 +318,13 @@ fun DashboardScreen(
         }
 
         item {
-            DashboardSectionTitle("Streak")
+            DashboardSectionTitle("Streak · indicatori secondari",
+                "La costanza principale è nel bilancio delle ultime quattro settimane")
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StreakTile(
                     icon = Icons.Default.LocalFireDepartment, value = summary.generalDays,
-                    unit = "giorni", title = "Generale",
+                    unit = "giorni", title = "Abitudini",
                     detail = "", accentBackground = true,
                     animateFlame = true,
                     modifier = Modifier.weight(1f)

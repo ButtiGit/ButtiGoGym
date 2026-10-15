@@ -1086,3 +1086,28 @@ Solo sul branch `feature/v1-phase1-complete-backup`, senza release/APK e senza m
   le settimane. Nessun confronto con una settimana ancora parziale.
 - Progressi di forza indicativi, non misure dirette di massa muscolare.
 - Test JVM per logica del check-in e report. Branch di sviluppo, no APK, no main.
+
+## Fase 6 · Gamification equilibrata e notifiche gentili (2026-10-15)
+
+- **Oggi → Missioni settimanali** ricavate automaticamente dallo storico reale:
+  giornate allenate anche rapide, tre pesate in date diverse, un check-in
+  facoltativo, e un progresso di forza di almeno 1% su esercizio confrontabile.
+  Se manca storico per confrontare la forza, la missione è segnata
+  `Da sbloccare`, non un fallimento.
+- XP di missione **separati** dagli XP muscolari esistenti (questi ultimi
+  dipendono solo dalle serie realmente completate). Nessun trucco per
+  aumentare il livello muscolare registrando peso o premendo pulsanti.
+- Costanza come `settimane in obiettivo / ultime 4 settimane CONCLUSE`,
+  calcolata su giornate distinte; una settimana saltata non resetta la
+  statistica delle precedenti. Le vecchie streak restano come indicatori
+  secondari con intestazione più chiara.
+- **Riepilogo gentile**: opt-in OFF di default, WorkManager, massimo una
+  notifica settimanale (solo dopo che è stata registrata almeno una seduta
+  nella settimana precedente). Usa primo giorno/orario consentito
+  dalle preferenze, canale Android silenzioso e a bassa priorità; niente
+  penalità né messaggi insistenti. Rischedulato dopo riavvio/cambio orario,
+  rispettando revoca dei permessi e toggle.
+- Preferenza salvata nel namespace `buttigogym_reminders_v1`, già incluso
+  nel backup ZIP. Nessuna migrazione dati, nessuna modifica allo schema delle
+  sessioni. Test JVM per missioni e finestra del promemoria.
+- Branch `feature/v1-phase1-complete-backup`; nessun APK, nessun merge su main.

@@ -152,7 +152,7 @@ fun MyselfScreen(
                         Text("Livello $overallLevel", color = PulseColors.Foreground,
                             fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
                     }
-                    Text("${n.format(totalXp)} XP", color = PulseColors.Accent,
+                    Text("${n.format(totalXp)} XP muscolari", color = PulseColors.Accent,
                         fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(15.dp))
@@ -160,6 +160,9 @@ fun MyselfScreen(
                 Spacer(Modifier.height(8.dp))
                 Text("${n.format((next - totalXp).coerceAtLeast(0))} XP al livello ${overallLevel + 1}",
                     color = PulseColors.Muted, fontSize = 12.sp)
+                Text("XP ottenuti dalle serie registrate. I premi delle missioni " +
+                    "sono separati e non aumentano artificialmente il livello muscolare.",
+                    color = PulseColors.Muted, fontSize = 11.sp)
             }
         }
         item {
