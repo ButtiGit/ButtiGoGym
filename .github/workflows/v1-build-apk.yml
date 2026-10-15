@@ -101,7 +101,8 @@ jobs:
           }
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$PREVIOUS" > "$RUNNER_TEMP/old-badging.txt"
           grep -Fq "package: name='it.pulse.workout'" "$RUNNER_TEMP/old-badging.txt"
-          grep -Fq "versionCode='18'" "$RUNNER_TEMP/old-badging.txt"
+          grep -Fq "versionCode='17'" "$RUNNER_TEMP/old-badging.txt"
+          grep -Fq "versionName='0.9.5'" "$RUNNER_TEMP/old-badging.txt"
           echo "Signer SHA-256: $NEW_FINGERPRINT"
           echo "Candidate APK: same signing certificate as previous signed main APK"
           mkdir -p "$RUNNER_TEMP/candidate"

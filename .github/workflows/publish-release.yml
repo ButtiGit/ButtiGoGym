@@ -116,6 +116,9 @@ jobs:
           PREVIOUS=$(find "$RUNNER_TEMP/old" -type f -name "app-release.apk" -print -quit)
           test -s "$PREVIOUS"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$PREVIOUS" > "$RUNNER_TEMP/oldcert.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$PREVIOUS" > "$RUNNER_TEMP/oldbadging.txt"
+          grep -Fq "versionCode='17'" "$RUNNER_TEMP/oldbadging.txt"
+          grep -Fq "versionName='0.9.5'" "$RUNNER_TEMP/oldbadging.txt"
           NEW_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/newcert.txt" | head -1)
           OLD_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/oldcert.txt" | head -1)
           [[ -n "$NEW_SHA" && "$NEW_SHA" == "$OLD_SHA" ]] || {

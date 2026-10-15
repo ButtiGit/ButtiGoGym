@@ -1131,3 +1131,9 @@ Solo sul branch `feature/v1-phase1-complete-backup`, senza release/APK e senza m
 - La compilazione CI e le verifiche della firma non sostituiscono i test
   manuali su un dispositivo: prima dell'uso quotidiano verificare
   backup/ripristino, permessi, notifiche e navigazione Android.
+
+Nota collaudo (15 ottobre): l'ultima build firmata realmente pubblicata come
+artifact su `main` (GitHub Actions 38365098239) è **0.9.5 / versionCode 17**.
+Il confronto di compatibilità viene fatto con questa APK firmata, non con
+il solo numero di versione presente nel codice di main. Il certificato del
+candidato è stato confrontato con il precedente senza conflitti.
