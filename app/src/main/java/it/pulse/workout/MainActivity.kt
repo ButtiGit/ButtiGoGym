@@ -408,8 +408,16 @@ private fun PulseApp(
             draft = store.newDraft(day)
             store.saveDraft(draft)
         }
+        // Una seduta attiva mantiene la sua snapshot (non muta tra rapida/completa).
         sessionVisible = true
         requestTimerNotifications()
+    }
+
+    fun startQuick(day: WorkoutDay) {
+        val quick = it.pulse.workout.data.QuickWorkoutPlanner.create(day)
+        if (quick != null) start(quick)
+        else Toast.makeText(context, "Versione rapida non disponibile per questo giorno",
+            Toast.LENGTH_LONG).show()
     }
 
     // Il servizio mantiene la notifica cronometro e il timer riposo
@@ -805,6 +813,7 @@ private fun PulseApp(
                                 permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
                         },
                         onStart = ::start,
+                        onStartQuick = ::startQuick,
                         onSaveSteps = { steps -> wellness = wellnessStore.updateSteps(java.time.LocalDate.now(), steps) },
                         onToggleRest = {
                             val date = java.time.LocalDate.now()
@@ -891,7 +900,8 @@ private fun PulseApp(
                                 customizedDayIds = repository.customizedDayIds()
                             }.exceptionOrNull()?.message
                         },
-                        onStart = ::start
+                        onStart = ::start,
+                        onStartQuick = ::startQuick
                     )
                     2 -> MyselfScreen(
                         history = history,

@@ -175,7 +175,8 @@ fun GuidedSessionScreen(
                     contentDescription = "Torna alla dashboard", tint = PulseColors.Foreground)
             }
             Column(Modifier.weight(1f)) {
-                Text("IN ALLENAMENTO", color = PulseColors.Accent, fontSize = 10.sp,
+                Text(if (QuickWorkoutPlanner.isQuick(day)) "ALLENAMENTO RAPIDO" else "IN ALLENAMENTO",
+                    color = PulseColors.Accent, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                 Text(day.name, color = PulseColors.Foreground, fontWeight = FontWeight.Bold,
                     fontSize = 16.sp, maxLines = 1)
@@ -740,6 +741,36 @@ private fun GuidedSetForm(
                         fontWeight = FontWeight.Bold)
                 }
             }
+            if (!input.warmup && previousSet != null) {
+                Spacer(Modifier.height(12.dp))
+                Surface(color = PulseColors.SoftGreen, shape = RoundedCornerShape(14.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("ULTIMA SEDUTA · SERIE ${draft.guidedWorkSet}",
+                                color = PulseColors.Accent, fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold)
+                            Text("${formatKgForWorkout(previousSet.weightKg)} kg × " +
+                                "${previousSet.repetitions} " +
+                                (if (exercise.timeBased) "sec" else "rep") +
+                                (previousSet.actualRir?.let { " · RIR $it" } ?: ""),
+                                color = PulseColors.Foreground,
+                                fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            WorkoutSetCue.description(exercise, advice, draft.guidedWorkSet)
+                                ?.let { cue ->
+                                    Text(cue, color = PulseColors.Muted, fontSize = 11.sp)
+                                }
+                        }
+                        TextButton(onClick = {
+                            onInputChange(input.copy(
+                                weight = formatKgForWorkout(previousSet.weightKg),
+                                reps = previousSet.repetitions.toString(),
+                                warmup = false, actualRir = null
+                            ))
+                        }) { Text("Usa", color = PulseColors.Accent) }
+                    }
+                }
+            }
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(13.dp)) {
                 Column(Modifier.weight(1f)) {
@@ -829,12 +860,6 @@ private fun GuidedSetForm(
                         Text("Ripeti ultima serie: ${previousDone.weight} kg × ${previousDone.reps}",
                             color = PulseColors.Accent, fontSize = 12.sp)
                     }
-                }
-                if (previousSet != null) {
-                    Text("Precedente: ${formatKgForWorkout(previousSet.weightKg)} kg · " +
-                        "${previousSet.repetitions} ${if (exercise.timeBased) "sec" else "rep"} · " +
-                        (previousSet.actualRir?.let { "RIR $it" } ?: "RIR non registrato"),
-                        color = PulseColors.Muted, fontSize = 11.sp)
                 }
                 if (suggestedKg != null) {
                     Spacer(Modifier.height(6.dp))

@@ -224,7 +224,8 @@ fun PlanScreen(
     onRefresh: () -> Unit,
     onSaveDay: (String, List<Exercise>) -> String?,
     onRestoreDay: (String) -> String?,
-    onStart: (WorkoutDay) -> Unit
+    onStart: (WorkoutDay) -> Unit,
+    onStartQuick: (WorkoutDay) -> Unit
 ) {
     var editingDayId by remember { mutableStateOf<String?>(null) }
     var showGuidelines by remember { mutableStateOf(false) }
@@ -355,6 +356,18 @@ fun PlanScreen(
                     shape = RoundedCornerShape(14.dp)) {
                     Text(if (activeDayId == day.id) "Riprendi allenamento" else
                         if (day.optional) "Inizia bonus facoltativo" else "Inizia allenamento")
+                }
+                if (activeDayId != day.id &&
+                    it.pulse.workout.data.QuickWorkoutPlanner.create(day) != null) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { onStartQuick(day) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, PulseColors.Border)
+                    ) {
+                        Text("Versione rapida · circa 35–45 min", color = PulseColors.Accent)
+                    }
                 }
             }
             Spacer(Modifier.height(13.dp))

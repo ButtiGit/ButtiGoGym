@@ -1034,3 +1034,21 @@ Solo sul branch `feature/v1-phase1-complete-backup`, senza release/APK e senza m
   serve una GitHub Release stabile firmata con la chiave già in uso:
   al momento NON esiste una Release scaricabile. Il branch resta privo di APK.
 - Test di calcolo aggiunti in `LeanBulkTrackerTest`.
+
+## Fase 3 — Sedute rapide e suggerimenti serie (15 ottobre 2026)
+
+- Avvio alternativo **Allenamento rapido · circa 35–45 min** da Oggi e Scheda.
+  Tre varianti non distruttive da 12 serie lunedì, 10 mercoledì e 11 venerdì,
+  con esercizi prioritari e parte dei richiami. Durata indicativa, non promessa.
+- La scheda completa e gli ID degli esercizi rimangono invariati; una
+  `WorkoutDay` ridotta viene salvata solo nello snapshot della sessione.
+  La modalità rapida non equivale al volume settimanale della versione completa;
+  è pensata come alternativa occasionale per non saltare del tutto la seduta.
+- Il giorno personalizzato che ha rimosso esercizi essenziali non avrà il
+  pulsante rapido: nessuna sostituzione silenziosa. Se l'utente ha ridotto
+  le serie locali, non vengono aumentate.
+- Nell'allenamento guidato sono ora visibili prima dei campi il peso/reps
+  della serie equivalente precedente, il RIR e un suggerimento prudente.
+  **Usa** copia soltanto peso e ripetizioni; il RIR non viene copiato.
+- Timer, notifiche, snapshot, backup ZIP, GitHub Releases e `main` immutati.
+  Nuovi test JVM `QuickWorkoutPlannerTest` e `WorkoutSetCueTest`.

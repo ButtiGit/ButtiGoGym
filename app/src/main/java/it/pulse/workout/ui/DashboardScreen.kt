@@ -77,6 +77,7 @@ fun DashboardScreen(
     onRefreshHealth: () -> Unit,
     onRequestStepAccess: () -> Unit,
     onStart: (WorkoutDay) -> Unit,
+    onStartQuick: (WorkoutDay) -> Unit,
     onSaveSteps: (Int) -> Unit,
     onToggleRest: () -> Unit,
     onOpenPlan: () -> Unit,
@@ -224,6 +225,21 @@ fun DashboardScreen(
                         Spacer(Modifier.weight(1f))
                         Icon(Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                    if (active == null && QuickWorkoutPlanner.create(current) != null) {
+                        Spacer(Modifier.height(9.dp))
+                        OutlinedButton(
+                            onClick = { onStartQuick(current) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .7f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                        ) {
+                            Text("Allenamento rapido · 35–45 min", color = Color.White,
+                                fontWeight = FontWeight.Bold)
+                        }
+                        Text("Volume ridotto rispetto alla seduta completa.",
+                            color = Color.White.copy(alpha = .8f), fontSize = 11.sp)
                     }
                 }
             }
