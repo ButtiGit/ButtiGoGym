@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -118,6 +119,8 @@ fun GuidedSessionScreen(
     var finishDialog by remember { mutableStateOf(false) }
     var resetDialog by remember { mutableStateOf(false) }
     var exercisePickerVisible by remember { mutableStateOf(false) }
+    var substitutePickerVisible by remember { mutableStateOf(false) }
+    var substituteError by remember { mutableStateOf<String?>(null) }
     val scrollState = rememberLazyListState()
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -401,6 +404,21 @@ fun GuidedSessionScreen(
                                     }
                                 }
                             }
+                            if (ExerciseSubstitutionCatalog.alternatives(exercise, day)
+                                    .isNotEmpty() &&
+                                (1..exercise.sets).none { draft.entry(exercise, it).done } &&
+                                draft.warmups(exercise).isEmpty()) {
+                                TextButton(onClick = {
+                                    substituteError = null
+                                    substitutePickerVisible = true
+                                }) {
+                                    Icon(Icons.Default.SwapHoriz, contentDescription = null,
+                                        tint = Color.White, modifier = Modifier.size(17.dp))
+                                    Spacer(Modifier.width(7.dp))
+                                    Text("Macchinario occupato? Sostituisci per oggi",
+                                        color = Color.White, fontSize = 12.sp)
+                                }
+                            }
                             if (exercise.gifUrl.isNotBlank()) {
                                 TextButton(onClick = { showGif = !showGif }) {
                                     Icon(Icons.Default.PlayCircle, contentDescription = null,
@@ -609,6 +627,54 @@ fun GuidedSessionScreen(
                 )
             }
         }
+    }
+
+    if (substitutePickerVisible && exercise != null) {
+        val variants = ExerciseSubstitutionCatalog.alternatives(exercise, day)
+        AlertDialog(
+            onDismissRequest = { substitutePickerVisible = false },
+            title = { Text("Sostituisci solo per oggi") },
+            text = {
+                Column {
+                    Text("Carichi e progressi di attrezzi diversi restano separati. " +
+                        "Le serie già registrate non vengono toccate.",
+                        color = PulseColors.Muted, fontSize = 12.sp)
+                    variants.forEach { option ->
+                        TextButton(
+                            onClick = {
+                                val result = runCatching {
+                                    draft.substituteCurrentExercise(day, option.exercise)
+                                }
+                                result.onSuccess { updated ->
+                                    pendingSetInputs = pendingSetInputs -
+                                        "${exercise.id}:${draft.guidedWorkSet}"
+                                    substitutePickerVisible = false
+                                    substituteError = null
+                                    onUpdate(updated)
+                                }.onFailure { substituteError = it.message }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Text(option.exercise.name,
+                                    color = PulseColors.Accent,
+                                    fontWeight = FontWeight.SemiBold)
+                                Text(option.exercise.equipment + " · " + option.guidance,
+                                    color = PulseColors.Muted, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                    substituteError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { substitutePickerVisible = false }) {
+                    Text("Annulla")
+                }
+            }
+        )
     }
 
     if (exercisePickerVisible) {

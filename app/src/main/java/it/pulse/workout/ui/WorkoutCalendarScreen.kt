@@ -106,12 +106,18 @@ fun WorkoutCalendarScreen(
         error = null
     }
 
+    fun moveTo(destination: LocalDate) {
+        val problem = onMove(selected, destination)
+        error = problem
+        if (problem == null) selectDate(destination)
+    }
+
     fun showMovePicker() {
-        val initial = selected.plusDays(1)
+        val initial = maxOf(today, selected.plusDays(1))
         DatePickerDialog(
             context,
             { _, year, calendarMonth, day ->
-                execute { onMove(selected, LocalDate.of(year, calendarMonth + 1, day)) }
+                moveTo(LocalDate.of(year, calendarMonth + 1, day))
             },
             initial.year, initial.monthValue - 1, initial.dayOfMonth
         ).show()
@@ -310,7 +316,43 @@ fun WorkoutCalendarScreen(
                             }
                         }
                     }
-                    if (selectedEntry?.kind == CalendarEntryKind.WORKOUT) {
+                    if (selectedEntry?.kind == CalendarEntryKind.WORKOUT &&
+                        selected !in completedDates) {
+                        val suggested = remember(
+                            selected, entries, completedDates, restDates, today
+                        ) {
+                            AdaptiveCalendarPlanner.suggestions(
+                                selected, entries, completedDates, restDates, today
+                            )
+                        }
+                        if (suggested.isNotEmpty()) {
+                            Spacer(Modifier.height(9.dp))
+                            Text("NON RIESCO OGGI · SPOSTA LA SEDUTA",
+                                color = PulseColors.Accent, fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold)
+                            Text("Date libere suggerite. Gli altri allenamenti restano dove sono.",
+                                color = PulseColors.Muted, fontSize = 12.sp)
+                            suggested.forEach { option ->
+                                OutlinedButton(
+                                    onClick = { moveTo(option.date) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    border = BorderStroke(1.dp, PulseColors.Border)
+                                ) {
+                                    Column(Modifier.fillMaxWidth()) {
+                                        Text(
+                                            option.date.format(italianDay)
+                                                .replaceFirstChar { it.titlecase(Locale.ITALIAN) },
+                                            color = PulseColors.Accent,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        if (option.recoveryWarning) Text(
+                                            "Allenamento vicino a un'altra seduta: valuta il recupero",
+                                            color = PulseColors.Muted, fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         OutlinedButton(
                             onClick = ::showMovePicker,
                             modifier = Modifier.fillMaxWidth(),

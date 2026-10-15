@@ -1052,3 +1052,22 @@ Solo sul branch `feature/v1-phase1-complete-backup`, senza release/APK e senza m
   **Usa** copia soltanto peso e ripetizioni; il RIR non viene copiato.
 - Timer, notifiche, snapshot, backup ZIP, GitHub Releases e `main` immutati.
   Nuovi test JVM `QuickWorkoutPlannerTest` e `WorkoutSetCueTest`.
+
+## Fase 4 — Calendario adattivo e macchinari occupati (15 ottobre 2026)
+
+- Quando selezioni una seduta programmata, il calendario propone fino a tre
+  date future libere. Privilegia almeno un giorno di recupero tra allenamenti;
+  se non possibile, segnala la vicinanza. Non sovrascrive mai giorni occupati,
+  completati, segnati saltati o di riposo. Gli altri eventi rimangono invariati.
+  Resta disponibile la scelta manuale della data, con le convalide esistenti.
+- Nell'allenamento guidato, per i macchinari supportati, il pulsante
+  **Macchinario occupato? Sostituisci per oggi** offre due alternative curate.
+  È attivo solo prima di qualsiasi serie e riscaldamento di quell'esercizio.
+  Nessun cambiamento alla scheda salvata su GitHub o alle personalizzazioni.
+- Ogni alternativa ha un ID specifico: i carichi non sono confusi con quelli
+  dell'attrezzo originale. La sostituzione viene salvata nella snapshot
+  della sessione/cronologia, conservando le altre serie e il timer.
+  Non trasferisce né inventa carichi, non riutilizza GIF errate.
+- Nuovi test JVM: `AdaptiveCalendarPlannerTest` e
+  `ExerciseSubstitutionCatalogTest`. Un solo commit sul branch feature,
+  nessun APK prodotto, `main` invariato.
