@@ -1111,3 +1111,23 @@ Solo sul branch `feature/v1-phase1-complete-backup`, senza release/APK e senza m
   nel backup ZIP. Nessuna migrazione dati, nessuna modifica allo schema delle
   sessioni. Test JVM per missioni e finestra del promemoria.
 - Branch `feature/v1-phase1-complete-backup`; nessun APK, nessun merge su main.
+
+## Candidato release stabile ButtiGoGym 1.1.0
+
+- `versionName=1.1.0`, `versionCode=19`: incrementati rispetto alla
+  precedente build `1.0.0`/`18`, così Android non rifiuta l'aggiornamento.
+- Workflow candidate `v1-build-apk.yml`: JVM test + Android lint, build
+  release firmata con gli stessi GitHub Secrets, verifica `apksigner`,
+  `aapt2`, SHA-256 e confronto del certificato con la build release
+  firmata del 13 ottobre (run 38365098239).
+- Il candidato **non pubblica** alcuna Release. Per pubblicare dopo il
+  suo successo: merge con titolo `[publish-stable]` su main. Il workflow
+  `publish-release.yml` ripete i test, ricontrolla la firma, produce un
+  solo APK e crea la GitHub Release `v1.1.0` sul commit merge.
+- Il pulsante **Verifica aggiornamenti** legge le GitHub Releases e
+  scarica/verifica l'APK solo se la versione è superiore. Android gestisce
+  sempre la conferma di installazione. Funziona come aggiornamento in-place
+  SOLO quando la firma dell'app già installata coincide.
+- La compilazione CI e le verifiche della firma non sostituiscono i test
+  manuali su un dispositivo: prima dell'uso quotidiano verificare
+  backup/ripristino, permessi, notifiche e navigazione Android.
