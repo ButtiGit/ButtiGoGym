@@ -88,7 +88,7 @@ jobs:
           # Compare with the last SIGNED app-release APK from main (Oct 13).
           mkdir -p "$RUNNER_TEMP/previous"
           gh run download 38365098239 --repo "$GITHUB_REPOSITORY" -n ButtiGoGym-Android-APK -D "$RUNNER_TEMP/previous"
-          PREVIOUS="$RUNNER_TEMP/previous/app-release.apk"
+          PREVIOUS=$(find "$RUNNER_TEMP/previous" -type f -name "app-release.apk" -print -quit)
           test -s "$PREVIOUS"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$PREVIOUS" > "$RUNNER_TEMP/old-certificate.txt"
           NEW_FINGERPRINT=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/new-certificate.txt" | head -1)

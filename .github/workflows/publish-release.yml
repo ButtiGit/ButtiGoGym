@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: buttigogym-stable-release
@@ -112,7 +113,7 @@ jobs:
           grep -Fq "versionCode='19'" "$RUNNER_TEMP/badging.txt"
           mkdir -p "$RUNNER_TEMP/old"
           gh run download 38365098239 --repo "$GITHUB_REPOSITORY" -n ButtiGoGym-Android-APK -D "$RUNNER_TEMP/old"
-          PREVIOUS="$RUNNER_TEMP/old/app-release.apk"
+          PREVIOUS=$(find "$RUNNER_TEMP/old" -type f -name "app-release.apk" -print -quit)
           test -s "$PREVIOUS"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$PREVIOUS" > "$RUNNER_TEMP/oldcert.txt"
           NEW_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/newcert.txt" | head -1)
