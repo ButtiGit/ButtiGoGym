@@ -8,6 +8,8 @@ on:
       - feature/v1-phase1-complete-backup
     paths:
       - app/build.gradle.kts
+      - app/src/main/res/values/styles.xml
+      - app/src/main/res/values-v27/styles.xml
       - .github/workflows/v1-build-apk.yml
   workflow_dispatch:
 
