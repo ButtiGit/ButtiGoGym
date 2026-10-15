@@ -33,6 +33,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -43,7 +45,19 @@ import it.pulse.workout.data.WorkoutDay
 import it.pulse.workout.data.WorkoutDraft
 import it.pulse.workout.data.WorkoutPlan
 import it.pulse.workout.data.WorkoutStore
+import it.pulse.workout.data.WorkoutCalendarStore
+import it.pulse.workout.data.WorkoutCalendarRules
+import it.pulse.workout.data.CalendarEntry
+import it.pulse.workout.data.CalendarEntryKind
 import it.pulse.workout.data.WellnessStore
+import it.pulse.workout.data.BodyProgressStore
+import it.pulse.workout.data.PersonalSettings
+import it.pulse.workout.data.PersonalSettingsStore
+import it.pulse.workout.data.AppearancePreference
+import it.pulse.workout.updates.GitHubReleaseRepository
+import it.pulse.workout.updates.SafeApkUpdater
+import it.pulse.workout.updates.AppUpdateStatus
+import it.pulse.workout.notifications.RestAlertScheduler
 import it.pulse.workout.reminders.ReminderScheduler
 import it.pulse.workout.reminders.ReminderKind
 import it.pulse.workout.data.AutomaticStepTracker
@@ -51,10 +65,19 @@ import it.pulse.workout.data.HealthConnectStepsRepository
 import it.pulse.workout.ui.HistoryScreen
 import it.pulse.workout.ui.MyselfScreen
 import it.pulse.workout.ui.DashboardScreen
+import it.pulse.workout.ui.WorkoutCalendarScreen
 import it.pulse.workout.ui.PlanScreen
 import it.pulse.workout.ui.PulseColors
 import it.pulse.workout.ui.PulseTheme
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.SideEffect
 import it.pulse.workout.ui.GuidedSessionScreen
+import it.pulse.workout.ui.PreWorkoutCheckInDialog
+import it.pulse.workout.data.PreWorkoutCheckInStore
+import it.pulse.workout.data.WeeklyTrainingReportCalculator
+import it.pulse.workout.data.WeeklyMissionCalculator
+import it.pulse.workout.reminders.WeeklyMotivationScheduler
 
 class MainActivity : ComponentActivity() {
     private val openWorkoutFromNotification = mutableStateOf(false)
@@ -67,7 +90,7 @@ class MainActivity : ComponentActivity() {
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         openWorkoutFromNotification.value =
             intent?.getBooleanExtra(WorkoutTimerService.EXTRA_OPEN_WORKOUT, false) == true
-        setContent { PulseTheme { PulseApp(openWorkoutFromNotification) } }
+        setContent { PulseRoot(openWorkoutFromNotification) }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -79,12 +102,77 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * Settings own the root theme and recompose every tab immediately after Save or ZIP restore.
+ * Personal preferences live in the existing backup-covered reminder namespace.
+ */
 @Composable
-private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
+private fun PulseRoot(openWorkoutFromNotification: MutableState<Boolean>) {
+    val context = LocalContext.current
+    val preferences = remember(context) { PersonalSettingsStore(context) }
+    val bodyStore = remember(context) { BodyProgressStore(context) }
+    var settings by remember { mutableStateOf(preferences.read()) }
+    var latestWeight by remember { mutableStateOf(bodyStore.latestWeightKg()) }
+    val systemDark = isSystemInDarkTheme()
+    val dark = when (settings.appearance) {
+        AppearancePreference.DARK -> true
+        AppearancePreference.LIGHT -> false
+        AppearancePreference.SYSTEM -> systemDark
+    }
+
+    SideEffect {
+        (context as? android.app.Activity)?.window?.let { window ->
+            window.statusBarColor = if (dark) android.graphics.Color.rgb(13, 21, 16)
+                else android.graphics.Color.rgb(246, 248, 246)
+            window.navigationBarColor = if (dark) android.graphics.Color.rgb(23, 33, 26)
+                else android.graphics.Color.WHITE
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = if (dark) 0 else
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        }
+    }
+    PulseTheme(darkTheme = dark) {
+        PulseApp(openWorkoutFromNotification, settings, latestWeight,
+            onSaveSettings = { next, newWeight ->
+                runCatching {
+                    val old = settings
+                    val saved = preferences.save(next)
+                    try {
+                        if (newWeight != latestWeight) bodyStore.recordTodayWeight(newWeight)
+                        ReminderScheduler.sync(context)
+                        WeeklyMotivationScheduler.sync(context)
+                    } catch (error: Exception) {
+                        preferences.save(old)
+                        ReminderScheduler.sync(context)
+                        WeeklyMotivationScheduler.sync(context)
+                        throw error
+                    }
+                    latestWeight = bodyStore.latestWeightKg()
+                    settings = saved
+                }.exceptionOrNull()?.message
+            },
+            onSettingsRestored = {
+                settings = preferences.read()
+                latestWeight = bodyStore.latestWeightKg()
+            }
+        )
+    }
+}
+
+@Composable
+private fun PulseApp(
+    openWorkoutFromNotification: MutableState<Boolean>,
+    settings: PersonalSettings,
+    latestWeightKg: Double?,
+    onSaveSettings: (PersonalSettings, Double?) -> String?,
+    onSettingsRestored: () -> Unit
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val store = remember { WorkoutStore(context.applicationContext) }
     val wellnessStore = remember { WellnessStore(context.applicationContext) }
     var wellness by remember { mutableStateOf(wellnessStore.read()) }
+    val calendarStore = remember { WorkoutCalendarStore(context.applicationContext) }
+    var calendarEntries by remember { mutableStateOf(calendarStore.read()) }
     val healthRepo = remember { HealthConnectStepsRepository(context.applicationContext) }
     val coroutineScope = rememberCoroutineScope()
     var healthConnected by remember { mutableStateOf(false) }
@@ -191,8 +279,12 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     var moveRemindersEnabled by remember {
         mutableStateOf(ReminderScheduler.enabled(context, ReminderKind.MOVE))
     }
+    var weeklyReminderEnabled by remember {
+        mutableStateOf(WeeklyMotivationScheduler.enabled(context))
+    }
     LaunchedEffect(Unit) {
         ReminderScheduler.sync(context)
+        WeeklyMotivationScheduler.sync(context)
     }
     var notificationsAllowed by remember {
         mutableStateOf(Build.VERSION.SDK_INT < 33 ||
@@ -204,6 +296,15 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     ) { granted ->
         notificationsAllowed = granted
         notificationUiTick++
+    }
+    // L'utente può cambiare i permessi dalle Impostazioni mentre l'app è in pausa.
+    LaunchedEffect(inForeground) {
+        if (inForeground) {
+            notificationsAllowed = Build.VERSION.SDK_INT < 33 ||
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            notificationUiTick++
+        }
     }
 
     // Una sola richiesta dopo l'aggiornamento, perché i promemoria sono già
@@ -257,6 +358,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     }
     val repository = remember { WorkoutCatalogRepository(context.applicationContext) }
     var catalog by remember { mutableStateOf(repository.initial()) }
+    var customizedDayIds by remember { mutableStateOf(repository.customizedDayIds()) }
     var refreshState by remember { mutableStateOf("Scheda salvata sul telefono") }
     var refreshing by remember { mutableStateOf(false) }
     suspend fun fetchCatalog() {
@@ -264,7 +366,14 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         refreshing = true
         refreshState = "Aggiornamento in corso…"
         runCatching { withContext(Dispatchers.IO) { repository.refresh() } }
-            .onSuccess { catalog = it; refreshState = "Sincronizzata da GitHub · v${it.revision}" }
+            .onSuccess {
+                catalog = it
+                customizedDayIds = repository.customizedDayIds()
+                refreshState = "Sincronizzata da GitHub · v${it.revision}" +
+                    if (customizedDayIds.isNotEmpty())
+                        " · ${customizedDayIds.size} giorni personalizzati conservati"
+                    else ""
+            }
             .onFailure { refreshState = "Offline: utilizzo scheda salvata" }
         refreshing = false
     }
@@ -273,8 +382,13 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
     var draft by remember { mutableStateOf(store.loadDraft()) }
     var history by remember { mutableStateOf(store.history()) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var calendarVisible by rememberSaveable { mutableStateOf(false) }
     var sessionVisible by rememberSaveable { mutableStateOf(draft != null) }
     var pendingNewWorkout by remember { mutableStateOf<WorkoutDay?>(null) }
+    val checkInStore = remember { PreWorkoutCheckInStore(context.applicationContext) }
+    var checkInToday by remember { mutableStateOf(checkInStore.readOn(java.time.LocalDate.now())) }
+    var checkInVisible by remember { mutableStateOf(false) }
+    var pendingCheckInStart by remember { mutableStateOf<WorkoutDay?>(null) }
     LaunchedEffect(openWorkoutFromNotification.value, draft) {
         if (openWorkoutFromNotification.value && draft != null) {
             sessionVisible = true
@@ -282,7 +396,25 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         }
     }
 
-    fun start(day: WorkoutDay) {
+    /**
+     * Save calendar and shared rest marks together, restoring the original
+     * calendar if a wellness preference write fails. Never alter workout history.
+     */
+    fun saveCalendar(next: List<CalendarEntry>, date: java.time.LocalDate?,
+                     rest: Boolean?): String? = runCatching {
+        val before = calendarEntries
+        calendarEntries = calendarStore.save(next)
+        try {
+            if (date != null && rest != null) {
+                wellness = wellnessStore.setRest(date, rest)
+            }
+        } catch (error: Exception) {
+            calendarEntries = calendarStore.save(before)
+            throw error
+        }
+    }.exceptionOrNull()?.message
+
+    fun startConfirmed(day: WorkoutDay) {
         if (draft != null && draft?.dayId != day.id) {
             pendingNewWorkout = day
             return
@@ -295,6 +427,22 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         requestTimerNotifications()
     }
 
+    fun start(day: WorkoutDay) {
+        if (draft == null && checkInStore.readOn(java.time.LocalDate.now()) == null) {
+            pendingCheckInStart = day
+            checkInVisible = true
+            return
+        }
+        startConfirmed(day)
+    }
+
+    fun startQuick(day: WorkoutDay) {
+        val quick = it.pulse.workout.data.QuickWorkoutPlanner.create(day)
+        if (quick != null) start(quick)
+        else Toast.makeText(context, "Versione rapida non disponibile per questo giorno",
+            Toast.LENGTH_LONG).show()
+    }
+
     // Il servizio mantiene la notifica cronometro e il timer riposo
     // anche quando l'utente esce dalla schermata o passa ad altre app.
     // Rileva anche servizi arrestati o canali disabilitati mentre l'utente era fuori dall'app.
@@ -305,41 +453,92 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         }
     }
     val timerStatus = remember(notificationUiTick, draft) { WorkoutTimerService.state(context) }
-    val notificationsVisible = remember(notificationUiTick, notificationsAllowed) {
-        WorkoutTimerService.notificationsVisible(context)
+    val timerNotificationProblem = remember(notificationUiTick, notificationsAllowed) {
+        WorkoutTimerService.notificationProblem(context)
+    }
+    val notificationsVisible = timerNotificationProblem == null
+    val waterReminderProblem = remember(notificationUiTick, notificationsAllowed) {
+        ReminderScheduler.channelProblem(context, ReminderKind.WATER)
+    }
+    val moveReminderProblem = remember(notificationUiTick, notificationsAllowed) {
+        ReminderScheduler.channelProblem(context, ReminderKind.MOVE)
     }
 
-    LaunchedEffect(draft, notificationsAllowed) {
+    LaunchedEffect(draft, notificationsAllowed, inForeground) {
         val current = draft
+        // Il Worker prosegue il recupero anche se Android termina il servizio.
+        // Non tenta di far partire un FGS mentre l'app è in background.
+        RestAlertScheduler.sync(context, current)
         if (current == null) {
             WorkoutTimerService.stop(context)
-        } else {
+        } else if (inForeground) {
             val day = current.daySnapshot ?: catalog.days.firstOrNull { it.id == current.dayId }
             if (day != null) {
                 runCatching { WorkoutTimerService.sync(context, current, day) }
-                    .onFailure { android.util.Log.w("ButtiGoGym/Timer", "Timer notification unavailable", it) }
+                    .onFailure { WorkoutTimerService.recordLaunchFailure(context, it) }
             }
         }
     }
 
     val currentDay = draft?.daySnapshot ?: catalog.days.firstOrNull { it.id == draft?.dayId }
+    val today = java.time.LocalDate.now()
+    val weightEntries = remember(tab, history, today) {
+        BodyProgressStore(context.applicationContext).entries()
+    }
+    val weeklyReport = remember(history, weightEntries, settings.weeklyWorkouts, today) {
+        WeeklyTrainingReportCalculator.evaluate(history, weightEntries,
+            settings.weeklyWorkouts, today)
+    }
+    val thisWeekCheckIns = remember(checkInToday, today, tab) {
+        val monday = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(
+            java.time.DayOfWeek.MONDAY))
+        (0L..6L).mapNotNull { offset -> checkInStore.readOn(monday.plusDays(offset)) }
+    }
+    val weeklyMissions = remember(history, weightEntries, thisWeekCheckIns, settings.weeklyWorkouts, today) {
+        WeeklyMissionCalculator.summarize(history, weightEntries, thisWeekCheckIns,
+            settings.weeklyWorkouts, today)
+    }
+    val calendarCompleted = remember(history) { WorkoutCalendarRules.completedDates(history) }
+    val plannedNext = calendarEntries.asSequence()
+        .filter { it.kind == CalendarEntryKind.WORKOUT && !it.date.isBefore(today) }
+        .filter { !wellness.restedOn(it.date) && it.date !in calendarCompleted }
+        .sortedBy { it.date }
+        .mapNotNull { entry -> catalog.days.firstOrNull { it.id == entry.workoutDayId } }
+        .firstOrNull()
     val backupStore = remember { AppBackupStore(context.applicationContext) }
     var backupStatus by rememberSaveable { mutableStateOf("") }
-    var pendingBackup by remember { mutableStateOf<String?>(null) }
+    var backupBusy by remember { mutableStateOf(false) }
+    var pendingBackup by remember { mutableStateOf<Uri?>(null) }
+    var pendingBackupPreview by remember { mutableStateOf<AppBackupStore.Preview?>(null) }
 
     val exportBackup = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument(AppBackupStore.MIME_TYPE)
     ) { uri ->
         if (uri != null) {
-            runCatching {
-                val json = backupStore.export()
-                checkNotNull(context.contentResolver.openOutputStream(uri)) {
-                    "Non posso scrivere nel file selezionato"
-                }.use { it.write(json.toByteArray(Charsets.UTF_8)) }
-            }.onSuccess {
-                backupStatus = "Backup salvato. Conserva il file prima di disinstallare."
-            }.onFailure {
-                backupStatus = "Esportazione fallita: ${it.message.orEmpty().take(100)}"
+            backupBusy = true
+            coroutineScope.launch {
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        val exported = checkNotNull(context.contentResolver.openOutputStream(uri)) {
+                            "Impossibile aprire il file di destinazione"
+                        }.use { output -> backupStore.exportTo(output) }
+                        // Verifica l'archivio effettivamente scritto, non solo lo stream originale.
+                        val verified = checkNotNull(context.contentResolver.openInputStream(uri)) {
+                            "Backup creato ma impossibile rileggere il file: verifica manualmente"
+                        }.use { input -> backupStore.inspect(input) }
+                        check(verified == exported) {
+                            "Il backup scritto non corrisponde al contenuto atteso"
+                        }
+                        verified
+                    }
+                }.onSuccess { preview ->
+                    backupStatus = "Backup ZIP verificato: ${preview.workouts} sessioni, " +
+                        "${preview.photos} foto workout, ${preview.bodyPhotos} foto progresso, " +
+                        "${preview.recaps} recap."
+                }.onFailure { error ->
+                    backupStatus = "Backup non salvato: ${error.message.orEmpty().take(140)}"
+                }
+                backupBusy = false
             }
         }
     }
@@ -347,34 +546,139 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            runCatching {
-                checkNotNull(context.contentResolver.openInputStream(uri)) {
-                    "Non posso leggere il file selezionato"
-                }.use { stream ->
-                    val result = ByteArrayOutputStream()
-                    val buffer = ByteArray(4096)
-                    while (true) {
-                        val count = stream.read(buffer)
-                        if (count < 0) break
-                        require(result.size() + count <= AppBackupStore.MAX_SIZE) {
-                            "File troppo grande"
-                        }
-                        result.write(buffer, 0, count)
+            backupBusy = true
+            coroutineScope.launch {
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        checkNotNull(context.contentResolver.openInputStream(uri)) {
+                            "Impossibile aprire il backup"
+                        }.use { input -> backupStore.inspect(input) }
                     }
-                    result.toString(Charsets.UTF_8.name()).also { backupStore.validate(it) }
+                }.onSuccess { preview ->
+                    pendingBackup = uri
+                    pendingBackupPreview = preview
+                    backupStatus = ""
+                }.onFailure { error ->
+                    backupStatus = "Backup non valido: ${error.message.orEmpty().take(140)}"
                 }
-            }.onSuccess {
-                pendingBackup = it
-            }.onFailure {
-                backupStatus = "Backup non valido: ${it.message.orEmpty().take(100)}"
+                backupBusy = false
             }
         }
     }
 
+    // GitHub Releases è la sola sorgente di aggiornamenti installabili.
+    // Non verifica automaticamente più di una volta ogni 24 ore.
+    val releaseRepository = remember { GitHubReleaseRepository(context.applicationContext) }
+    val secureUpdater = remember { SafeApkUpdater(context.applicationContext) }
+    val installedVersion = remember { releaseRepository.installedVersion() }
+    var updateStatus by remember { mutableStateOf(releaseRepository.cachedOrNotChecked()) }
+    var updateChecking by remember { mutableStateOf(false) }
+    var updateDownloading by remember { mutableStateOf(false) }
+    var updateProgress by remember { mutableIntStateOf(0) }
+    var downloadedUpdateApk by remember { mutableStateOf<java.io.File?>(null) }
+
+    // Controllo automatico informativo, tap manuale = verifica + scarica + installa.
+    val installPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) {
+        val release = (updateStatus as? AppUpdateStatus.Available)?.release
+        val file = downloadedUpdateApk
+        if (secureUpdater.canRequestInstallation() && release != null && file != null) {
+            runCatching {
+                secureUpdater.verifyPackage(file, release)
+                context.startActivity(secureUpdater.installationIntent(file))
+            }.onFailure { error ->
+                updateStatus = AppUpdateStatus.Error(
+                    "Installer Android non disponibile: ${error.message.orEmpty().take(130)}"
+                )
+            }
+        } else {
+            Toast.makeText(context,
+                "Per aggiornare, consenti l'installazione da ButtiGoGym nelle impostazioni Android.",
+                Toast.LENGTH_LONG).show()
+        }
+    }
+
+
+    fun installUpdate() {
+        val release = (updateStatus as? AppUpdateStatus.Available)?.release ?: return
+        val file = downloadedUpdateApk ?: return
+        runCatching {
+            // Ricontrollo al click: impedisce di installare file sovrascritti.
+            secureUpdater.verifyPackage(file, release)
+            if (secureUpdater.canRequestInstallation()) {
+                context.startActivity(secureUpdater.installationIntent(file))
+            } else {
+                installPermissionLauncher.launch(secureUpdater.settingsIntent())
+            }
+        }.onFailure { error ->
+            updateStatus = AppUpdateStatus.Error(
+                "Impossibile aprire l'aggiornamento: ${error.message.orEmpty().take(120)}"
+            )
+        }
+    }
+
+    fun downloadUpdate() {
+        val release = (updateStatus as? AppUpdateStatus.Available)?.release ?: return
+        if (updateChecking || updateDownloading) return
+        updateDownloading = true
+        updateProgress = 0
+        downloadedUpdateApk = null
+        coroutineScope.launch {
+            try {
+                downloadedUpdateApk = secureUpdater.download(release) {
+                    progress -> updateProgress = progress
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                updateStatus = AppUpdateStatus.Error(
+                    "Download non riuscito: ${error.message.orEmpty().take(150)}")
+            } finally { updateDownloading = false }
+        }
+    }
+
+    fun checkUpdates(force: Boolean, installIfFound: Boolean = false) {
+        if (updateChecking || updateDownloading) return
+        updateChecking = true
+        coroutineScope.launch {
+            try {
+                val found = withContext(Dispatchers.IO) { releaseRepository.check(force) }
+                updateStatus = found
+                downloadedUpdateApk = null
+                if (installIfFound && found is AppUpdateStatus.Available) {
+                    updateChecking = false
+                    updateDownloading = true
+                    updateProgress = 0
+                    val file = secureUpdater.download(found.release) {
+                        progress -> updateProgress = progress
+                    }
+                    downloadedUpdateApk = file
+                    secureUpdater.verifyPackage(file, found.release)
+                    if (secureUpdater.canRequestInstallation()) {
+                        context.startActivity(secureUpdater.installationIntent(file))
+                    } else {
+                        installPermissionLauncher.launch(secureUpdater.settingsIntent())
+                    }
+                }
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (error: Exception) {
+                updateStatus = AppUpdateStatus.Error(
+                    "Aggiornamento non riuscito: ${error.message.orEmpty().take(145)}")
+            } finally {
+                updateChecking = false
+                updateDownloading = false
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { checkUpdates(force = false) }
+
     Scaffold(
         containerColor = PulseColors.Background,
         bottomBar = {
-            if (!sessionVisible) {
+            if (!sessionVisible && !calendarVisible) {
                 NavigationBar(containerColor = PulseColors.Surface, tonalElevation = 0.dp) {
                     listOf(
                         Triple("Oggi", Icons.Default.Home, 0),
@@ -385,6 +689,10 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                         NavigationBarItem(
                             selected = tab == index,
                             onClick = { tab = index },
+                            modifier = Modifier.semantics {
+                                contentDescription = "Sezione $label"
+                            },
+                            alwaysShowLabel = true,
                             icon = { Icon(icon, contentDescription = null) },
                             label = { Text(label) },
                             colors = NavigationBarItemDefaults.colors(
@@ -406,6 +714,8 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                     GuidedSessionScreen(
                         day = currentDay,
                         draft = draft!!,
+                        history = history,
+                        hapticFeedbackEnabled = settings.hapticFeedback,
                         onBack = { sessionVisible = false },
                         onUpdate = { updated ->
                             draft = updated
@@ -426,6 +736,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                             }
                         },
                         notificationsVisible = notificationsVisible,
+                        notificationProblem = timerNotificationProblem,
                         timerStatus = timerStatus,
                         onEnableNotifications = ::requestTimerNotifications,
                         onNotificationSettings = ::openNotificationSettings,
@@ -434,6 +745,7 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                             if (active != null) {
                                 runCatching { WorkoutTimerService.sync(context, active, currentDay) }
                                     .onFailure {
+                                        WorkoutTimerService.recordLaunchFailure(context, it)
                                         Toast.makeText(context, "Timer non avviato: ${it.message}",
                                             Toast.LENGTH_LONG).show()
                                     }
@@ -451,16 +763,86 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                         }
                     )
                 }
+            } else if (calendarVisible) {
+                WorkoutCalendarScreen(
+                    days = catalog.days,
+                    entries = calendarEntries,
+                    history = history,
+                    wellness = wellness,
+                    onBack = { calendarVisible = false },
+                    onSchedule = { date, workoutId ->
+                        if (date in calendarCompleted) "La giornata contiene un allenamento completato"
+                        else if (catalog.days.none { it.id == workoutId }) "Scheda non disponibile"
+                        else saveCalendar(
+                            WorkoutCalendarRules.place(calendarEntries,
+                                CalendarEntry(date, CalendarEntryKind.WORKOUT, workoutId)),
+                            date, false)
+                    },
+                    onRest = { date ->
+                        if (date in calendarCompleted) "Non puoi segnare riposo su una seduta completata"
+                        else saveCalendar(
+                            WorkoutCalendarRules.clear(calendarEntries, date), date, true)
+                    },
+                    onSkip = { date ->
+                        when {
+                            date in calendarCompleted -> "La seduta è già completata"
+                            date.isAfter(java.time.LocalDate.now()) ->
+                                "Puoi segnare saltata solo una seduta di oggi o passata"
+                            else -> saveCalendar(
+                                WorkoutCalendarRules.place(calendarEntries,
+                                    CalendarEntry(date, CalendarEntryKind.SKIPPED,
+                                        calendarEntries.firstOrNull { it.date == date }?.workoutDayId)),
+                                date, false)
+                        }
+                    },
+                    onClear = { date -> saveCalendar(
+                        WorkoutCalendarRules.clear(calendarEntries, date), date, false)
+                    },
+                    onMove = { from, to ->
+                        runCatching {
+                            WorkoutCalendarRules.move(calendarEntries, from, to,
+                                destinationRest = wellness.restedOn(to),
+                                sourceCompleted = from in calendarCompleted)
+                        }.fold(
+                            onSuccess = { revised -> saveCalendar(revised, null, null) },
+                            onFailure = { it.message ?: "Impossibile spostare la seduta" }
+                        )
+                    },
+                    onStart = { day ->
+                        calendarVisible = false
+                        start(day)
+                    }
+                )
             } else {
-                Crossfade(targetState = tab, animationSpec = tween(180),
+                Crossfade(targetState = tab, animationSpec = tween(it.pulse.workout.ui.BGMotion.duration(180)),
                     label = "Cambio schermata") { selectedTab ->
                 when (selectedTab) {
                     0 -> DashboardScreen(
-                        upcoming = WorkoutPlan.upcoming(catalog.days),
+                        upcoming = plannedNext ?: WorkoutPlan.upcoming(catalog.days),
                         days = catalog.days,
                         active = draft,
                         history = history,
                         wellness = wellness,
+                        personalSettings = settings,
+                        weeklyReport = weeklyReport,
+                        weeklyMissions = weeklyMissions,
+                        weeklyReminderEnabled = weeklyReminderEnabled,
+                        onToggleWeeklyReminder = { enabled ->
+                            runCatching { WeeklyMotivationScheduler.setEnabled(context, enabled) }
+                                .onSuccess {
+                                    weeklyReminderEnabled = enabled
+                                    if (enabled) requestTimerNotifications()
+                                }
+                                .onFailure {
+                                    Toast.makeText(context, "Impossibile impostare il riepilogo",
+                                        Toast.LENGTH_LONG).show()
+                                }
+                        },
+                        todayCheckIn = checkInToday?.takeIf { it.date == today },
+                        onOpenCheckIn = {
+                            pendingCheckInStart = null
+                            checkInVisible = true
+                        },
                         stepStatus = stepStatus,
                         healthConnected = healthConnected,
                         healthSyncing = healthSyncing,
@@ -489,11 +871,42 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                                 permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
                         },
                         onStart = ::start,
+                        onStartQuick = ::startQuick,
                         onSaveSteps = { steps -> wellness = wellnessStore.updateSteps(java.time.LocalDate.now(), steps) },
-                        onToggleRest = { wellness = wellnessStore.toggleRest(java.time.LocalDate.now()) },
+                        onToggleRest = {
+                            val date = java.time.LocalDate.now()
+                            val newRest = !wellness.restedOn(date)
+                            val revised = if (newRest) WorkoutCalendarRules.clear(calendarEntries, date)
+                                else calendarEntries
+                            saveCalendar(revised, date, newRest)
+                        },
                         onOpenPlan = { tab = 1 },
+                        onOpenCalendar = { calendarVisible = true },
                         reminderWaterEnabled = waterRemindersEnabled,
                         reminderMoveEnabled = moveRemindersEnabled,
+                        reminderWaterProblem = waterReminderProblem,
+                        reminderMoveProblem = moveReminderProblem,
+                        onTestWaterReminder = {
+                            val ok = runCatching {
+                                ReminderScheduler.test(context, ReminderKind.WATER)
+                            }.getOrDefault(false)
+                            Toast.makeText(context,
+                                if (ok) "Notifica acqua inviata" else
+                                    (ReminderScheduler.channelProblem(context, ReminderKind.WATER)
+                                        ?: "Verifica notifica non riuscita"),
+                                Toast.LENGTH_LONG).show()
+                        },
+                        onTestMoveReminder = {
+                            val ok = runCatching {
+                                ReminderScheduler.test(context, ReminderKind.MOVE)
+                            }.getOrDefault(false)
+                            Toast.makeText(context,
+                                if (ok) "Notifica movimento inviata" else
+                                    (ReminderScheduler.channelProblem(context, ReminderKind.MOVE)
+                                        ?: "Verifica notifica non riuscita"),
+                                Toast.LENGTH_LONG).show()
+                        },
+                        onOpenReminderNotificationSettings = ::openNotificationSettings,
                         remindersPermissionGranted = notificationsAllowed,
                         onToggleWaterReminder = { value ->
                             waterRemindersEnabled = value
@@ -506,12 +919,22 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                             if (value) requestTimerNotifications()
                         },
                         onEnableReminderNotifications = ::requestTimerNotifications,
+                        updateInstalledVersion = installedVersion,
+                        updateStatus = updateStatus,
+                        updateChecking = updateChecking,
+                        updateDownloading = updateDownloading,
+                        updateProgress = updateProgress,
+                        updateVerified = downloadedUpdateApk != null,
+                        onCheckUpdate = { checkUpdates(force = true, installIfFound = true) },
+                        onDownloadUpdate = ::downloadUpdate,
+                        onInstallUpdate = ::installUpdate,
                         backupStatus = backupStatus,
+                        backupBusy = backupBusy,
                         onExportBackup = {
-                            exportBackup.launch("ButtiGoGym-backup-${java.time.LocalDate.now()}.json")
+                            exportBackup.launch("ButtiGoGym-backup-${java.time.LocalDate.now()}.zip")
                         },
                         onImportBackup = {
-                            importBackup.launch(arrayOf("application/json", "text/plain"))
+                            importBackup.launch(arrayOf("*/*"))
                         }
                     )
                     1 -> PlanScreen(
@@ -521,10 +944,30 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
                         refreshState = refreshState,
                         refreshing = refreshing,
                         guidelines = catalog.guidelines,
+                        customizedDayIds = customizedDayIds,
                         onRefresh = { coroutineScope.launch { fetchCatalog() } },
-                        onStart = ::start
+                        onSaveDay = { dayId, exercises ->
+                            runCatching {
+                                catalog = repository.saveCustomExercises(catalog, dayId, exercises)
+                                customizedDayIds = repository.customizedDayIds()
+                            }.exceptionOrNull()?.message
+                        },
+                        onRestoreDay = { dayId ->
+                            runCatching {
+                                catalog = repository.resetCustomExercises(dayId)
+                                customizedDayIds = repository.customizedDayIds()
+                            }.exceptionOrNull()?.message
+                        },
+                        onStart = ::start,
+                        onStartQuick = ::startQuick
                     )
-                    2 -> MyselfScreen(history = history, active = draft)
+                    2 -> MyselfScreen(
+                        history = history,
+                        active = draft,
+                        settings = settings,
+                        latestWeightKg = latestWeightKg,
+                        onSaveSettings = onSaveSettings
+                    )
                     else -> HistoryScreen(
                         history = history,
                         days = catalog.days,
@@ -538,35 +981,109 @@ private fun PulseApp(openWorkoutFromNotification: MutableState<Boolean>) {
         }
     }
 
-    pendingBackup?.let { raw ->
+    pendingBackup?.let { uri ->
+        val preview = pendingBackupPreview
         AlertDialog(
-            onDismissRequest = { pendingBackup = null },
-            title = { Text("Ripristinare i tuoi dati?") },
-            text = { Text("Sostituirà lo storico, l'eventuale allenamento in corso, passi salvati e preferenze del piano. Continua solo se vuoi recuperare un backup precedente.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    runCatching {
-                        backupStore.restore(raw)
-                        history = store.history()
-                        draft = store.loadDraft()
-                        wellness = wellnessStore.read()
-                        catalog = repository.initial()
-                        sessionVisible = false
-                        tab = 0
-                    }.onSuccess {
-                        backupStatus = "Backup ripristinato correttamente."
-                    }.onFailure {
-                        backupStatus = "Ripristino fallito: ${it.message.orEmpty().take(100)}"
+            onDismissRequest = {
+                if (!backupBusy) { pendingBackup = null; pendingBackupPreview = null }
+            },
+            title = { Text("Ripristinare il backup?") },
+            text = {
+                Column {
+                    if (preview != null) {
+                        Text("${preview.workouts} allenamenti · ${preview.photos} foto WO · " +
+                            "${preview.bodyPhotos} foto fisico · ${preview.recaps} recap", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        if (preview.schemaVersion == 1) {
+                            Text("Vecchio backup JSON: non contiene foto o recap. " +
+                                "Le immagini già presenti sul telefono resteranno invariate.")
+                            Spacer(Modifier.height(8.dp))
+                        }
                     }
-                    pendingBackup = null
-                }) { Text("Ripristina") }
+                    Text("Sostituirà allenamenti, eventuale sessione in corso, " +
+                        "passi e impostazioni salvate. Verifica di aver selezionato il file corretto. " +
+                        "Il backup non è cifrato: conservalo privatamente.")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !backupBusy,
+                    onClick = {
+                        backupBusy = true
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    checkNotNull(context.contentResolver.openInputStream(uri)) {
+                                        "Impossibile leggere il backup selezionato"
+                                    }.use { input -> backupStore.restoreFrom(input) }
+                                }
+                            }.onSuccess { restored ->
+                                history = store.history()
+                                draft = store.loadDraft()
+                                wellness = wellnessStore.read()
+                                calendarEntries = calendarStore.read()
+                                calendarVisible = false
+                                checkInToday = checkInStore.readOn(java.time.LocalDate.now())
+                                weeklyReminderEnabled = WeeklyMotivationScheduler.enabled(context)
+                                WeeklyMotivationScheduler.sync(context)
+                                catalog = repository.initial()
+                                customizedDayIds = repository.customizedDayIds()
+                                waterRemindersEnabled =
+                                    ReminderScheduler.enabled(context, ReminderKind.WATER)
+                                moveRemindersEnabled =
+                                    ReminderScheduler.enabled(context, ReminderKind.MOVE)
+                                ReminderScheduler.sync(context)
+                                onSettingsRestored()
+                                sessionVisible = false
+                                tab = 0
+                                backupStatus = "Ripristino riuscito: ${restored.workouts} sessioni, " +
+                                    "${restored.photos} foto WO, ${restored.bodyPhotos} foto fisico, " +
+                                    "${restored.recaps} recap."
+                            }.onFailure { error ->
+                                backupStatus = "Ripristino non riuscito: " +
+                                    error.message.orEmpty().take(140)
+                            }
+                            backupBusy = false
+                            pendingBackup = null
+                            pendingBackupPreview = null
+                        }
+                    }
+                ) { Text(if (backupBusy) "Verifico…" else "Ripristina") }
             },
             dismissButton = {
-                TextButton(onClick = { pendingBackup = null }) { Text("Annulla") }
+                TextButton(enabled = !backupBusy, onClick = {
+                    pendingBackup = null; pendingBackupPreview = null
+                }) { Text("Annulla") }
             }
         )
     }
 
+    if (checkInVisible) {
+        PreWorkoutCheckInDialog(
+            existing = checkInStore.readOn(java.time.LocalDate.now()),
+            onSave = { entry ->
+                runCatching { checkInToday = checkInStore.save(entry) }
+                    .exceptionOrNull()?.message.also { problem ->
+                        if (problem == null) {
+                            checkInVisible = false
+                            val next = pendingCheckInStart
+                            pendingCheckInStart = null
+                            if (next != null) startConfirmed(next)
+                        }
+                    }
+            },
+            onSkip = {
+                checkInVisible = false
+                val next = pendingCheckInStart
+                pendingCheckInStart = null
+                if (next != null) startConfirmed(next)
+            },
+            onDismiss = {
+                checkInVisible = false
+                pendingCheckInStart = null
+            }
+        )
+    }
     pendingNewWorkout?.let { next ->
         AlertDialog(
             onDismissRequest = { pendingNewWorkout = null },

@@ -110,13 +110,71 @@ class WorkoutCatalogRepository(context: Context) {
         }
     }
 
+    /**
+     * Solo gli esercizi vengono sovrascritti: nomi, giorni, linee guida e
+     * revisioni di GitHub possono continuare ad aggiornarsi normalmente.
+     * Salvato nelle preferenze pulse_plan, già incluse nel backup V2.
+     */
+    private val overrideKey = "custom_days_v1"
+
+    fun customizedDayIds(): Set<String> = runCatching {
+        val saved = JSONObject(preferences.getString(overrideKey, "{}").orEmpty())
+        val keys = saved.keys()
+        buildSet { while (keys.hasNext()) add(keys.next()) }
+    }.getOrDefault(emptySet())
+
+    private fun withCustomizations(base: WorkoutCatalog): WorkoutCatalog {
+        val stored = runCatching {
+            JSONObject(preferences.getString(overrideKey, "{}").orEmpty())
+        }.getOrElse { return base }
+        return base.copy(days = base.days.map { day ->
+            val custom = stored.optJSONArray(day.id) ?: return@map day
+            runCatching {
+                // parseDay è anche usato per le snapshot e rifiuta set invalidi.
+                val json = dayToJson(day).put("exercises", custom)
+                val updated = parseDay(json)
+                CustomPlanRules.validate(updated.exercises)
+                updated
+            }.getOrDefault(day)
+        })
+    }
+
+    /** Rifiuta input invalidi senza scrivere in memoria. Ritorna la nuova scheda. */
+    fun saveCustomExercises(
+        catalog: WorkoutCatalog,
+        dayId: String,
+        exercises: List<Exercise>
+    ): WorkoutCatalog {
+        val base = catalog.days.firstOrNull { it.id == dayId }
+            ?: error("Seduta non trovata")
+        CustomPlanRules.validate(exercises)
+        val updated = base.copy(exercises = exercises)
+        val encoded = dayToJson(updated).getJSONArray("exercises")
+        val stored = JSONObject(preferences.getString(overrideKey, "{}").orEmpty())
+        stored.put(dayId, encoded)
+        require(preferences.edit().putString(overrideKey, stored.toString()).commit()) {
+            "Impossibile salvare la scheda personalizzata"
+        }
+        return catalog.copy(days = catalog.days.map { if (it.id == dayId) updated else it })
+    }
+
+    /** Reimposta solo questa seduta. Le sessioni già registrate sono immutate. */
+    fun resetCustomExercises(dayId: String): WorkoutCatalog {
+        val stored = JSONObject(preferences.getString(overrideKey, "{}").orEmpty())
+        stored.remove(dayId)
+        check(preferences.edit().putString(overrideKey, stored.toString()).commit()) {
+            "Impossibile ripristinare la scheda predefinita"
+        }
+        return initial()
+    }
+
     fun initial(): WorkoutCatalog {
         val cached = preferences.getString("valid_catalog", null)
         if (!cached.isNullOrBlank()) {
-            runCatching { return parse(cached) }
+            runCatching { return withCustomizations(parse(cached)) }
         }
         val included = app.assets.open("workout-plan.json").bufferedReader().use { it.readText() }
-        return parse(included)
+        return withCustomizations(parse(included))
     }
 
     /** Da chiamare su Dispatchers.IO; mantiene intatta la versione valida se la rete fallisce. */
@@ -145,7 +203,7 @@ class WorkoutCatalogRepository(context: Context) {
             val json = bytes.toString(Charsets.UTF_8)
             val valid = parse(json)
             preferences.edit().putString("valid_catalog", json).apply()
-            return valid
+            return withCustomizations(valid)
         } finally {
             connection.disconnect()
         }

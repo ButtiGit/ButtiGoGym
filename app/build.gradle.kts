@@ -12,8 +12,8 @@ android {
         applicationId = "it.pulse.workout"
         minSdk = 26
         targetSdk = 35
-        versionCode = 17
-        versionName = "0.9.5"
+        versionCode = 19
+        versionName = "1.1.0"
     }
 
     // Una chiave permanente resta nei GitHub Actions Secrets, mai nel repository.

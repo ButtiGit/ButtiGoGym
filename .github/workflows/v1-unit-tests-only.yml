@@ -1,0 +1,57 @@
+name: ButtiGoGym V1 - Unit Tests Only
+
+on:
+  push:
+    branches:
+      - feature/v1-phase1-complete-backup
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+
+      - name: Install Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK (compile only)
+        shell: bash
+        run: |
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;35.0.0"
+
+      - name: Gradle 8.11.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Prepare offline anatomy, exercise data and GIF assets
+        shell: bash
+        run: |
+          python3 tools/build_muscle_map.py
+          python3 tools/validate_lean_bulk_plan.py
+          python3 tools/resolve_gifs.py
+          cp workouts/plan.json app/src/main/assets/workout-plan.json
+
+      - name: Compile classes and run JVM tests - no APK
+        shell: bash
+        run: gradle --no-daemon :app:testDebugUnitTest
+
+      - name: Verify that no APK was generated
+        shell: bash
+        run: |
+          if find app/build/outputs/apk -name '*.apk' -type f 2>/dev/null | grep -q .; then
+            echo "::error::The test-only workflow unexpectedly produced an APK"
+            exit 1
+          fi

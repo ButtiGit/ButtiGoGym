@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Necessario solo per aprire l'installer Android con consenso esplicito. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Solo lettura passi; Samsung Health scrive i dati tramite Health Connect. -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     <queries>
@@ -45,6 +48,17 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/session_photo_paths" />
         </provider>
+        <!-- Solo broadcast di sistema: ricalcola i promemoria locali dopo reboot/cambio ora. -->
+        <receiver
+            android:name=".reminders.ReminderRescheduleReceiver"
+            android:enabled="true"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
         <service
             android:name=".WorkoutTimerService"
             android:exported="false"

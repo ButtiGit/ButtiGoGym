@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -52,6 +53,7 @@ import it.pulse.workout.data.*
 import java.text.NumberFormat
 import java.time.DayOfWeek
 import java.time.Instant
+import it.pulse.workout.updates.AppUpdateStatus
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -66,6 +68,13 @@ fun DashboardScreen(
     active: WorkoutDraft?,
     history: List<SessionRecord>,
     wellness: WellnessData,
+    personalSettings: PersonalSettings,
+    weeklyReport: WeeklyTrainingReport,
+    weeklyMissions: WeeklyMissionSummary,
+    weeklyReminderEnabled: Boolean,
+    onToggleWeeklyReminder: (Boolean) -> Unit,
+    todayCheckIn: PreWorkoutCheckIn?,
+    onOpenCheckIn: () -> Unit,
     stepStatus: String,
     healthConnected: Boolean,
     healthSyncing: Boolean,
@@ -74,22 +83,39 @@ fun DashboardScreen(
     onRefreshHealth: () -> Unit,
     onRequestStepAccess: () -> Unit,
     onStart: (WorkoutDay) -> Unit,
+    onStartQuick: (WorkoutDay) -> Unit,
     onSaveSteps: (Int) -> Unit,
     onToggleRest: () -> Unit,
     onOpenPlan: () -> Unit,
+    onOpenCalendar: () -> Unit,
     reminderWaterEnabled: Boolean,
     reminderMoveEnabled: Boolean,
+    reminderWaterProblem: String?,
+    reminderMoveProblem: String?,
+    onTestWaterReminder: () -> Unit,
+    onTestMoveReminder: () -> Unit,
+    onOpenReminderNotificationSettings: () -> Unit,
     remindersPermissionGranted: Boolean,
     onToggleWaterReminder: (Boolean) -> Unit,
     onToggleMoveReminder: (Boolean) -> Unit,
     onEnableReminderNotifications: () -> Unit,
+    updateInstalledVersion: String,
+    updateStatus: AppUpdateStatus,
+    updateChecking: Boolean,
+    updateDownloading: Boolean,
+    updateProgress: Int,
+    updateVerified: Boolean,
+    onCheckUpdate: () -> Unit,
+    onDownloadUpdate: () -> Unit,
+    onInstallUpdate: () -> Unit,
     backupStatus: String,
+    backupBusy: Boolean,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit
 ) {
     val today = LocalDate.now()
-    val summary = remember(today, wellness, history) {
-        StreakCalculator.calculate(today, wellness, history)
+    val summary = remember(today, wellness, history, personalSettings.weeklyWorkouts) {
+        StreakCalculator.calculate(today, wellness, history, personalSettings.weeklyWorkouts)
     }
     val current = active?.daySnapshot ?: days.firstOrNull { it.id == active?.dayId } ?: upcoming
     var stepsDialog by remember { mutableStateOf(false) }
@@ -105,6 +131,11 @@ fun DashboardScreen(
     }
     val totalSetsThisWeek = weekSessions.sumOf { it.completedSets }
     val trainingMinutes = weekSessions.sumOf { it.durationMinutes.coerceAtLeast(0) }
+    // Le soglie seguono la scheda davvero in uso, comprese le giornate personalizzate.
+    // Se la frequenza scelta non è compatibile con i giorni disponibili, niente target fittizi.
+    val weeklyGoals = remember(days, personalSettings.weeklyWorkouts) {
+        WeeklyPlanGoalsCalculator.from(days, personalSettings.weeklyWorkouts)
+    }
     val readyMuscles = remember(history) {
         MuscleAnalytics.evaluate(history).count { it.state == MuscleRecovery.READY }
     }
@@ -132,9 +163,14 @@ fun DashboardScreen(
                         // Il logo e il nome identificano già la schermata.
                     }
                 }
+                IconButton(onClick = onOpenCalendar) {
+                    Icon(Icons.Default.CalendarMonth, contentDescription = "Apri calendario allenamenti",
+                        tint = PulseColors.Accent, modifier = Modifier.size(25.dp))
+                }
                 Surface(color = PulseColors.SoftGreen, shape = CircleShape) {
-                    Text("LEAN BULK", Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        fontSize = 10.sp, fontWeight = FontWeight.Bold, color = PulseColors.Accent)
+                    Text(personalSettings.goal.compactLabel,
+                        Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PulseColors.Accent)
                 }
             }
         }
@@ -171,9 +207,9 @@ fun DashboardScreen(
                                 fontSize = 10.sp, letterSpacing = 0.7.sp)
                         }
                         Spacer(Modifier.weight(1f))
-                        Image(painter = painterResource(R.drawable.buttigogym_mascot),
-                            contentDescription = null,
-                            modifier = Modifier.size(66.dp).clip(RoundedCornerShape(18.dp)))
+                        Icon(Icons.Default.FitnessCenter,
+                            contentDescription = null, tint = Color.White.copy(alpha = .9f),
+                            modifier = Modifier.size(27.dp))
                     }
                     Spacer(Modifier.height(20.dp))
                     Text(current.name, color = Color.White, fontSize = 25.sp,
@@ -184,7 +220,7 @@ fun DashboardScreen(
                     Spacer(Modifier.height(20.dp))
                     Button(
                         onClick = { onStart(current) },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = BGLayout.controlHeight),
                         shape = RoundedCornerShape(16.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White, contentColor = PulseColors.Accent
@@ -196,25 +232,71 @@ fun DashboardScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null, modifier = Modifier.size(18.dp))
                     }
+                    if (active == null && QuickWorkoutPlanner.create(current) != null) {
+                        Spacer(Modifier.height(9.dp))
+                        OutlinedButton(
+                            onClick = { onStartQuick(current) },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = .7f)),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                        ) {
+                            Text("Allenamento rapido · 35–45 min", color = Color.White,
+                                fontWeight = FontWeight.Bold)
+                        }
+                        Text("Volume ridotto rispetto alla seduta completa.",
+                            color = Color.White.copy(alpha = .8f), fontSize = 11.sp)
+                    }
                 }
             }
+        }
+
+        if (updateStatus is AppUpdateStatus.Available) {
+            item {
+                ReleaseUpdatePanel(
+                    installedVersion = updateInstalledVersion,
+                    status = updateStatus,
+                    checking = updateChecking,
+                    downloading = updateDownloading,
+                    downloadProgress = updateProgress,
+                    verified = updateVerified,
+                    onCheck = onCheckUpdate,
+                    onDownload = onDownloadUpdate,
+                    onInstall = onInstallUpdate
+                )
+            }
+        }
+
+        item {
+            WeeklyMissionsCard(weeklyMissions, weeklyReminderEnabled, onToggleWeeklyReminder)
+        }
+
+        item {
+            WeeklyReportCard(weeklyReport, todayCheckIn, onOpenCheckIn)
         }
 
         item {
             DashboardSectionTitle("Progressi")
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                ProgressMetric("SEDUTE", "${summary.workoutDaysThisWeek}/3",
-                    "questa settimana", summary.workoutDaysThisWeek / 3f, Modifier.weight(1f))
+                ProgressMetric("SEDUTE",
+                    "${summary.workoutDaysThisWeek}/${personalSettings.weeklyWorkouts}",
+                    "questa settimana",
+                    (summary.workoutDaysThisWeek.toFloat() / personalSettings.weeklyWorkouts),
+                    Modifier.weight(1f))
                 ProgressMetric("SERIE", totalSetsThisWeek.toString(),
-                    "questa settimana", totalSetsThisWeek / 62f, Modifier.weight(1f))
+                    weeklyGoals.sets?.let { "di $it previste" } ?: "definisci il programma",
+                    weeklyGoals.sets?.let { totalSetsThisWeek.toFloat() / it } ?: 0f,
+                    Modifier.weight(1f))
                 ProgressMetric("TEMPO", "${trainingMinutes}m",
-                    "questa settimana", trainingMinutes / 255f, Modifier.weight(1f))
+                    weeklyGoals.minutes?.let { "di circa ${it}m" } ?: "durata non disponibile",
+                    weeklyGoals.minutes?.let { trainingMinutes.toFloat() / it } ?: 0f,
+                    Modifier.weight(1f))
             }
             Spacer(Modifier.height(10.dp))
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(19.dp), color = Color.White,
+                shape = RoundedCornerShape(19.dp), color = PulseColors.Surface,
                 border = BorderStroke(1.dp, PulseColors.Border)
             ) {
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -236,12 +318,13 @@ fun DashboardScreen(
         }
 
         item {
-            DashboardSectionTitle("Streak")
+            DashboardSectionTitle("Streak · indicatori secondari",
+                "La costanza principale è nel bilancio delle ultime quattro settimane")
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StreakTile(
                     icon = Icons.Default.LocalFireDepartment, value = summary.generalDays,
-                    unit = "giorni", title = "Generale",
+                    unit = "giorni", title = "Abitudini",
                     detail = "", accentBackground = true,
                     animateFlame = true,
                     modifier = Modifier.weight(1f)
@@ -345,7 +428,7 @@ fun DashboardScreen(
                     }
                     Spacer(Modifier.height(6.dp))
                     if (stepStatus.startsWith("Consenti") || !stepStatus.startsWith("Passi automatici"))
-                        Text(stepStatus, color = PulseColors.Muted, fontSize = 10.sp)
+                        Text(stepStatus, color = PulseColors.Muted, fontSize = 12.sp)
                     if (stepStatus.startsWith("Consenti")) {
                         TextButton(onClick = onRequestStepAccess) {
                             Text("Attiva contapassi del telefono", color = PulseColors.Accent)
@@ -410,8 +493,9 @@ fun DashboardScreen(
             Spacer(Modifier.height(12.dp))
             WidgetCard {
                 val animatedWeek by animateFloatAsState(
-                    (summary.workoutDaysThisWeek / 3f).coerceIn(0f, 1f),
-                    animationSpec = tween(900), label = "Sedute settimanali"
+                    (summary.workoutDaysThisWeek.toFloat() /
+                        personalSettings.weeklyWorkouts.coerceAtLeast(1)).coerceIn(0f, 1f),
+                    animationSpec = tween(BGMotion.duration(650)), label = "Sedute settimanali"
                 )
                 LinearProgressIndicator(
                     progress = { animatedWeek },
@@ -502,24 +586,72 @@ fun DashboardScreen(
                     Switch(checked = reminderMoveEnabled, onCheckedChange = onToggleMoveReminder,
                         colors = SwitchDefaults.colors(checkedTrackColor = PulseColors.Accent))
                 }
-                if (!remindersPermissionGranted && (reminderWaterEnabled || reminderMoveEnabled)) {
+                if ((reminderWaterEnabled || reminderMoveEnabled)) {
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (reminderWaterEnabled) {
+                            OutlinedButton(onClick = onTestWaterReminder,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(13.dp),
+                                border = BorderStroke(1.dp, PulseColors.Border)) {
+                                Text("Prova acqua", color = PulseColors.Accent, fontSize = 11.sp)
+                            }
+                        }
+                        if (reminderMoveEnabled) {
+                            OutlinedButton(onClick = onTestMoveReminder,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(13.dp),
+                                border = BorderStroke(1.dp, PulseColors.Border)) {
+                                Text("Prova movimento", color = PulseColors.Accent, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+                val reminderProblem = if (!remindersPermissionGranted)
+                    "Permesso notifiche non concesso"
+                    else listOfNotNull(
+                        reminderWaterProblem.takeIf { reminderWaterEnabled },
+                        reminderMoveProblem.takeIf { reminderMoveEnabled }
+                    ).distinct().joinToString(" · ").takeIf { it.isNotBlank() }
+                if (reminderProblem != null && (reminderWaterEnabled || reminderMoveEnabled)) {
                     Spacer(Modifier.height(12.dp))
                     Surface(color = PulseColors.Raised, shape = RoundedCornerShape(13.dp)) {
                         Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Notifications, contentDescription = null,
                                 tint = PulseColors.Accent, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(7.dp))
-                            Text("Consenti notifiche", color = PulseColors.Foreground,
-                                fontSize = 12.sp, modifier = Modifier.weight(1f))
-                            TextButton(onClick = onEnableReminderNotifications) {
-                                Text("Attiva", color = PulseColors.Accent)
+                            Text(reminderProblem, color = PulseColors.Foreground,
+                                fontSize = 11.sp, modifier = Modifier.weight(1f))
+                            TextButton(onClick = {
+                                if (!remindersPermissionGranted) onEnableReminderNotifications()
+                                else onOpenReminderNotificationSettings()
+                            }) {
+                                Text(if (!remindersPermissionGranted) "Attiva" else "Impostazioni",
+                                    color = PulseColors.Accent)
                             }
                         }
                     }
                 }
                 Spacer(Modifier.height(6.dp))
                 Text("Gli avvisi seguono l'orario del telefono. Android può ritardarli.",
-                    color = PulseColors.Muted, fontSize = 10.sp)
+                    color = PulseColors.Muted, fontSize = 12.sp)
+            }
+        }
+
+        item {
+            if (updateStatus !is AppUpdateStatus.Available) {
+                ReleaseUpdatePanel(
+                    installedVersion = updateInstalledVersion,
+                    status = updateStatus,
+                    checking = updateChecking,
+                    downloading = updateDownloading,
+                    downloadProgress = updateProgress,
+                    verified = updateVerified,
+                    onCheck = onCheckUpdate,
+                    onDownload = onDownloadUpdate,
+                    onInstall = onInstallUpdate
+                )
+                Spacer(Modifier.height(12.dp))
             }
         }
 
@@ -542,19 +674,23 @@ fun DashboardScreen(
                 }
                 if (backupExpanded) {
                     Spacer(Modifier.height(12.dp))
-                    Text("Esporta i progressi prima di disinstallare l'app.",
+                    Text("ZIP con allenamenti, foto, recap e preferenze. " +
+                        "Il file non è cifrato: conservalo privatamente.",
                         color = PulseColors.Muted, fontSize = 11.sp)
                     Spacer(Modifier.height(10.dp))
-                    Button(onClick = onExportBackup, modifier = Modifier.fillMaxWidth(),
+                    Button(onClick = onExportBackup, enabled = !backupBusy,
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)) {
-                        Text("Esporta backup", color = Color.White)
+                        Text(if (backupBusy) "Attendi…" else "Esporta backup ZIP",
+                            color = Color.White)
                     }
                     Spacer(Modifier.height(7.dp))
-                    OutlinedButton(onClick = onImportBackup, modifier = Modifier.fillMaxWidth(),
+                    OutlinedButton(onClick = onImportBackup, enabled = !backupBusy,
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                         border = BorderStroke(1.dp, PulseColors.Border)) {
-                        Text("Ripristina backup", color = PulseColors.Accent)
+                        Text("Ripristina ZIP o vecchio JSON", color = PulseColors.Accent)
                     }
                 }
                 if (backupStatus.isNotBlank()) {
@@ -627,7 +763,7 @@ private fun DashboardSectionTitle(title: String, subtitle: String = "") {
 private fun WidgetCard(content: @Composable ColumnScope.() -> Unit) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
+        color = PulseColors.Surface,
         shape = RoundedCornerShape(26.dp),
         border = BorderStroke(1.dp, PulseColors.Border),
         shadowElevation = 1.dp
@@ -650,8 +786,8 @@ private fun StreakTile(
     val wobble = remember { Animatable(0f) }
     LaunchedEffect(value, animateFlame) {
         wobble.snapTo(0f)
-        if (animateFlame && value > 0) {
-            // 6 × 500 ms: la fiamma si muove tre secondi e poi si ferma.
+        if (animateFlame && value > 0 && BGMotion.duration(1) > 0) {
+            // Disattiva l'animazione quando Android chiede di ridurre il movimento.
             repeat(6) {
                 wobble.animateTo(9f, animationSpec = tween(125))
                 wobble.animateTo(-9f, animationSpec = tween(125))
@@ -661,7 +797,7 @@ private fun StreakTile(
     }
     Surface(
         modifier = modifier.height(148.dp),
-        color = if (accentBackground) PulseColors.SoftGreen else Color.White,
+        color = if (accentBackground) PulseColors.SoftGreen else PulseColors.Surface,
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, if (accentBackground) PulseColors.SoftGreen else PulseColors.Border)
     ) {
@@ -672,7 +808,7 @@ private fun StreakTile(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Box(Modifier.size(33.dp).background(
-                    if (accentBackground) Color.White else PulseColors.SoftGreen,
+                    if (accentBackground) PulseColors.Surface else PulseColors.SoftGreen,
                     RoundedCornerShape(11.dp)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -692,7 +828,7 @@ private fun StreakTile(
                     fontWeight = FontWeight.ExtraBold, color = PulseColors.Foreground,
                     lineHeight = 34.sp)
                 Spacer(Modifier.width(5.dp))
-                Text(unit, color = PulseColors.Muted, fontSize = 10.sp,
+                Text(unit, color = PulseColors.Muted, fontSize = 12.sp,
                     modifier = Modifier.padding(bottom = 5.dp))
             }
             Text(title, color = PulseColors.Foreground, fontSize = 13.sp,
@@ -707,7 +843,9 @@ private fun StreakTile(
 private fun StepsRing(value: Int, modifier: Modifier) {
     val ratio = (value.toFloat() / StreakCalculator.STEP_GOAL).coerceIn(0f, 1f)
     val progress by animateFloatAsState(ratio,
-        animationSpec = tween(durationMillis = 1000), label = "Progressi passi")
+        animationSpec = tween(durationMillis = BGMotion.duration(750)), label = "Progressi passi")
+    val ringTrack = PulseColors.SoftGreen
+    val ringProgress = PulseColors.Accent
     Box(modifier, contentAlignment = Alignment.Center) {
         Canvas(
             Modifier.fillMaxSize().semantics {
@@ -715,10 +853,10 @@ private fun StepsRing(value: Int, modifier: Modifier) {
             }
         ) {
             val stroke = 11.dp.toPx()
-            drawArc(PulseColors.SoftGreen, 0f, 360f, false,
+            drawArc(ringTrack, 0f, 360f, false,
                 style = Stroke(width = stroke, cap = StrokeCap.Round))
             if (progress > 0f) {
-                drawArc(PulseColors.Accent, -90f, progress * 360f, false,
+                drawArc(ringProgress, -90f, progress * 360f, false,
                     style = Stroke(width = stroke, cap = StrokeCap.Round))
             }
         }
@@ -735,17 +873,17 @@ private fun ProgressMetric(
 ) {
     val animated by animateFloatAsState(
         targetValue = fraction.coerceIn(0f, 1f),
-        animationSpec = tween(950), label = "Indicatore $label"
+        animationSpec = tween(BGMotion.duration(750)), label = "Indicatore $label"
     )
-    Surface(modifier = modifier, color = Color.White, shape = RoundedCornerShape(20.dp),
+    Surface(modifier = modifier, color = PulseColors.Surface, shape = RoundedCornerShape(20.dp),
         border = BorderStroke(1.dp, PulseColors.Border)) {
         Column(Modifier.padding(12.dp)) {
-            Text(label, fontSize = 9.sp, color = PulseColors.Muted,
+            Text(label, fontSize = 11.sp, color = PulseColors.Muted,
                 fontWeight = FontWeight.Bold, letterSpacing = .9.sp)
             Spacer(Modifier.height(8.dp))
             Text(value, fontWeight = FontWeight.Black, fontSize = 23.sp,
                 color = PulseColors.Foreground, maxLines = 1)
-            Text(hint, color = PulseColors.Muted, fontSize = 9.sp,
+            Text(hint, color = PulseColors.Muted, fontSize = 11.sp,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(

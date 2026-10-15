@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
@@ -93,14 +95,7 @@ private fun LabelChip(label: String, selected: Boolean = false) {
 
 @Composable
 private fun PulseCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier = modifier,
-        color = PulseColors.Surface,
-        shape = RoundedCornerShape(22.dp),
-        border = BorderStroke(1.dp, PulseColors.Border)
-    ) {
-        Column(Modifier.padding(20.dp), content = content)
-    }
+    BGCard(modifier = modifier, padding = 20.dp, content = content)
 }
 
 @Composable
@@ -225,9 +220,14 @@ fun PlanScreen(
     refreshState: String,
     refreshing: Boolean,
     guidelines: List<String>,
+    customizedDayIds: Set<String>,
     onRefresh: () -> Unit,
-    onStart: (WorkoutDay) -> Unit
+    onSaveDay: (String, List<Exercise>) -> String?,
+    onRestoreDay: (String) -> String?,
+    onStart: (WorkoutDay) -> Unit,
+    onStartQuick: (WorkoutDay) -> Unit
 ) {
+    var editingDayId by remember { mutableStateOf<String?>(null) }
     var showGuidelines by remember { mutableStateOf(false) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -240,20 +240,55 @@ fun PlanScreen(
             PageTitle("La tua scheda.")
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                LabelChip("3 GIORNI + BONUS")
+                LabelChip("${days.count { !it.optional }} GIORNI + BONUS")
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onRefresh, enabled = !refreshing) {
                     Text(if (refreshing) "Sincronizzo…" else "↻ Aggiorna",
                         color = PulseColors.Accent)
                 }
             }
-            if (refreshState.startsWith("Offline") || refreshState.startsWith("Aggiornamento"))
+            Text("Versione scheda: $version", color = PulseColors.Muted, fontSize = 11.sp)
+            if (refreshState.startsWith("Offline") || refreshState.startsWith("Aggiornamento") ||
+                refreshState.startsWith("Sincronizzata"))
                 Text(refreshState, color = PulseColors.Muted, fontSize = 11.sp)
+            if (customizedDayIds.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(15.dp),
+                    color = PulseColors.SoftGreen,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(13.dp)) {
+                        Text("Scheda personalizzata: ${customizedDayIds.size} giornate",
+                            color = PulseColors.Accent, fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(5.dp))
+                        Text("Gli esercizi salvati sul telefono restano prioritari " +
+                            "rispetto agli aggiornamenti GitHub. Per applicare la nuova " +
+                            "programmazione a una giornata, apri Modifica → " +
+                            "Ripristina la scheda originale (con conferma). " +
+                            "Gli allenamenti nello storico non saranno cancellati.",
+                            color = PulseColors.Foreground, fontSize = 12.sp)
+                    }
+                }
+            }
             Spacer(Modifier.height(22.dp))
+        }
+        if (days.isEmpty()) {
+            item {
+                BGEmptyState(
+                    title = "Scheda ancora non disponibile",
+                    description = "Controlla la connessione o riprova ad aggiornare la scheda. " +
+                        "Il tuo storico resta salvato sul telefono.",
+                    symbol = Icons.Default.PlayArrow,
+                    actionLabel = "Riprova aggiornamento",
+                    onAction = onRefresh
+                )
+            }
         }
         items(days, key = { it.id }) { day ->
             var expanded by remember(day.id) { mutableStateOf(false) }
-            PulseCard(Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(330))) {
+            PulseCard(Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(BGMotion.duration(240)))) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(if (day.optional) "★" else "0${days.indexOf(day) + 1}",
                         color = PulseColors.Accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -261,6 +296,7 @@ fun PlanScreen(
                     Eyebrow(day.weekday)
                     Spacer(Modifier.weight(1f))
                     if (activeDayId == day.id) LabelChip("IN CORSO", selected = true)
+                    else if (day.id in customizedDayIds) LabelChip("PERSONALIZZATA")
                     else if (day.optional) LabelChip("FACOLTATIVO")
                 }
                 Spacer(Modifier.height(17.dp))
@@ -274,9 +310,19 @@ fun PlanScreen(
                     (if (day.optionalSetCount > 0) " · +${day.optionalSetCount} SERIE FACOLTATIVE" else ""),
                     PulseColors.Accent)
                 Spacer(Modifier.height(10.dp))
-                TextButton(onClick = { expanded = !expanded }) {
-                    Text(if (expanded) "Chiudi ↑" else "Vedi esercizi ↓",
-                        color = PulseColors.Accent, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { expanded = !expanded }) {
+                        Text(if (expanded) "Chiudi ↑" else "Vedi esercizi ↓",
+                            color = PulseColors.Accent, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    OutlinedButton(
+                        onClick = { editingDayId = day.id },
+                        shape = RoundedCornerShape(13.dp),
+                        border = BorderStroke(1.dp, PulseColors.Accent)
+                    ) {
+                        Text("Modifica", color = PulseColors.Accent, fontWeight = FontWeight.Bold)
+                    }
                 }
                 if (expanded) {
                     HorizontalDivider(color = PulseColors.Border)
@@ -311,14 +357,33 @@ fun PlanScreen(
                     Text(if (activeDayId == day.id) "Riprendi allenamento" else
                         if (day.optional) "Inizia bonus facoltativo" else "Inizia allenamento")
                 }
+                if (activeDayId != day.id &&
+                    it.pulse.workout.data.QuickWorkoutPlanner.create(day) != null) {
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { onStartQuick(day) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, PulseColors.Border)
+                    ) {
+                        Text("Versione rapida · circa 35–45 min", color = PulseColors.Accent)
+                    }
+                }
             }
             Spacer(Modifier.height(13.dp))
         }
         item {
             Spacer(Modifier.height(9.dp))
             PulseCard(Modifier.fillMaxWidth()
-                .animateContentSize(animationSpec = tween(320))
-                .clickable { showGuidelines = !showGuidelines }) {
+                .animateContentSize(animationSpec = tween(BGMotion.duration(240)))
+                .clickable(
+                    onClickLabel = if (showGuidelines) "Nascondi note della scheda"
+                        else "Mostra note della scheda",
+                    role = androidx.compose.ui.semantics.Role.Button
+                ) { showGuidelines = !showGuidelines }
+                .semantics {
+                    stateDescription = if (showGuidelines) "Dettagli aperti" else "Dettagli chiusi"
+                }) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Note e progressione", fontSize = 15.sp,
                         fontWeight = FontWeight.Bold, color = PulseColors.Foreground)
@@ -335,6 +400,17 @@ fun PlanScreen(
                 }
             }
         }
+    }
+
+    val selectedDay = days.firstOrNull { it.id == editingDayId }
+    if (selectedDay != null) {
+        PlanDayEditor(
+            day = selectedDay,
+            customized = selectedDay.id in customizedDayIds,
+            onSave = { exercises -> onSaveDay(selectedDay.id, exercises) },
+            onRestore = { onRestoreDay(selectedDay.id) },
+            onClose = { editingDayId = null }
+        )
     }
 }
 
@@ -359,21 +435,27 @@ fun HistoryScreen(
         }
         if (history.isEmpty()) {
             item {
-                PulseCard(Modifier.fillMaxWidth()) {
-                    Text("Si comincia da qui.", color = PulseColors.Foreground,
-                        fontWeight = FontWeight.ExtraBold, fontSize = 21.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Text("Completa il primo allenamento per vedere qui i tuoi progressi.",
-                        color = PulseColors.Muted, fontSize = 14.sp)
-                }
+                BGEmptyState(
+                    title = "Ogni storia inizia con una serie",
+                    description = "Apri Scheda, completa il tuo primo allenamento e ritroverai " +
+                        "qui carichi, ripetizioni, durata e foto.",
+                    symbol = Icons.Default.PlayArrow
+                )
             }
         } else {
             items(history, key = { it.id }) { record ->
                 val day = record.daySnapshot ?: days.firstOrNull { it.id == record.dayId }
                 var expanded by remember(record.id) { mutableStateOf(false) }
                 PulseCard(Modifier.fillMaxWidth()
-                    .animateContentSize(animationSpec = tween(300))
-                    .clickable { expanded = !expanded }) {
+                    .animateContentSize(animationSpec = tween(BGMotion.duration(240)))
+                    .clickable(
+                        onClickLabel = if (expanded) "Nascondi dettagli allenamento"
+                            else "Mostra dettagli allenamento",
+                        role = androidx.compose.ui.semantics.Role.Button
+                    ) { expanded = !expanded }
+                    .semantics {
+                        stateDescription = if (expanded) "Dettagli aperti" else "Dettagli chiusi"
+                    }) {
                     Eyebrow(italianDate(record.completedAt).uppercase(Locale.ITALIAN), PulseColors.Accent)
                     Spacer(Modifier.height(10.dp))
                     Text(day?.name ?: "Allenamento", color = PulseColors.Foreground,
@@ -389,7 +471,7 @@ fun HistoryScreen(
                         trackColor = PulseColors.Raised
                     )
                     Spacer(Modifier.height(15.dp))
-                    Eyebrow(if (expanded) "NASCONDI DETTAGLI  ↑" else "VEDI KG E RIPETIZIONI  ↓", PulseColors.Accent)
+                    Eyebrow(if (expanded) "DETTAGLI APERTI  ↑" else "APRI KG E RIPETIZIONI  ↓", PulseColors.Accent)
                     if (expanded) {
                         Spacer(Modifier.height(14.dp))
                         HorizontalDivider(color = PulseColors.Border)

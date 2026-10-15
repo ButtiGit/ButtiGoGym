@@ -192,11 +192,33 @@ object WorkoutRecapImage {
             type(22f, muted))
         canvas.drawText("Calorie: stima MET 5,0 · peso 58 kg", 54f, 1307f, type(22f, muted))
 
-        context.contentResolver.openOutputStream(destination)?.use {
-            check(output.compress(Bitmap.CompressFormat.PNG, 100, it)) {
-                "Impossibile esportare il PNG"
+        try {
+            // Ogni nuovo recap ha una copia locale per il backup ZIP,
+            // indipendente dalla copia esportata nella cartella scelta dall'utente.
+            val saved = java.io.File(context.filesDir, "session_recaps").apply { mkdirs() }
+            val internalCopy = java.io.File(
+                saved, "recap_${record.id}_${System.currentTimeMillis()}.png"
+            )
+            try {
+                internalCopy.outputStream().buffered().use {
+                    check(output.compress(Bitmap.CompressFormat.PNG, 100, it)) {
+                        "Impossibile archiviare il recap"
+                    }
+                }
+                requireNotNull(context.contentResolver.openOutputStream(destination)) {
+                    "Destinazione non accessibile"
+                }.use {
+                    check(output.compress(Bitmap.CompressFormat.PNG, 100, it)) {
+                        "Impossibile esportare il PNG"
+                    }
+                }
+            } catch (error: Exception) {
+                // Non lasciare una falsa copia di backup dopo un errore.
+                internalCopy.delete()
+                throw error
             }
-        } ?: error("Destinazione non accessibile")
-        output.recycle()
+        } finally {
+            output.recycle()
+        }
     }
 }

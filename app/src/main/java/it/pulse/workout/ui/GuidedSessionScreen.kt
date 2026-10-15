@@ -7,8 +7,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -19,6 +21,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.SkipNext
@@ -28,6 +31,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,6 +53,10 @@ import coil.decode.ImageDecoderDecoder
 import coil.request.ImageRequest
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import it.pulse.workout.data.*
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -65,17 +76,21 @@ fun formatDuration(seconds: Long): String {
 fun GuidedSessionScreen(
     day: WorkoutDay,
     draft: WorkoutDraft,
+    history: List<SessionRecord>,
+    hapticFeedbackEnabled: Boolean = true,
     onBack: () -> Unit,
     onUpdate: (WorkoutDraft) -> Unit,
     onFinish: () -> Unit,
     onReset: () -> Unit,
     notificationsVisible: Boolean,
+    notificationProblem: String?,
     timerStatus: String,
     onEnableNotifications: () -> Unit,
     onNotificationSettings: () -> Unit,
     onTestNotification: () -> Unit,
     onRetryTimer: () -> Unit
 ) {
+    androidx.activity.compose.BackHandler(onBack = onBack)
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(draft.startedAt) {
         while (true) {
@@ -89,6 +104,8 @@ fun GuidedSessionScreen(
     val optionalCompleted = day.exercises.filter { it.optional }.sumOf { ex ->
         (1..ex.sets).count { draft.entry(ex, it).done }
     }
+    val recordedSets = remember(day, draft.entries) { draft.recordedSets(day) }
+    val canUndo = recordedSets.any { it.entry.completedAt > 0L }
     val mainCompleted = finishedSets - optionalCompleted
     val progressTotal = day.setCount + optionalCompleted
     val allDone = draft.guidedExerciseIndex >= day.exercises.size
@@ -96,8 +113,60 @@ fun GuidedSessionScreen(
     val remainingSeconds = ((draft.restUntilMillis - now + 999L) / 1000L).coerceAtLeast(0)
     val elapsed = ((now - draft.startedAt).coerceAtLeast(0L) / 1000L)
     val exercise = day.exercises.getOrNull(draft.guidedExerciseIndex)
+    val progression = remember(exercise, day.id, history) {
+        exercise?.let { WorkoutProgressionAdvisor.advise(it, day.id, history) }
+    }
     var finishDialog by remember { mutableStateOf(false) }
     var resetDialog by remember { mutableStateOf(false) }
+    var exercisePickerVisible by remember { mutableStateOf(false) }
+    var substitutePickerVisible by remember { mutableStateOf(false) }
+    var substituteError by remember { mutableStateOf<String?>(null) }
+    val scrollState = rememberLazyListState()
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val haptics = LocalHapticFeedback.current
+    val previousExerciseIndex = draft.adjacentPendingExercise(day, -1)
+    val nextExerciseIndex = draft.adjacentPendingExercise(day, 1)
+    // Conserva i valori NON ancora salvati se si cambia esercizio.
+    // Il reset della sessione svuota automaticamente la mappa.
+    var pendingSetInputs by remember(draft.startedAt) {
+        mutableStateOf<Map<String, QuickSetValues>>(emptyMap())
+    }
+    val inputKey = "${exercise?.id.orEmpty()}:${draft.guidedWorkSet}"
+    val quickInput = pendingSetInputs[inputKey] ?: (
+        exercise?.let { current ->
+            draft.entry(current, draft.guidedWorkSet).let { preset ->
+                QuickSetValues(weight = preset.weight, reps = preset.reps)
+            }
+        } ?: QuickSetValues()
+    )
+    fun changeQuickInput(next: QuickSetValues) {
+        pendingSetInputs = pendingSetInputs + (inputKey to next)
+    }
+    fun navigate(index: Int) {
+        keyboard?.hide()
+        focusManager.clearFocus()
+        if (hapticFeedbackEnabled) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        onUpdate(draft.navigateToExercise(day, index))
+    }
+    fun saveQuickSet() {
+        if (inRest || allDone || exercise == null || !quickInput.valid) return
+        keyboard?.hide()
+        focusManager.clearFocus()
+        val updated = draft.recordSet(
+            day = day, weight = quickInput.weight.replace(',', '.'),
+            reps = quickInput.reps, warmup = quickInput.warmup,
+            at = System.currentTimeMillis(),
+            rir = if (quickInput.warmup) null else quickInput.actualRir
+        )
+        if (hapticFeedbackEnabled) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        pendingSetInputs = pendingSetInputs - inputKey
+        onUpdate(updated)
+    }
+    LaunchedEffect(draft.guidedExerciseIndex, draft.guidedWorkSet) {
+        if (BGMotion.duration(1) > 0) scrollState.animateScrollToItem(0)
+        else scrollState.scrollToItem(0)
+    }
 
     Column(Modifier.fillMaxSize().background(PulseColors.Background)) {
         Row(
@@ -109,7 +178,8 @@ fun GuidedSessionScreen(
                     contentDescription = "Torna alla dashboard", tint = PulseColors.Foreground)
             }
             Column(Modifier.weight(1f)) {
-                Text("IN ALLENAMENTO", color = PulseColors.Accent, fontSize = 10.sp,
+                Text(if (QuickWorkoutPlanner.isQuick(day)) "ALLENAMENTO RAPIDO" else "IN ALLENAMENTO",
+                    color = PulseColors.Accent, fontSize = 10.sp,
                     fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
                 Text(day.name, color = PulseColors.Foreground, fontWeight = FontWeight.Bold,
                     fontSize = 16.sp, maxLines = 1)
@@ -140,12 +210,28 @@ fun GuidedSessionScreen(
                 color = PulseColors.Accent, trackColor = PulseColors.SoftGreen
             )
             Spacer(Modifier.height(7.dp))
-            Text("$mainCompleted / ${day.setCount} serie" +
-                    (if (optionalCompleted > 0) " · +$optionalCompleted extra" else ""),
-                color = PulseColors.Muted, fontSize = 11.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("$mainCompleted / ${day.setCount} serie" +
+                        (if (optionalCompleted > 0) " · +$optionalCompleted extra" else ""),
+                    color = PulseColors.Muted, fontSize = 11.sp,
+                    modifier = Modifier.weight(1f))
+                if (canUndo) {
+                    TextButton(
+                        onClick = { onUpdate(draft.undoLastRecordedSet(day)) },
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                    ) {
+                        Icon(Icons.Default.Undo, contentDescription = null,
+                            modifier = Modifier.size(17.dp), tint = PulseColors.Accent)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Annulla ultima", color = PulseColors.Accent,
+                            fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
 
         LazyColumn(
+            state = scrollState,
             modifier = Modifier.fillMaxWidth().weight(1f),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -192,9 +278,13 @@ fun GuidedSessionScreen(
                                     Text("Riprova", color = PulseColors.Accent, fontSize = 11.sp)
                                 }
                             }
+                            if (notificationProblem != null) {
+                                Text(notificationProblem,
+                                    color = PulseColors.Muted, fontSize = 11.sp)
+                            }
                             if (timerStatus.startsWith("error:")) {
                                 Text(timerStatus.removePrefix("error:"),
-                                    color = PulseColors.Muted, fontSize = 10.sp)
+                                    color = PulseColors.Muted, fontSize = 12.sp)
                             }
                         } else {
                             TextButton(onClick = onTestNotification) {
@@ -226,7 +316,8 @@ fun GuidedSessionScreen(
                             Text(day.cooldown, color = PulseColors.Foreground, fontSize = 13.sp)
                         }
                         Spacer(Modifier.height(22.dp))
-                        SolidButton("Salva allenamento", onClick = { finishDialog = true })
+                        Text("Puoi ancora correggere le serie registrate qui sotto.",
+                            color = PulseColors.Muted, fontSize = 12.sp)
                     }
                 }
             } else if (exercise != null) {
@@ -236,7 +327,7 @@ fun GuidedSessionScreen(
                     Surface(
                         shape = RoundedCornerShape(28.dp),
                         color = PulseColors.AccentDeep,
-                        modifier = Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(270))
+                        modifier = Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(BGMotion.duration(240)))
                     ) {
                         Column(
                             Modifier.background(Brush.linearGradient(
@@ -313,6 +404,21 @@ fun GuidedSessionScreen(
                                     }
                                 }
                             }
+                            if (ExerciseSubstitutionCatalog.alternatives(exercise, day)
+                                    .isNotEmpty() &&
+                                (1..exercise.sets).none { draft.entry(exercise, it).done } &&
+                                draft.warmups(exercise).isEmpty()) {
+                                TextButton(onClick = {
+                                    substituteError = null
+                                    substitutePickerVisible = true
+                                }) {
+                                    Icon(Icons.Default.SwapHoriz, contentDescription = null,
+                                        tint = Color.White, modifier = Modifier.size(17.dp))
+                                    Spacer(Modifier.width(7.dp))
+                                    Text("Macchinario occupato? Sostituisci per oggi",
+                                        color = Color.White, fontSize = 12.sp)
+                                }
+                            }
                             if (exercise.gifUrl.isNotBlank()) {
                                 TextButton(onClick = { showGif = !showGif }) {
                                     Icon(Icons.Default.PlayCircle, contentDescription = null,
@@ -351,6 +457,12 @@ fun GuidedSessionScreen(
                     }
                 }
 
+                if (progression != null) {
+                    item(key = "progression-${exercise.id}") {
+                        ProgressionAdvicePanel(progression)
+                    }
+                }
+
                 if (inRest) {
                     item {
                         Surface(shape = RoundedCornerShape(26.dp), color = PulseColors.SoftGreen,
@@ -367,7 +479,7 @@ fun GuidedSessionScreen(
                                 val ratio by animateFloatAsState(
                                     targetValue = (remainingSeconds.toFloat() /
                                         exercise.restSeconds.coerceAtLeast(1)).coerceIn(0f, 1f),
-                                    animationSpec = tween(650), label = "Recupero rimanente"
+                                    animationSpec = tween(BGMotion.duration(650)), label = "Recupero rimanente"
                                 )
                                 LinearProgressIndicator(progress = { ratio },
                                     modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
@@ -390,9 +502,8 @@ fun GuidedSessionScreen(
                                     ) { Text("+15 s", color = PulseColors.Accent) }
                                 }
                                 Spacer(Modifier.height(8.dp))
-                                SolidButton("Pronto, salta recupero", onClick = {
-                                    onUpdate(draft.copy(restUntilMillis = 0L))
-                                })
+                                Text("Quando sei pronto, usa il pulsante in basso.",
+                                    color = PulseColors.Muted, fontSize = 11.sp)
                             }
                         }
                     }
@@ -401,34 +512,31 @@ fun GuidedSessionScreen(
                         GuidedSetForm(
                             exercise = exercise,
                             draft = draft,
-                            onSave = { weight, reps, warmup ->
-                                onUpdate(draft.recordSet(
-                                    day = day,
-                                    weight = weight.replace(',', '.'),
-                                    reps = reps, warmup = warmup, at = System.currentTimeMillis()
-                                ))
-                            }
+                            advice = progression,
+                            input = quickInput,
+                            onInputChange = ::changeQuickInput
                         )
                     }
                 }
 
-                item {
-                    val logged = (1..exercise.sets).mapNotNull { number ->
-                        draft.entry(exercise, number).takeIf { it.done }?.let { number to it }
-                    }
-                    val warmups = draft.warmups(exercise)
-                    if (logged.isNotEmpty() || warmups.isNotEmpty()) {
-                        Panel {
-                            Text("REGISTRATE", color = PulseColors.Muted, fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                            warmups.forEachIndexed { index, it ->
-                                LoggedRow("Risc. ${index + 1}", it, exercise.timeBased)
-                            }
-                            logged.forEach { (number, entry) ->
-                                LoggedRow("Serie $number", entry, exercise.timeBased)
-                            }
+            }
+            if (recordedSets.isNotEmpty()) {
+                item(key = "session-recorded-series") {
+                    RecordedSetsEditor(
+                        day = day,
+                        recorded = recordedSets,
+                        onCorrect = { target, weight, reps, actualRir ->
+                            onUpdate(draft.correctRecordedSet(
+                                day, target.exercise.id, target.number, target.warmup,
+                                weight, reps, actualRir
+                            ))
+                        },
+                        onCancel = { target ->
+                            onUpdate(draft.cancelRecordedSet(
+                                day, target.exercise.id, target.number, target.warmup
+                            ))
                         }
-                    }
+                    )
                 }
             }
             item {
@@ -445,6 +553,167 @@ fun GuidedSessionScreen(
                 }
             }
         }
+
+        // Azione principale sempre in fondo, anche quando i dettagli scorrono.
+        Surface(
+            color = PulseColors.Surface,
+            shadowElevation = 8.dp,
+            border = BorderStroke(1.dp, PulseColors.Border),
+            modifier = Modifier.fillMaxWidth().imePadding()
+        ) {
+            Column(Modifier.fillMaxWidth().padding(
+                start = 16.dp, end = 16.dp, top = 10.dp, bottom = 12.dp
+            )) {
+                if (!allDone) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { previousExerciseIndex?.let(::navigate) },
+                            enabled = previousExerciseIndex != null,
+                            shape = RoundedCornerShape(13.dp),
+                            modifier = Modifier.size(46.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            border = BorderStroke(1.dp, PulseColors.Border)
+                        ) {
+                            Icon(Icons.Default.ChevronLeft, "Esercizio precedente",
+                                modifier = Modifier.size(24.dp))
+                        }
+                        OutlinedButton(
+                            onClick = { keyboard?.hide(); focusManager.clearFocus(); exercisePickerVisible = true },
+                            modifier = Modifier.weight(1f).height(46.dp),
+                            shape = RoundedCornerShape(13.dp),
+                            border = BorderStroke(1.dp, PulseColors.Border)
+                        ) {
+                            Icon(Icons.Default.List, null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(7.dp))
+                            Text("Scegli esercizio", fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp, maxLines = 1)
+                        }
+                        OutlinedButton(
+                            onClick = { nextExerciseIndex?.let(::navigate) },
+                            enabled = nextExerciseIndex != null,
+                            shape = RoundedCornerShape(13.dp),
+                            modifier = Modifier.size(46.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            border = BorderStroke(1.dp, PulseColors.Border)
+                        ) {
+                            Icon(Icons.Default.ChevronRight, "Esercizio successivo",
+                                modifier = Modifier.size(24.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(9.dp))
+                }
+                SolidButton(
+                    when {
+                        allDone -> "Salva allenamento"
+                        inRest -> "Pronto · termina recupero"
+                        quickInput.warmup -> "Salva riscaldamento"
+                        else -> "Completa serie ${draft.guidedWorkSet}"
+                    },
+                    enabled = allDone || inRest || quickInput.valid,
+                    onClick = {
+                        when {
+                            allDone -> finishDialog = true
+                            inRest -> {
+                                if (hapticFeedbackEnabled) haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onUpdate(draft.copy(restUntilMillis = 0L))
+                            }
+                            else -> saveQuickSet()
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    if (substitutePickerVisible && exercise != null) {
+        val variants = ExerciseSubstitutionCatalog.alternatives(exercise, day)
+        AlertDialog(
+            onDismissRequest = { substitutePickerVisible = false },
+            title = { Text("Sostituisci solo per oggi") },
+            text = {
+                Column {
+                    Text("Carichi e progressi di attrezzi diversi restano separati. " +
+                        "Le serie già registrate non vengono toccate.",
+                        color = PulseColors.Muted, fontSize = 12.sp)
+                    variants.forEach { option ->
+                        TextButton(
+                            onClick = {
+                                val result = runCatching {
+                                    draft.substituteCurrentExercise(day, option.exercise)
+                                }
+                                result.onSuccess { updated ->
+                                    pendingSetInputs = pendingSetInputs -
+                                        "${exercise.id}:${draft.guidedWorkSet}"
+                                    substitutePickerVisible = false
+                                    substituteError = null
+                                    onUpdate(updated)
+                                }.onFailure { substituteError = it.message }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Text(option.exercise.name,
+                                    color = PulseColors.Accent,
+                                    fontWeight = FontWeight.SemiBold)
+                                Text(option.exercise.equipment + " · " + option.guidance,
+                                    color = PulseColors.Muted, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                    substituteError?.let {
+                        Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { substitutePickerVisible = false }) {
+                    Text("Annulla")
+                }
+            }
+        )
+    }
+
+    if (exercisePickerVisible) {
+        AlertDialog(
+            onDismissRequest = { exercisePickerVisible = false },
+            title = { Text("Vai a un esercizio") },
+            text = {
+                Column(
+                    Modifier.heightIn(max = 430.dp)
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                ) {
+                    day.exercises.forEachIndexed { index, candidate ->
+                        val finished = (1..candidate.sets).all { draft.entry(candidate, it).done }
+                        TextButton(
+                            onClick = {
+                                exercisePickerVisible = false
+                                navigate(index)
+                            },
+                            enabled = !finished,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("${index + 1}. ${candidate.name}",
+                                color = if (finished) PulseColors.Muted else PulseColors.Foreground,
+                                modifier = Modifier.weight(1f), maxLines = 2)
+                            Text(if (finished) "Fatto" else
+                                "${(1..candidate.sets).count { draft.entry(candidate, it).done }}/${candidate.sets}",
+                                color = PulseColors.Accent, fontSize = 12.sp)
+                        }
+                    }
+                    Text("Per correggere un esercizio completato, usa Serie registrate.",
+                        color = PulseColors.Muted, fontSize = 11.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { exercisePickerVisible = false }) {
+                    Text("Chiudi", color = PulseColors.Accent)
+                }
+            }
+        )
     }
 
     if (resetDialog) {
@@ -497,31 +766,16 @@ private fun ExerciseHeroChip(label: String) {
 private fun GuidedSetForm(
     exercise: Exercise,
     draft: WorkoutDraft,
-    onSave: (String, String, Boolean) -> Unit
+    advice: ExerciseProgression?,
+    input: QuickSetValues,
+    onInputChange: (QuickSetValues) -> Unit
 ) {
-    val preset = draft.entry(exercise, draft.guidedWorkSet)
-    var weight by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
-        mutableStateOf(preset.weight)
-    }
-    var reps by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
-        mutableStateOf(preset.reps)
-    }
-    var warmup by remember(exercise.id, draft.guidedWorkSet, draft.startedAt) {
-        mutableStateOf(false)
-    }
-    val numericWeight = weight.replace(',', '.').toDoubleOrNull()
-    val valid = numericWeight != null && numericWeight in 0.0..10000.0 &&
-        (reps.toIntOrNull() ?: 0) in 1..999
-
-    fun adjustWeight(amount: Double) {
-        val next = ((numericWeight ?: 0.0) + amount).coerceAtLeast(0.0)
-        weight = String.format(Locale.US, "%.1f", next)
-            .trimEnd('0').trimEnd('.')
-    }
-    fun adjustReps(amount: Int) {
-        val next = ((reps.toIntOrNull() ?: 0) + amount).coerceIn(0, 999)
-        reps = next.toString()
-    }
+    val previousSet = advice?.previous(draft.guidedWorkSet)
+    val suggestedKg = advice?.suggestedWeight(draft.guidedWorkSet)
+    // Ripeti il set precedente senza duplicare RIR o segnare la serie come fatta.
+    val previousDone = if (draft.guidedWorkSet > 1)
+        draft.entry(exercise, draft.guidedWorkSet - 1).takeIf { it.done }
+    else null
 
     Surface(
         shape = RoundedCornerShape(26.dp),
@@ -549,8 +803,38 @@ private fun GuidedSetForm(
                 Surface(color = PulseColors.Raised, shape = RoundedCornerShape(12.dp)) {
                     Text(if (exercise.timeBased) "TEMPO" else "FORZA",
                         Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                        color = PulseColors.Muted, fontSize = 10.sp,
+                        color = PulseColors.Muted, fontSize = 12.sp,
                         fontWeight = FontWeight.Bold)
+                }
+            }
+            if (!input.warmup && previousSet != null) {
+                Spacer(Modifier.height(12.dp))
+                Surface(color = PulseColors.SoftGreen, shape = RoundedCornerShape(14.dp)) {
+                    Row(Modifier.fillMaxWidth().padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("ULTIMA SEDUTA · SERIE ${draft.guidedWorkSet}",
+                                color = PulseColors.Accent, fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold)
+                            Text("${formatKgForWorkout(previousSet.weightKg)} kg × " +
+                                "${previousSet.repetitions} " +
+                                (if (exercise.timeBased) "sec" else "rep") +
+                                (previousSet.actualRir?.let { " · RIR $it" } ?: ""),
+                                color = PulseColors.Foreground,
+                                fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            WorkoutSetCue.description(exercise, advice, draft.guidedWorkSet)
+                                ?.let { cue ->
+                                    Text(cue, color = PulseColors.Muted, fontSize = 11.sp)
+                                }
+                        }
+                        TextButton(onClick = {
+                            onInputChange(input.copy(
+                                weight = formatKgForWorkout(previousSet.weightKg),
+                                reps = previousSet.repetitions.toString(),
+                                warmup = false, actualRir = null
+                            ))
+                        }) { Text("Usa", color = PulseColors.Accent) }
+                    }
                 }
             }
             Spacer(Modifier.height(18.dp))
@@ -560,10 +844,10 @@ private fun GuidedSetForm(
                         fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(7.dp))
                     OutlinedTextField(
-                        value = weight,
+                        value = input.weight,
                         onValueChange = { next ->
                             if (next.length <= 7 && next.all { it.isDigit() || it == ',' || it == '.' })
-                                weight = next
+                                onInputChange(input.copy(weight = next))
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -576,11 +860,11 @@ private fun GuidedSetForm(
                         shape = RoundedCornerShape(15.dp)
                     )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(onClick = { adjustWeight(-2.5) },
+                        TextButton(onClick = { onInputChange(input.adjustKg(-2.5)) },
                             contentPadding = PaddingValues(horizontal = 5.dp)) {
                             Text("−2,5", fontSize = 12.sp, color = PulseColors.Accent)
                         }
-                        TextButton(onClick = { adjustWeight(2.5) },
+                        TextButton(onClick = { onInputChange(input.adjustKg(2.5)) },
                             contentPadding = PaddingValues(horizontal = 5.dp)) {
                             Text("+2,5", fontSize = 12.sp, color = PulseColors.Accent)
                         }
@@ -591,9 +875,10 @@ private fun GuidedSetForm(
                         color = PulseColors.Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(7.dp))
                     OutlinedTextField(
-                        value = reps,
+                        value = input.reps,
                         onValueChange = { next ->
-                            if (next.length <= 3 && next.all(Char::isDigit)) reps = next
+                            if (next.length <= 3 && next.all(Char::isDigit))
+                                onInputChange(input.copy(reps = next))
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -606,11 +891,11 @@ private fun GuidedSetForm(
                         shape = RoundedCornerShape(15.dp)
                     )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        TextButton(onClick = { adjustReps(-1) },
+                        TextButton(onClick = { onInputChange(input.adjustReps(-1)) },
                             contentPadding = PaddingValues(horizontal = 5.dp)) {
                             Text("−1", fontSize = 12.sp, color = PulseColors.Accent)
                         }
-                        TextButton(onClick = { adjustReps(1) },
+                        TextButton(onClick = { onInputChange(input.adjustReps(1)) },
                             contentPadding = PaddingValues(horizontal = 5.dp)) {
                             Text("+1", fontSize = 12.sp, color = PulseColors.Accent)
                         }
@@ -618,13 +903,14 @@ private fun GuidedSetForm(
                 }
             }
             Surface(
-                color = if (warmup) PulseColors.SoftGreen else PulseColors.Raised,
+                color = if (input.warmup) PulseColors.SoftGreen else PulseColors.Raised,
                 shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().clickable { warmup = !warmup }
+                modifier = Modifier.fillMaxWidth().clickable { onInputChange(input.copy(warmup = !input.warmup)) }
             ) {
                 Row(Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = warmup, onCheckedChange = { warmup = it },
+                    Checkbox(checked = input.warmup,
+                        onCheckedChange = { onInputChange(input.copy(warmup = it)) },
                         colors = CheckboxDefaults.colors(checkedColor = PulseColors.Accent))
                     Spacer(Modifier.width(4.dp))
                     Text("Riscaldamento", fontSize = 13.sp,
@@ -633,33 +919,34 @@ private fun GuidedSetForm(
                     Text("non conta nelle serie", fontSize = 10.sp, color = PulseColors.Muted)
                 }
             }
+            if (!input.warmup) {
+                Spacer(Modifier.height(9.dp))
+                if (previousDone != null) {
+                    TextButton(onClick = { onInputChange(input.withPreviousSet(previousDone)) }) {
+                        Text("Ripeti ultima serie: ${previousDone.weight} kg × ${previousDone.reps}",
+                            color = PulseColors.Accent, fontSize = 12.sp)
+                    }
+                }
+                if (suggestedKg != null) {
+                    Spacer(Modifier.height(6.dp))
+                    TextButton(onClick = {
+                        onInputChange(input.copy(weight = formatKgForWorkout(suggestedKg)))
+                    }) {
+                        Text("Usa suggerimento: ${formatKgForWorkout(suggestedKg)} kg",
+                            color = PulseColors.Accent, fontSize = 12.sp)
+                    }
+                }
+                Spacer(Modifier.height(9.dp))
+                ActualRirPicker(input.actualRir,
+                    onValueChange = { onInputChange(input.copy(actualRir = it)) })
+            }
             Spacer(Modifier.height(15.dp))
-            SolidButton(
-                if (warmup) "Salva riscaldamento" else "Completa serie",
-                enabled = valid,
-                onClick = { onSave(weight, reps, warmup) }
-            )
-            if (!valid) {
+            if (!input.valid) {
                 Spacer(Modifier.height(7.dp))
                 Text("Inserisci peso (anche 0 kg) e ${if (exercise.timeBased) "secondi" else "ripetizioni"}.",
                     color = PulseColors.Muted, fontSize = 11.sp)
             }
         }
-    }
-}
-
-@Composable
-private fun LoggedRow(title: String, entry: SetEntry, timeBased: Boolean = false) {
-    Spacer(Modifier.height(10.dp))
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Default.Check, null, tint = PulseColors.Accent,
-            modifier = Modifier.size(15.dp))
-        Spacer(Modifier.width(8.dp))
-        Text(title, color = PulseColors.Foreground, fontSize = 12.sp,
-            modifier = Modifier.weight(1f))
-        Text(if (timeBased) "${entry.weight} kg · ${entry.reps} sec" else "${entry.weight} kg × ${entry.reps} rep",
-            color = PulseColors.Accent,
-            fontWeight = FontWeight.Bold, fontSize = 12.sp)
     }
 }
 
