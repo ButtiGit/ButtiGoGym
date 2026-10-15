@@ -69,6 +69,9 @@ fun DashboardScreen(
     history: List<SessionRecord>,
     wellness: WellnessData,
     personalSettings: PersonalSettings,
+    weeklyReport: WeeklyTrainingReport,
+    todayCheckIn: PreWorkoutCheckIn?,
+    onOpenCheckIn: () -> Unit,
     stepStatus: String,
     healthConnected: Boolean,
     healthSyncing: Boolean,
@@ -259,6 +262,10 @@ fun DashboardScreen(
                     onInstall = onInstallUpdate
                 )
             }
+        }
+
+        item {
+            WeeklyReportCard(weeklyReport, todayCheckIn, onOpenCheckIn)
         }
 
         item {

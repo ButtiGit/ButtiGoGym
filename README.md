@@ -1071,3 +1071,18 @@ Solo sul branch `feature/v1-phase1-complete-backup`, senza release/APK e senza m
 - Nuovi test JVM: `AdaptiveCalendarPlannerTest` e
   `ExerciseSubstitutionCatalogTest`. Un solo commit sul branch feature,
   nessun APK prodotto, `main` invariato.
+
+## Fase 5 — Check-in e report settimanale (2026-10-15)
+
+- Check-in facoltativo prima della nuova seduta (energia, sonno, indolenzimento):
+  salta oppure tre risposte e salvataggio; nessun valore preselezionato.
+  Suggerimenti cauti di allenamento normale, più leggero o recupero. Nessuna
+  modifica automatica di carichi/split e nessuna valutazione medica.
+- Check-in visibile e modificabile dalla dashboard, memorizzato in
+  `buttigogym_wellness_v1` (backup ZIP già compatibile), ultimi 60 giorni.
+- Report dell'ultima settimana conclusa: giorni allenati distinti, serie
+  effettive, sedute rapide, stime Epley su stessi ID esercizio (incremento
+  minimo 1%) e peso medio confrontato solo con >= 3 pesate in entrambe
+  le settimane. Nessun confronto con una settimana ancora parziale.
+- Progressi di forza indicativi, non misure dirette di massa muscolare.
+- Test JVM per logica del check-in e report. Branch di sviluppo, no APK, no main.

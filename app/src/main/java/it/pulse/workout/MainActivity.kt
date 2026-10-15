@@ -73,6 +73,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.SideEffect
 import it.pulse.workout.ui.GuidedSessionScreen
+import it.pulse.workout.ui.PreWorkoutCheckInDialog
+import it.pulse.workout.data.PreWorkoutCheckInStore
+import it.pulse.workout.data.WeeklyTrainingReportCalculator
 
 class MainActivity : ComponentActivity() {
     private val openWorkoutFromNotification = mutableStateOf(false)
@@ -374,6 +377,10 @@ private fun PulseApp(
     var calendarVisible by rememberSaveable { mutableStateOf(false) }
     var sessionVisible by rememberSaveable { mutableStateOf(draft != null) }
     var pendingNewWorkout by remember { mutableStateOf<WorkoutDay?>(null) }
+    val checkInStore = remember { PreWorkoutCheckInStore(context.applicationContext) }
+    var checkInToday by remember { mutableStateOf(checkInStore.readOn(java.time.LocalDate.now())) }
+    var checkInVisible by remember { mutableStateOf(false) }
+    var pendingCheckInStart by remember { mutableStateOf<WorkoutDay?>(null) }
     LaunchedEffect(openWorkoutFromNotification.value, draft) {
         if (openWorkoutFromNotification.value && draft != null) {
             sessionVisible = true
@@ -399,7 +406,7 @@ private fun PulseApp(
         }
     }.exceptionOrNull()?.message
 
-    fun start(day: WorkoutDay) {
+    fun startConfirmed(day: WorkoutDay) {
         if (draft != null && draft?.dayId != day.id) {
             pendingNewWorkout = day
             return
@@ -408,9 +415,17 @@ private fun PulseApp(
             draft = store.newDraft(day)
             store.saveDraft(draft)
         }
-        // Una seduta attiva mantiene la sua snapshot (non muta tra rapida/completa).
         sessionVisible = true
         requestTimerNotifications()
+    }
+
+    fun start(day: WorkoutDay) {
+        if (draft == null && checkInStore.readOn(java.time.LocalDate.now()) == null) {
+            pendingCheckInStart = day
+            checkInVisible = true
+            return
+        }
+        startConfirmed(day)
     }
 
     fun startQuick(day: WorkoutDay) {
@@ -459,6 +474,13 @@ private fun PulseApp(
 
     val currentDay = draft?.daySnapshot ?: catalog.days.firstOrNull { it.id == draft?.dayId }
     val today = java.time.LocalDate.now()
+    val weightEntries = remember(tab, history, today) {
+        BodyProgressStore(context.applicationContext).entries()
+    }
+    val weeklyReport = remember(history, weightEntries, settings.weeklyWorkouts, today) {
+        WeeklyTrainingReportCalculator.evaluate(history, weightEntries,
+            settings.weeklyWorkouts, today)
+    }
     val calendarCompleted = remember(history) { WorkoutCalendarRules.completedDates(history) }
     val plannedNext = calendarEntries.asSequence()
         .filter { it.kind == CalendarEntryKind.WORKOUT && !it.date.isBefore(today) }
@@ -785,6 +807,12 @@ private fun PulseApp(
                         history = history,
                         wellness = wellness,
                         personalSettings = settings,
+                        weeklyReport = weeklyReport,
+                        todayCheckIn = checkInToday?.takeIf { it.date == today },
+                        onOpenCheckIn = {
+                            pendingCheckInStart = null
+                            checkInVisible = true
+                        },
                         stepStatus = stepStatus,
                         healthConnected = healthConnected,
                         healthSyncing = healthSyncing,
@@ -965,6 +993,7 @@ private fun PulseApp(
                                 wellness = wellnessStore.read()
                                 calendarEntries = calendarStore.read()
                                 calendarVisible = false
+                                checkInToday = checkInStore.readOn(java.time.LocalDate.now())
                                 catalog = repository.initial()
                                 customizedDayIds = repository.customizedDayIds()
                                 waterRemindersEnabled =
@@ -997,6 +1026,32 @@ private fun PulseApp(
         )
     }
 
+    if (checkInVisible) {
+        PreWorkoutCheckInDialog(
+            existing = checkInStore.readOn(java.time.LocalDate.now()),
+            onSave = { entry ->
+                runCatching { checkInToday = checkInStore.save(entry) }
+                    .exceptionOrNull()?.message.also { problem ->
+                        if (problem == null) {
+                            checkInVisible = false
+                            val next = pendingCheckInStart
+                            pendingCheckInStart = null
+                            if (next != null) startConfirmed(next)
+                        }
+                    }
+            },
+            onSkip = {
+                checkInVisible = false
+                val next = pendingCheckInStart
+                pendingCheckInStart = null
+                if (next != null) startConfirmed(next)
+            },
+            onDismiss = {
+                checkInVisible = false
+                pendingCheckInStart = null
+            }
+        )
+    }
     pendingNewWorkout?.let { next ->
         AlertDialog(
             onDismissRequest = { pendingNewWorkout = null },
