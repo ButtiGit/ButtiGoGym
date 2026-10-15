@@ -989,3 +989,28 @@ Solo sul branch `feature/v1-phase1-complete-backup`, senza release/APK e senza m
 - GitHub Actions esegue **solo** `:app:testDebugUnitTest` e controlla che
   nessuna APK sia stata generata. Il risultato conferma compilazione e
   regole di unit test, **non** costituisce una prova di usabilità sul dispositivo.
+
+## Fase 1 · Avatar Build — coerenza e sicurezza (2026-10-15)
+
+- Scheda **2026-10-15.1** sincronizzata sul branch V1 sia in `workouts/plan.json`
+  sia nell'asset offline; stesse giornate e ID storici, richiami obbligatori.
+- `tools/validate_lean_bulk_plan.py` controlla numero di serie 22/21/23,
+  compatibilità della copia offline, unicità degli ID e otto serie dirette
+  per gli avambracci. Il workflow di questo branch esegue solo test JVM,
+  **non produce APK**.
+- I widget **SERIE** e **TEMPO** ricavano i rispettivi riferimenti dal piano
+  in uso e dalla frequenza configurata; la barra sedute usa il traguardo
+  personale, non un divisore fisso. Per frequenze non coperte dai giorni
+  disponibili non si inventano target di serie/tempo.
+- Le giornate personalizzate non vengono sovrascritte dagli aggiornamenti GitHub:
+  l'interfaccia segnala chiaramente quante personalizzazioni sono presenti
+  e spiega come ripristinare volontariamente un giorno. La sessione attiva
+  e lo storico conservano i propri snapshot.
+- Dopo l'esportazione ZIP, l'app **rilegge e verifica il file salvato**
+  (integrità, manifesto e media) prima di mostrarne il successo; rimane la
+  procedura esistente di anteprima e conferma per il ripristino.
+  Il file ZIP **non è cifrato**: conservarlo privatamente e verificare
+  periodicamente la disponibilità di una copia esterna.
+- Nota: l'esportazione può durare di più su archivi molto grandi o provider
+  documentali lenti. Se non è possibile rileggere il file, l'app non dichiara
+  concluso il backup e lo segnala. Test su dispositivo ancora necessari.

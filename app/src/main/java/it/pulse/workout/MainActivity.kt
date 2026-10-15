@@ -355,7 +355,14 @@ private fun PulseApp(
         refreshing = true
         refreshState = "Aggiornamento in corso…"
         runCatching { withContext(Dispatchers.IO) { repository.refresh() } }
-            .onSuccess { catalog = it; refreshState = "Sincronizzata da GitHub · v${it.revision}" }
+            .onSuccess {
+                catalog = it
+                customizedDayIds = repository.customizedDayIds()
+                refreshState = "Sincronizzata da GitHub · v${it.revision}" +
+                    if (customizedDayIds.isNotEmpty())
+                        " · ${customizedDayIds.size} giorni personalizzati conservati"
+                    else ""
+            }
             .onFailure { refreshState = "Offline: utilizzo scheda salvata" }
         refreshing = false
     }
@@ -465,12 +472,20 @@ private fun PulseApp(
             coroutineScope.launch {
                 runCatching {
                     withContext(Dispatchers.IO) {
-                        checkNotNull(context.contentResolver.openOutputStream(uri)) {
+                        val exported = checkNotNull(context.contentResolver.openOutputStream(uri)) {
                             "Impossibile aprire il file di destinazione"
                         }.use { output -> backupStore.exportTo(output) }
+                        // Verifica l'archivio effettivamente scritto, non solo lo stream originale.
+                        val verified = checkNotNull(context.contentResolver.openInputStream(uri)) {
+                            "Backup creato ma impossibile rileggere il file: verifica manualmente"
+                        }.use { input -> backupStore.inspect(input) }
+                        check(verified == exported) {
+                            "Il backup scritto non corrisponde al contenuto atteso"
+                        }
+                        verified
                     }
                 }.onSuccess { preview ->
-                    backupStatus = "Backup ZIP salvato: ${preview.workouts} sessioni, " +
+                    backupStatus = "Backup ZIP verificato: ${preview.workouts} sessioni, " +
                         "${preview.photos} foto workout, ${preview.bodyPhotos} foto progresso, " +
                         "${preview.recaps} recap."
                 }.onFailure { error ->

@@ -8,7 +8,10 @@ plan = json.loads(source.read_text(encoding="utf-8"))
 assert plan["schemaVersion"] == 1
 days = {day["id"]: day for day in plan["days"]}
 assert list(days) == ["mon", "wed", "fri", "bonus"]
-expected = {"mon": (22, 2), "wed": (21, 0), "fri": (19, 2), "bonus": (8, 0)}
+expected = {"mon": (22, 0), "wed": (21, 0), "fri": (23, 0), "bonus": (8, 0)}
+fallback = source.parent.parent / "app" / "src" / "main" / "assets" / "workout-plan.json"
+assert json.loads(fallback.read_text(encoding="utf-8")) == plan, "offline fallback differs from GitHub plan"
+assert plan["revision"] == "2026-10-15.1"
 allowed = {"traps", "shoulders", "rear_delts", "chest", "biceps",
            "triceps", "forearms", "lats", "upper_back", "lower_back",
            "abs", "obliques", "quads", "hamstrings", "glutes", "calves"}
@@ -29,8 +32,15 @@ for key, day in days.items():
 assert not days["mon"]["optional"] and not days["wed"]["optional"] and not days["fri"]["optional"]
 assert days["bonus"]["optional"]
 assert [e["id"] for e in days["fri"]["exercises"] if e.get("timeBased")] == ["farmers_walk"]
-assert [e["id"] for e in days["mon"]["exercises"] if e.get("optional")] == ["mon_chest_recall"]
-assert [e["id"] for e in days["fri"]["exercises"] if e.get("optional")] == ["fri_lateral_recall"]
+assert not [e["id"] for d in ("mon", "wed", "fri") for e in days[d]["exercises"] if e.get("optional")]
+assert {"mon_chest_recall", "mon_lat_recall"} <= {
+    e["id"] for e in days["mon"]["exercises"]}
+assert {"fri_lateral_recall", "fri_leg_press_recall", "fri_leg_curl_recall"} <= {
+    e["id"] for e in days["fri"]["exercises"]}
+assert len({e["id"] for d in days.values() for e in d["exercises"]}) == sum(
+    len(d["exercises"]) for d in days.values())
+assert sum(e["sets"] for e in days["mon"]["exercises"] if "chest" in e["primaryMuscles"]) == 2
+assert sum(e["sets"] for e in days["fri"]["exercises"] if "chest" in e["primaryMuscles"]) == 7
 forearm_direct = [
     e for day in (days["mon"], days["fri"]) for e in day["exercises"]
     if e["id"] in ("reverse_curl_ez", "wrist_curl", "reverse_wrist_curl", "farmers_walk")

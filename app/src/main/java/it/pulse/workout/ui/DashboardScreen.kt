@@ -124,6 +124,11 @@ fun DashboardScreen(
     }
     val totalSetsThisWeek = weekSessions.sumOf { it.completedSets }
     val trainingMinutes = weekSessions.sumOf { it.durationMinutes.coerceAtLeast(0) }
+    // Le soglie seguono la scheda davvero in uso, comprese le giornate personalizzate.
+    // Se la frequenza scelta non è compatibile con i giorni disponibili, niente target fittizi.
+    val weeklyGoals = remember(days, personalSettings.weeklyWorkouts) {
+        WeeklyPlanGoalsCalculator.from(days, personalSettings.weeklyWorkouts)
+    }
     val readyMuscles = remember(history) {
         MuscleAnalytics.evaluate(history).count { it.state == MuscleRecovery.READY }
     }
@@ -250,9 +255,13 @@ fun DashboardScreen(
                     (summary.workoutDaysThisWeek.toFloat() / personalSettings.weeklyWorkouts),
                     Modifier.weight(1f))
                 ProgressMetric("SERIE", totalSetsThisWeek.toString(),
-                    "questa settimana", totalSetsThisWeek / 62f, Modifier.weight(1f))
+                    weeklyGoals.sets?.let { "di $it previste" } ?: "definisci il programma",
+                    weeklyGoals.sets?.let { totalSetsThisWeek.toFloat() / it } ?: 0f,
+                    Modifier.weight(1f))
                 ProgressMetric("TEMPO", "${trainingMinutes}m",
-                    "questa settimana", trainingMinutes / 255f, Modifier.weight(1f))
+                    weeklyGoals.minutes?.let { "di circa ${it}m" } ?: "durata non disponibile",
+                    weeklyGoals.minutes?.let { trainingMinutes.toFloat() / it } ?: 0f,
+                    Modifier.weight(1f))
             }
             Spacer(Modifier.height(10.dp))
             Surface(
@@ -453,7 +462,8 @@ fun DashboardScreen(
             Spacer(Modifier.height(12.dp))
             WidgetCard {
                 val animatedWeek by animateFloatAsState(
-                    (summary.workoutDaysThisWeek / 3f).coerceIn(0f, 1f),
+                    (summary.workoutDaysThisWeek.toFloat() /
+                        personalSettings.weeklyWorkouts.coerceAtLeast(1)).coerceIn(0f, 1f),
                     animationSpec = tween(BGMotion.duration(650)), label = "Sedute settimanali"
                 )
                 LinearProgressIndicator(

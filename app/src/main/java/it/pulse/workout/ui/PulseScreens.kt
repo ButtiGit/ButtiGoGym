@@ -239,15 +239,38 @@ fun PlanScreen(
             PageTitle("La tua scheda.")
             Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                LabelChip("3 GIORNI + BONUS")
+                LabelChip("${days.count { !it.optional }} GIORNI + BONUS")
                 Spacer(Modifier.weight(1f))
                 TextButton(onClick = onRefresh, enabled = !refreshing) {
                     Text(if (refreshing) "Sincronizzo…" else "↻ Aggiorna",
                         color = PulseColors.Accent)
                 }
             }
-            if (refreshState.startsWith("Offline") || refreshState.startsWith("Aggiornamento"))
+            Text("Versione scheda: $version", color = PulseColors.Muted, fontSize = 11.sp)
+            if (refreshState.startsWith("Offline") || refreshState.startsWith("Aggiornamento") ||
+                refreshState.startsWith("Sincronizzata"))
                 Text(refreshState, color = PulseColors.Muted, fontSize = 11.sp)
+            if (customizedDayIds.isNotEmpty()) {
+                Spacer(Modifier.height(12.dp))
+                Surface(
+                    shape = RoundedCornerShape(15.dp),
+                    color = PulseColors.SoftGreen,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(13.dp)) {
+                        Text("Scheda personalizzata: ${customizedDayIds.size} giornate",
+                            color = PulseColors.Accent, fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(5.dp))
+                        Text("Gli esercizi salvati sul telefono restano prioritari " +
+                            "rispetto agli aggiornamenti GitHub. Per applicare la nuova " +
+                            "programmazione a una giornata, apri Modifica → " +
+                            "Ripristina la scheda originale (con conferma). " +
+                            "Gli allenamenti nello storico non saranno cancellati.",
+                            color = PulseColors.Foreground, fontSize = 12.sp)
+                    }
+                }
+            }
             Spacer(Modifier.height(22.dp))
         }
         if (days.isEmpty()) {
