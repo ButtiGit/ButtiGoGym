@@ -24,13 +24,13 @@ private data class PulsePalette(
 
 /** Light-mode identity: #106119. Dark mode retains a contrasting, recognizable green. */
 private val LightPalette = PulsePalette(
-    Color(0xFFF6F8F6), Color.White, Color(0xFFF1F5F2),
+    Color(0xFFF5F5F7), Color.White, Color(0xFFF0F0F2),
     Color(0xFFE9F3EA), Color(0xFF106119), Color(0xFF083C15),
-    Color(0xFFF1A6B7), Color(0xFF1A2920), Color(0xFF617365),
-    Color(0xFFE5ECE6), Color.White
+    Color(0xFFF1A6B7), Color(0xFF1D1D1F), Color(0xFF68686D),
+    Color(0xFFE5E5EA), Color.White
 )
 private val DarkPalette = PulsePalette(
-    Color(0xFF0D1510), Color(0xFF17211A), Color(0xFF222D25),
+    Color(0xFF000000), Color(0xFF1C1C1E), Color(0xFF2C2C2E),
     Color(0xFF203C27), Color(0xFF2B8643), Color(0xFF8FDCA0),
     Color(0xFFE5A2B2), Color(0xFFE6F0E8), Color(0xFFA4B7A8),
     Color(0xFF34483A), Color.White

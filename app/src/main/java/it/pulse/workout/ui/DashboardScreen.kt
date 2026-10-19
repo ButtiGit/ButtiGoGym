@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -115,861 +117,218 @@ fun DashboardScreen(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit
 ) {
+
     val today = LocalDate.now()
+    val current = active?.daySnapshot ?: days.firstOrNull { it.id == active?.dayId } ?: upcoming
     val summary = remember(today, wellness, history, personalSettings.weeklyWorkouts) {
         StreakCalculator.calculate(today, wellness, history, personalSettings.weeklyWorkouts)
     }
-    val current = active?.daySnapshot ?: days.firstOrNull { it.id == active?.dayId } ?: upcoming
-    var stepsDialog by remember { mutableStateOf(false) }
-    var healthHelpExpanded by rememberSaveable { mutableStateOf(false) }
-    var backupExpanded by rememberSaveable { mutableStateOf(false) }
-    val localContext = LocalContext.current
-    val homeStore = remember(localContext) { HomeDisplaySettingsStore(localContext) }
-    var homeLayout by remember { mutableStateOf(homeStore.read()) }
-    var customizerOpen by rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    val store = remember(context) { HomeDisplaySettingsStore(context) }
+    var layout by remember { mutableStateOf(store.read()) }
+    var modal by rememberSaveable { mutableStateOf<String?>(null) }
+    var stepsInput by rememberSaveable(today.toString(), summary.todaySteps) {
+        mutableStateOf(summary.todaySteps.toString())
+    }
+    var preferenceError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(backupStatus) {
-        if (backupStatus.startsWith("Ripristino riuscito"))
-            homeLayout = homeStore.read()
+        if (backupStatus.startsWith("Ripristino riuscito")) layout = store.read()
     }
-    if (customizerOpen) {
-        HomeDisplaySettingsScreen(
-            settings = homeLayout,
-            onSettings = { updated -> homeStore.save(updated); homeLayout = updated },
-            onBack = { customizerOpen = false },
-            installedVersion = updateInstalledVersion,
-            updateStatus = updateStatus,
-            checking = updateChecking,
-            downloading = updateDownloading,
-            downloadProgress = updateProgress,
-            verified = updateVerified,
-            onCheckUpdate = onCheckUpdate,
-            onDownloadUpdate = onDownloadUpdate,
-            onInstallUpdate = onInstallUpdate,
-            backupStatus = backupStatus,
-            backupBusy = backupBusy,
-            onExportBackup = onExportBackup,
-            onImportBackup = onImportBackup,
-            waterEnabled = reminderWaterEnabled,
-            moveEnabled = reminderMoveEnabled,
-            onWaterChanged = onToggleWaterReminder,
-            onMoveChanged = onToggleMoveReminder,
-            onTestWater = onTestWaterReminder,
-            onTestMove = onTestMoveReminder,
-            remindersPermissionGranted = remindersPermissionGranted,
-            onEnableReminders = onEnableReminderNotifications
-        )
-        return
+    fun saveLayout(value: HomeDisplaySettings) {
+        runCatching { store.save(value) }.onSuccess { layout = value; preferenceError = null }
+            .onFailure { preferenceError = it.message }
     }
-    val number = NumberFormat.getIntegerInstance(Locale.ITALIAN)
-    val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-    val weekSessions = remember(history, today) {
-        history.filter {
-            val date = Instant.ofEpochMilli(it.completedAt).atZone(ZoneId.systemDefault()).toLocalDate()
-            !date.isBefore(weekStart) && date.isBefore(weekStart.plusDays(7))
-        }
-    }
-    val totalSetsThisWeek = weekSessions.sumOf { it.completedSets }
-    val trainingMinutes = weekSessions.sumOf { it.durationMinutes.coerceAtLeast(0) }
-    // Le soglie seguono la scheda davvero in uso, comprese le giornate personalizzate.
-    // Se la frequenza scelta non è compatibile con i giorni disponibili, niente target fittizi.
-    val weeklyGoals = remember(days, personalSettings.weeklyWorkouts) {
-        WeeklyPlanGoalsCalculator.from(days, personalSettings.weeklyWorkouts)
-    }
-    val readyMuscles = remember(history) {
-        MuscleAnalytics.evaluate(history).count { it.state == MuscleRecovery.READY }
-    }
-
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(PulseColors.Background),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(painter = painterResource(R.drawable.buttigogym_mascot),
-                        contentDescription = "ButtiGoGym",
-                        modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)))
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Text("ButtiGoGym", color = PulseColors.Accent,
-                            fontSize = 19.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.5).sp)
-                        // Il logo e il nome identificano già la schermata.
-                    }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Oggi", style = MaterialTheme.typography.headlineMedium, color = PulseColors.Foreground)
+                    Text(today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.ITALIAN)),
+                        color = PulseColors.Muted, style = MaterialTheme.typography.bodyMedium)
                 }
                 IconButton(onClick = onOpenCalendar) {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = "Apri calendario allenamenti",
-                        tint = PulseColors.Accent, modifier = Modifier.size(25.dp))
+                    Icon(Icons.Default.CalendarMonth, "Calendario", tint = PulseColors.Foreground)
                 }
-                IconButton(onClick = { customizerOpen = true }) {
-                    Icon(Icons.Default.Settings, contentDescription = "Personalizza Home e aggiornamenti",
-                        tint = PulseColors.Accent, modifier = Modifier.size(24.dp))
+                IconButton(onClick = { modal = "tools" }) {
+                    Icon(Icons.Default.Settings, "Strumenti e aggiornamenti", tint = PulseColors.Foreground)
                 }
             }
         }
-
         item {
-            Text(
-                today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.ITALIAN))
-                    .replaceFirstChar { it.titlecase(Locale.ITALIAN) },
-                color = PulseColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.Medium
-            )
-            Spacer(Modifier.height(2.dp))
-        }
-
-        item {
-            MascotCoachCard(MascotCoach.today(
-                active = active != null,
-                resting = summary.restedToday,
-                trained = summary.workoutToday,
-                completedWeek = summary.workoutDaysThisWeek,
-                goal = personalSettings.weeklyWorkouts
-            ), pose = when {
+            MascotCoachCard(MascotCoach.today(active != null, summary.restedToday, summary.workoutToday,
+                summary.workoutDaysThisWeek, personalSettings.weeklyWorkouts), pose = when {
                 active != null -> CoachPose.READY
                 summary.workoutToday -> CoachPose.DONE
                 summary.restedToday -> CoachPose.REST
                 else -> CoachPose.HOME
             })
         }
-
         item {
-            Surface(
-                shape = RoundedCornerShape(22.dp),
-                color = PulseColors.Accent,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(Modifier.padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Surface(color = Color.White.copy(alpha = .16f),
-                            shape = RoundedCornerShape(50)) {
-                            Text(if (active != null) "SESSIONE IN CORSO" else "PROSSIMO ALLENAMENTO",
-                                Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                                color = Color.White, fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp, letterSpacing = 0.7.sp)
-                        }
-                        Spacer(Modifier.weight(1f))
-                        Icon(Icons.Default.FitnessCenter,
-                            contentDescription = null, tint = Color.White.copy(alpha = .9f),
-                            modifier = Modifier.size(27.dp))
-                    }
-                    Spacer(Modifier.height(13.dp))
-                    Text(current.name, color = Color.White, fontSize = 23.sp,
-                        fontWeight = FontWeight.ExtraBold, lineHeight = 29.sp)
-                    Spacer(Modifier.height(7.dp))
-                    Text("${current.exercises.size} esercizi · ${current.duration}",
-                        color = Color.White.copy(alpha = .82f), fontSize = 12.sp)
-                    Spacer(Modifier.height(20.dp))
-                    Button(
-                        onClick = { onStart(current) },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = BGLayout.controlHeight),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White, contentColor = PulseColors.Accent
-                        )
-                    ) {
-                        Text(if (active != null) "Riprendi allenamento" else "Inizia allenamento",
-                            fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Spacer(Modifier.weight(1f))
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = null, modifier = Modifier.size(18.dp))
-                    }
-                    if (active == null && QuickWorkoutPlanner.create(current) != null) {
-                        Spacer(Modifier.height(9.dp))
-                        OutlinedButton(
-                            onClick = { onStartQuick(current) },
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = .7f)),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                        ) {
-                            Text("Allenamento rapido · 35–45 min", color = Color.White,
-                                fontWeight = FontWeight.Bold)
-                        }
-                     }
-                }
-            }
-        }
-
-        item {
-            BGCard {
+            BGCard(padding = 20.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Questa settimana",
-                            fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                            color = PulseColors.Foreground)
-                        Text("${summary.workoutDaysThisWeek} / ${personalSettings.weeklyWorkouts} completati · 🎯",
-                            color = PulseColors.Muted, fontSize = 12.sp)
-                    }
-                    TextButton(onClick = onOpenPlan) {
-                        Text("La scheda →", color = PulseColors.Accent,
-                            fontWeight = FontWeight.SemiBold)
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = {
-                        (summary.workoutDaysThisWeek.toFloat() /
-                            personalSettings.weeklyWorkouts.coerceAtLeast(1)).coerceIn(0f, 1f)
-                    },
-                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(CircleShape),
-                    color = PulseColors.Accent,
-                    trackColor = PulseColors.SoftGreen
-                )
-                Spacer(Modifier.height(5.dp))
-                Text(
-                    if (summary.workoutDaysThisWeek >= personalSettings.weeklyWorkouts)
-                        "🎉 Obiettivo raggiunto!"
-                    else "Mancano ${(personalSettings.weeklyWorkouts - summary.workoutDaysThisWeek).coerceAtLeast(0)} allenamenti",
-                    color = PulseColors.Muted, fontSize = 12.sp
-                )
-            }
-        }
-
-        if (updateStatus is AppUpdateStatus.Available) {
-            item {
-                ReleaseUpdatePanel(
-                    installedVersion = updateInstalledVersion,
-                    status = updateStatus,
-                    checking = updateChecking,
-                    downloading = updateDownloading,
-                    downloadProgress = updateProgress,
-                    verified = updateVerified,
-                    onCheck = onCheckUpdate,
-                    onDownload = onDownloadUpdate,
-                    onInstall = onInstallUpdate
-                )
-            }
-        }
-
-        if (homeLayout.missions) item {
-            WeeklyMissionsCard(weeklyMissions, weeklyReminderEnabled, onToggleWeeklyReminder)
-        }
-
-        if (homeLayout.weeklyReport) item {
-            WeeklyReportCard(weeklyReport, todayCheckIn, onOpenCheckIn)
-        }
-
-        if (homeLayout.details) item {
-            DashboardSectionTitle("Progressi")
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                ProgressMetric("SEDUTE",
-                    "${summary.workoutDaysThisWeek}/${personalSettings.weeklyWorkouts}",
-                    "questa settimana",
-                    (summary.workoutDaysThisWeek.toFloat() / personalSettings.weeklyWorkouts),
-                    Modifier.weight(1f))
-                ProgressMetric("SERIE", totalSetsThisWeek.toString(),
-                    weeklyGoals.sets?.let { "di $it previste" } ?: "definisci il programma",
-                    weeklyGoals.sets?.let { totalSetsThisWeek.toFloat() / it } ?: 0f,
-                    Modifier.weight(1f))
-                ProgressMetric("TEMPO", "${trainingMinutes}m",
-                    weeklyGoals.minutes?.let { "di circa ${it}m" } ?: "durata non disponibile",
-                    weeklyGoals.minutes?.let { trainingMinutes.toFloat() / it } ?: 0f,
-                    Modifier.weight(1f))
-            }
-            Spacer(Modifier.height(10.dp))
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(19.dp), color = PulseColors.Surface,
-                border = BorderStroke(1.dp, PulseColors.Border)
-            ) {
-                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(43.dp).background(PulseColors.SoftGreen, RoundedCornerShape(14.dp)),
-                        contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.FitnessCenter, null, tint = PulseColors.Accent)
-                    }
-                    Spacer(Modifier.width(13.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Muscoli pronti", fontSize = 13.sp,
-                            fontWeight = FontWeight.ExtraBold, color = PulseColors.Foreground)
-                        Text("Stima del recupero dopo i pesi",
-                            color = PulseColors.Muted, fontSize = 11.sp)
-                    }
-                    Text("${readyMuscles}/16", fontWeight = FontWeight.Black,
-                        color = PulseColors.Accent, fontSize = 20.sp)
-                }
-            }
-        }
-
-        if (homeLayout.streaks) item {
-            DashboardSectionTitle("Streak · indicatori secondari",
-                "La costanza principale è nel bilancio delle ultime quattro settimane")
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StreakTile(
-                    icon = Icons.Default.LocalFireDepartment, value = summary.generalDays,
-                    unit = "giorni", title = "Abitudini",
-                    detail = "", accentBackground = true,
-                    animateFlame = true,
-                    modifier = Modifier.weight(1f)
-                )
-                StreakTile(
-                    icon = Icons.Default.FitnessCenter, value = summary.workoutWeeks,
-                    unit = "settimane", title = "Allenamenti",
-                    detail = "", modifier = Modifier.weight(1f)
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StreakTile(
-                    icon = Icons.Default.Bedtime, value = summary.restDays,
-                    unit = "giorni", title = "Riposo",
-                    detail = "", modifier = Modifier.weight(1f)
-                )
-                StreakTile(
-                    icon = Icons.Default.DirectionsWalk, value = summary.stepDays,
-                    unit = "giorni", title = "Passi",
-                    detail = "", modifier = Modifier.weight(1f)
-                )
-            }
-        }
-
-        if (homeLayout.steps) item {
-            DashboardSectionTitle("Passi")
-            Spacer(Modifier.height(12.dp))
-            WidgetCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    StepsRing(summary.todaySteps, Modifier.size(116.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Oggi", color = PulseColors.Muted, fontSize = 12.sp)
-                        Spacer(Modifier.height(5.dp))
-                        Text(number.format(summary.todaySteps), color = PulseColors.Foreground,
-                            fontSize = 27.sp, fontWeight = FontWeight.ExtraBold)
-                        Text("/ 6.000", color = PulseColors.Muted, fontSize = 12.sp)
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            if (summary.todaySteps >= 6000) "Obiettivo raggiunto ✓"
-                            else "Mancano ${number.format(6000 - summary.todaySteps)} passi",
-                            fontSize = 11.sp, color = PulseColors.Accent, fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-                Spacer(Modifier.height(18.dp))
-                Surface(color = PulseColors.SoftGreen, shape = RoundedCornerShape(14.dp)) {
-                    Column(Modifier.fillMaxWidth().padding(13.dp)) {
-                        Text(if (healthConnected) "● Health Connect collegato" else "Health Connect",
-                            color = PulseColors.Accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(4.dp))
-                        Text(healthStatus, color = PulseColors.Foreground, fontSize = 11.sp)
-                        Spacer(Modifier.height(4.dp))
-                        if (!healthConnected) {
-                            TextButton(onClick = { healthHelpExpanded = !healthHelpExpanded }) {
-                                Text(if (healthHelpExpanded) "Nascondi guida" else "Come collegare?",
-                                    fontSize = 11.sp, color = PulseColors.Accent)
-                            }
-                            if (healthHelpExpanded) {
-                                Text("Samsung Health → Health Connect → consenti condivisione passi.",
-                                    color = PulseColors.Muted, fontSize = 11.sp)
-                            }
-                        }
-                    }
-                }
-                Spacer(Modifier.height(11.dp))
-                if (healthConnected) {
-                    Button(
-                        onClick = onRefreshHealth,
-                        enabled = !healthSyncing,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-                    ) {
-                        Text(if (healthSyncing) "Sincronizzazione…" else "Sincronizza passi",
-                            color = Color.White, fontWeight = FontWeight.SemiBold)
-                    }
-                    Spacer(Modifier.height(4.dp))
-                } else {
-                    Button(
-                        onClick = onConnectHealth,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-                    ) { Text("Collega Health Connect", color = Color.White, fontWeight = FontWeight.Bold) }
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { stepsDialog = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = PulseColors.Accent),
-                        border = BorderStroke(1.dp, PulseColors.Border)
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(9.dp))
-                        Text("Inserisci / correggi passi", fontWeight = FontWeight.SemiBold)
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    if (stepStatus.startsWith("Consenti") || !stepStatus.startsWith("Passi automatici"))
-                        Text(stepStatus, color = PulseColors.Muted, fontSize = 12.sp)
-                    if (stepStatus.startsWith("Consenti")) {
-                        TextButton(onClick = onRequestStepAccess) {
-                            Text("Attiva contapassi del telefono", color = PulseColors.Accent)
-                        }
-                    }
-                }
-            }
-        }
-
-        if (homeLayout.recovery) item {
-            DashboardSectionTitle("Recupero")
-            Spacer(Modifier.height(12.dp))
-            WidgetCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(47.dp).clip(RoundedCornerShape(16.dp))
-                            .background(PulseColors.SoftGreen),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.NightsStay, contentDescription = null,
-                            tint = PulseColors.Accent, modifier = Modifier.size(23.dp))
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Giornata di recupero", color = PulseColors.Foreground,
-                            fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text(
-                            when {
-                                summary.restedToday -> "Riposo segnato per oggi"
-                                summary.workoutToday -> "Allenamento completato oggi"
-                                else -> "Segna oggi come giorno di riposo"
-                            },
-                            color = PulseColors.Muted, fontSize = 11.sp
-                        )
-                    }
-                    if (summary.restedToday)
-                        Icon(Icons.Default.CheckCircle, contentDescription = "Riposo segnato",
-                            tint = PulseColors.Accent)
-                }
-                Spacer(Modifier.height(14.dp))
-                if (!summary.workoutToday || summary.restedToday) {
-                    Button(
-                        onClick = onToggleRest, modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = PulseColors.SoftGreen,
-                            contentColor = PulseColors.Accent
-                        )
-                    ) {
-                        Text(if (summary.restedToday) "Annulla riposo" else "Segna riposo oggi",
-                            fontWeight = FontWeight.Bold)
-                    }
-                } else {
-                    Text("La giornata conta già come attiva grazie all'allenamento.",
-                        color = PulseColors.Accent, fontSize = 12.sp)
-                }
-            }
-        }
-
-        if (homeLayout.weekPlan) item {
-            DashboardSectionTitle("La settimana")
-            Spacer(Modifier.height(12.dp))
-            WidgetCard {
-                val animatedWeek by animateFloatAsState(
-                    (summary.workoutDaysThisWeek.toFloat() /
-                        personalSettings.weeklyWorkouts.coerceAtLeast(1)).coerceIn(0f, 1f),
-                    animationSpec = tween(BGMotion.duration(650)), label = "Sedute settimanali"
-                )
-                LinearProgressIndicator(
-                    progress = { animatedWeek },
-                    modifier = Modifier.fillMaxWidth().height(7.dp).clip(CircleShape),
-                    color = PulseColors.Accent,
-                    trackColor = PulseColors.SoftGreen
-                )
-                Spacer(Modifier.height(18.dp))
-                val start = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                val completed = history.filter { it.completedSets > 0 }.filter {
-                    val date = Instant.ofEpochMilli(it.completedAt)
-                        .atZone(ZoneId.systemDefault()).toLocalDate()
-                    !date.isBefore(start) && date.isBefore(start.plusWeeks(1))
-                }.map { it.dayId }.toSet()
-                Row(horizontalArrangement = Arrangement.spacedBy(9.dp),
-                    modifier = Modifier.fillMaxWidth()) {
-                    days.filterNot { it.optional }.take(3).forEach { day ->
-                        val done = day.id in completed
-                        Column(
-                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(14.dp))
-                                .background(if (done) PulseColors.SoftGreen else PulseColors.Raised)
-                                .clickable { onStart(day) }
-                                .padding(vertical = 13.dp, horizontal = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(day.weekday.take(3),
-                                color = if (done) PulseColors.Accent else PulseColors.Muted,
-                                fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            Spacer(Modifier.height(7.dp))
-                            Icon(if (done) Icons.Default.CheckCircle else Icons.Default.FitnessCenter,
-                                contentDescription = if (done) "Completato" else "Da completare",
-                                tint = if (done) PulseColors.Accent else PulseColors.Muted,
-                                modifier = Modifier.size(19.dp))
-                        }
-                    }
-                }
-                Spacer(Modifier.height(14.dp))
-                TextButton(onClick = onOpenPlan, modifier = Modifier.fillMaxWidth()) {
-                    Text("Vai alla scheda", color = PulseColors.Accent,
-                        fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.weight(1f))
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null, tint = PulseColors.Accent)
-                }
-            }
-        }
-
-        if (homeLayout.reminders) item {
-            DashboardSectionTitle("Promemoria")
-            Spacer(Modifier.height(12.dp))
-            WidgetCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(39.dp).clip(RoundedCornerShape(13.dp))
-                            .background(Color(0xFFE5F0FA)), contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.WaterDrop, contentDescription = null,
-                            tint = Color(0xFF3978A0), modifier = Modifier.size(21.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Bere acqua", color = PulseColors.Foreground,
-                            fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text("Ogni 30 min · 08:30–18:00", color = PulseColors.Muted,
-                            fontSize = 11.sp)
-                    }
-                    Switch(checked = reminderWaterEnabled, onCheckedChange = onToggleWaterReminder,
-                        colors = SwitchDefaults.colors(checkedTrackColor = PulseColors.Accent))
-                }
-                Spacer(Modifier.height(8.dp))
-                HorizontalDivider(color = PulseColors.Border)
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier.size(39.dp).clip(RoundedCornerShape(13.dp))
-                            .background(PulseColors.SoftGreen), contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.AccessibilityNew, contentDescription = null,
-                            tint = PulseColors.Accent, modifier = Modifier.size(21.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Alzati e muoviti", color = PulseColors.Foreground,
-                            fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text("Ogni ora · 09:30–17:30", color = PulseColors.Muted,
-                            fontSize = 11.sp)
-                    }
-                    Switch(checked = reminderMoveEnabled, onCheckedChange = onToggleMoveReminder,
-                        colors = SwitchDefaults.colors(checkedTrackColor = PulseColors.Accent))
-                }
-                if ((reminderWaterEnabled || reminderMoveEnabled)) {
-                    Spacer(Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (reminderWaterEnabled) {
-                            OutlinedButton(onClick = onTestWaterReminder,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(13.dp),
-                                border = BorderStroke(1.dp, PulseColors.Border)) {
-                                Text("Prova acqua", color = PulseColors.Accent, fontSize = 11.sp)
-                            }
-                        }
-                        if (reminderMoveEnabled) {
-                            OutlinedButton(onClick = onTestMoveReminder,
-                                modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(13.dp),
-                                border = BorderStroke(1.dp, PulseColors.Border)) {
-                                Text("Prova movimento", color = PulseColors.Accent, fontSize = 11.sp)
-                            }
-                        }
-                    }
-                }
-                val reminderProblem = if (!remindersPermissionGranted)
-                    "Permesso notifiche non concesso"
-                    else listOfNotNull(
-                        reminderWaterProblem.takeIf { reminderWaterEnabled },
-                        reminderMoveProblem.takeIf { reminderMoveEnabled }
-                    ).distinct().joinToString(" · ").takeIf { it.isNotBlank() }
-                if (reminderProblem != null && (reminderWaterEnabled || reminderMoveEnabled)) {
-                    Spacer(Modifier.height(12.dp))
-                    Surface(color = PulseColors.Raised, shape = RoundedCornerShape(13.dp)) {
-                        Row(Modifier.padding(11.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Notifications, contentDescription = null,
-                                tint = PulseColors.Accent, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(7.dp))
-                            Text(reminderProblem, color = PulseColors.Foreground,
-                                fontSize = 11.sp, modifier = Modifier.weight(1f))
-                            TextButton(onClick = {
-                                if (!remindersPermissionGranted) onEnableReminderNotifications()
-                                else onOpenReminderNotificationSettings()
-                            }) {
-                                Text(if (!remindersPermissionGranted) "Attiva" else "Impostazioni",
-                                    color = PulseColors.Accent)
-                            }
-                        }
-                    }
-                }
-                Spacer(Modifier.height(6.dp))
-                Text("Gli avvisi seguono l'orario del telefono. Android può ritardarli.",
-                    color = PulseColors.Muted, fontSize = 12.sp)
-            }
-        }
-
-        if (false) item {
-            if (updateStatus !is AppUpdateStatus.Available) {
-                ReleaseUpdatePanel(
-                    installedVersion = updateInstalledVersion,
-                    status = updateStatus,
-                    checking = updateChecking,
-                    downloading = updateDownloading,
-                    downloadProgress = updateProgress,
-                    verified = updateVerified,
-                    onCheck = onCheckUpdate,
-                    onDownload = onDownloadUpdate,
-                    onInstall = onInstallUpdate
-                )
-                Spacer(Modifier.height(12.dp))
-            }
-        }
-
-        if (homeLayout.backup) item {
-            DashboardSectionTitle("Backup")
-            Spacer(Modifier.height(12.dp))
-            WidgetCard {
-                Row(
-                    Modifier.fillMaxWidth().clickable { backupExpanded = !backupExpanded },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.FitnessCenter, null, tint = PulseColors.Accent,
-                        modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.width(12.dp))
-                    Text("Backup e ripristino", color = PulseColors.Foreground,
-                        fontSize = 15.sp, fontWeight = FontWeight.Bold,
+                    Text(if (active != null) "In corso" else "Il tuo allenamento",
+                        color = PulseColors.Muted, style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f))
-                    Icon(if (backupExpanded) Icons.AutoMirrored.Filled.ArrowForward else
-                        Icons.Default.Edit, null, tint = PulseColors.Muted)
-                }
-                if (backupExpanded) {
-                    Spacer(Modifier.height(12.dp))
-                    Text("ZIP con allenamenti, foto, recap e preferenze. " +
-                        "Il file non è cifrato: conservalo privatamente.",
-                        color = PulseColors.Muted, fontSize = 11.sp)
-                    Spacer(Modifier.height(10.dp))
-                    Button(onClick = onExportBackup, enabled = !backupBusy,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)) {
-                        Text(if (backupBusy) "Attendi…" else "Esporta backup ZIP",
-                            color = Color.White)
-                    }
-                    Spacer(Modifier.height(7.dp))
-                    OutlinedButton(onClick = onImportBackup, enabled = !backupBusy,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, PulseColors.Border)) {
-                        Text("Ripristina ZIP o vecchio JSON", color = PulseColors.Accent)
+                    IconButton(onClick = { modal = "workout" }) {
+                        Icon(Icons.Default.MoreHoriz, "Opzioni allenamento", tint = PulseColors.Muted)
                     }
                 }
-                if (backupStatus.isNotBlank()) {
-                    Spacer(Modifier.height(9.dp))
-                    Text(backupStatus, color = PulseColors.Accent, fontSize = 11.sp)
+                Text(current.name, style = MaterialTheme.typography.titleLarge, color = PulseColors.Foreground)
+                Spacer(Modifier.height(6.dp))
+                Text("${current.exercises.size} esercizi · ${current.duration}", color = PulseColors.Muted)
+                Spacer(Modifier.height(20.dp))
+                BGPrimaryButton(if (active != null) "Riprendi" else "Inizia", { onStart(current) })
+            }
+        }
+        item {
+            HomeAction("La settimana", "${summary.workoutDaysThisWeek}/${personalSettings.weeklyWorkouts}") {
+                modal = "week"
+            }
+        }
+        if (updateStatus is AppUpdateStatus.Available || updateDownloading || updateVerified) item {
+            HomeAction(if (updateVerified) "Aggiornamento pronto" else "Aggiornamento disponibile", "") { modal = "updates" }
+        }
+        // Existing visibility preferences become compact shortcuts, never expanded dashboards.
+        if (layout.missions) item { HomeAction("Missioni") { modal = "missions" } }
+        if (layout.weeklyReport) item { HomeAction("Report") { modal = "report" } }
+        if (layout.details || layout.streaks) item { HomeAction("Progressi") { modal = "week" } }
+        if (layout.steps) item { HomeAction("Passi", NumberFormat.getIntegerInstance(Locale.ITALIAN).format(summary.todaySteps)) { modal = "health" } }
+        if (layout.recovery) item { HomeAction("Recupero") { modal = "recovery" } }
+        if (layout.weekPlan) item { HomeAction("La scheda") { onOpenPlan() } }
+        if (layout.reminders) item { HomeAction("Promemoria") { modal = "reminders" } }
+        if (layout.backup) item { HomeAction("Backup") { modal = "backup" } }
+    }
+    if (modal != null) BGModal(when (modal) {
+        "workout" -> "Allenamento"
+        "week" -> "La settimana"
+        "report" -> "Report"
+        "missions" -> "Missioni"
+        "health" -> "Passi"
+        "steps" -> "Passi di oggi"
+        "recovery" -> "Recupero"
+        "updates" -> "Aggiornamenti"
+        "reminders" -> "Promemoria"
+        "backup" -> "I tuoi dati"
+        "home" -> "Scorciatoie Home"
+        else -> "Strumenti"
+    }, { modal = null }) {
+        when (modal) {
+            "tools" -> {
+                HomeAction("Passi") { modal = "health" }
+                HomeAction("Recupero") { modal = "recovery" }
+                HomeAction("Report") { modal = "report" }
+                HomeAction("Missioni") { modal = "missions" }
+                HomeAction("Promemoria") { modal = "reminders" }
+                HomeAction("Backup e ripristino") { modal = "backup" }
+                HomeAction("Aggiornamenti", updateInstalledVersion) { modal = "updates" }
+                HomeAction("Personalizza Home") { modal = "home" }
+            }
+            "workout" -> {
+                if (active == null && QuickWorkoutPlanner.create(current) != null)
+                    HomeAction("Allenamento rapido", "35–45 min") { modal = null; onStartQuick(current) }
+                HomeAction("Scegli dalla scheda") { modal = null; onOpenPlan() }
+                HomeAction("Come ti senti?") { modal = null; onOpenCheckIn() }
+            }
+            "week" -> {
+                Text("${summary.workoutDaysThisWeek} di ${personalSettings.weeklyWorkouts} allenamenti",
+                    style = MaterialTheme.typography.titleLarge)
+                LinearProgressIndicator(progress = { (summary.workoutDaysThisWeek.toFloat() /
+                    personalSettings.weeklyWorkouts.coerceAtLeast(1)).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(), color = PulseColors.Accent, trackColor = PulseColors.SoftGreen)
+                HomeAction("La scheda") { modal = null; onOpenPlan() }
+                HomeAction("Calendario") { modal = null; onOpenCalendar() }
+                HomeAction("Report") { modal = "report" }
+                HomeAction("Missioni") { modal = "missions" }
+                Text("${summary.generalDays} giorni di abitudini · ${summary.workoutWeeks} settimane di allenamenti",
+                    color = PulseColors.Muted)
+            }
+            "report" -> WeeklyReportCard(weeklyReport, todayCheckIn) { modal = null; onOpenCheckIn() }
+            "missions" -> WeeklyMissionsCard(weeklyMissions, weeklyReminderEnabled, onToggleWeeklyReminder)
+            "health" -> {
+                Text(NumberFormat.getIntegerInstance(Locale.ITALIAN).format(summary.todaySteps),
+                    style = MaterialTheme.typography.headlineMedium, color = PulseColors.Foreground)
+                Text("Passi di oggi", color = PulseColors.Muted)
+                TextButton(onClick = { modal = "steps" }) { Text("Inserisci totale") }
+                TextButton(onClick = onRequestStepAccess) { Text("Attiva contapassi") }
+                TextButton(onClick = if (healthConnected) onRefreshHealth else onConnectHealth, enabled = !healthSyncing) {
+                    Text(if (healthSyncing) "Sincronizzazione…" else if (healthConnected) "Sincronizza Health Connect" else "Collega Health Connect")
                 }
+                if (healthStatus.isNotBlank()) Text(healthStatus, color = PulseColors.Muted)
+                if (stepStatus.isNotBlank()) Text(stepStatus, color = PulseColors.Muted)
             }
-        }
-
-    }
-
-    if (stepsDialog) {
-        var input by rememberSaveable(summary.todaySteps) {
-            mutableStateOf(summary.todaySteps.takeIf { it > 0 }?.toString() ?: "")
-        }
-        val value = input.toIntOrNull()
-        AlertDialog(
-            onDismissRequest = { stepsDialog = false },
-            title = {
-                Text("Passi di oggi", fontWeight = FontWeight.Bold,
-                    color = PulseColors.Foreground)
-            },
-            text = {
-                Column {
-                    Text("Inserisci il totale giornaliero, non i passi da aggiungere.",
-                        color = PulseColors.Muted, fontSize = 13.sp)
-                    Spacer(Modifier.height(14.dp))
-                    OutlinedTextField(
-                        value = input,
-                        onValueChange = { next ->
-                            if (next.length <= 6 && next.all(Char::isDigit)) input = next
-                        },
-                        label = { Text("Passi") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    enabled = value != null && value in 0..200000,
-                    onClick = { value?.let(onSaveSteps); stepsDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-                ) { Text("Salva", color = Color.White) }
-            },
-            dismissButton = {
-                TextButton(onClick = { stepsDialog = false }) {
-                    Text("Annulla", color = PulseColors.Accent)
-                }
+            "steps" -> {
+                OutlinedTextField(stepsInput, { next ->
+                    if (next.length <= 6 && next.all(Char::isDigit)) stepsInput = next
+                }, label = { Text("Totale giornaliero") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth())
+                BGPrimaryButton("Salva", {
+                    stepsInput.toIntOrNull()?.takeIf { it in 0..200000 }?.let { onSaveSteps(it); modal = "health" }
+                }, enabled = stepsInput.toIntOrNull()?.let { it in 0..200000 } == true)
             }
-        )
-    }
-}
-
-@Composable
-private fun DashboardSectionTitle(title: String, subtitle: String = "") {
-    Column {
-        Text(title, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
-            color = PulseColors.Foreground, letterSpacing = (-0.45).sp)
-        if (subtitle.isNotBlank()) {
-            Spacer(Modifier.height(3.dp))
-            Text(subtitle, color = PulseColors.Muted, fontSize = 12.sp)
+            "recovery" -> {
+                Text(if (summary.restedToday) "Oggi è un giorno di recupero" else "Come ti senti oggi?",
+                    style = MaterialTheme.typography.titleMedium)
+                BGPrimaryButton(if (summary.restedToday) "Annulla giorno di riposo" else "Segna giorno di riposo", onToggleRest)
+                TextButton(onClick = { modal = null; onOpenCheckIn() }) { Text("Check-in") }
+            }
+            "updates" -> ReleaseUpdatePanel(updateInstalledVersion, updateStatus, updateChecking,
+                updateDownloading, updateProgress, updateVerified, onCheckUpdate, onDownloadUpdate, onInstallUpdate)
+            "backup" -> {
+                BGPrimaryButton(if (backupBusy) "Attendi…" else "Esporta backup", onExportBackup, enabled = !backupBusy)
+                TextButton(onClick = onImportBackup, enabled = !backupBusy) { Text("Ripristina backup") }
+                if (backupStatus.isNotBlank()) Text(backupStatus, color = PulseColors.Muted)
+            }
+            "reminders" -> {
+                HomeToggle("Bere acqua", reminderWaterEnabled, onToggleWaterReminder)
+                HomeToggle("Muoversi", reminderMoveEnabled, onToggleMoveReminder)
+                HomeToggle("Obiettivo settimanale", weeklyReminderEnabled, onToggleWeeklyReminder)
+                if (!remindersPermissionGranted) TextButton(onClick = onEnableReminderNotifications) { Text("Consenti notifiche") }
+                if (reminderWaterEnabled) TextButton(onClick = onTestWaterReminder) { Text("Prova acqua") }
+                if (reminderMoveEnabled) TextButton(onClick = onTestMoveReminder) { Text("Prova movimento") }
+                listOfNotNull(reminderWaterProblem.takeIf { reminderWaterEnabled },
+                    reminderMoveProblem.takeIf { reminderMoveEnabled }).distinct().forEach { Text(it) }
+                TextButton(onClick = onOpenReminderNotificationSettings) { Text("Impostazioni notifiche") }
+            }
+            "home" -> {
+                HomeToggle("Missioni", layout.missions) { saveLayout(layout.copy(missions = it)) }
+                HomeToggle("Report", layout.weeklyReport) { saveLayout(layout.copy(weeklyReport = it)) }
+                HomeToggle("Progressi", layout.details || layout.streaks) { saveLayout(layout.copy(details = it, streaks = false)) }
+                HomeToggle("Passi", layout.steps) { saveLayout(layout.copy(steps = it)) }
+                HomeToggle("Recupero", layout.recovery) { saveLayout(layout.copy(recovery = it)) }
+                HomeToggle("La scheda", layout.weekPlan) { saveLayout(layout.copy(weekPlan = it)) }
+                HomeToggle("Promemoria", layout.reminders) { saveLayout(layout.copy(reminders = it)) }
+                HomeToggle("Backup", layout.backup) { saveLayout(layout.copy(backup = it)) }
+                TextButton(onClick = { saveLayout(HomeDisplaySettings()) }) { Text("Home essenziale") }
+                preferenceError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
         }
     }
 }
 
 @Composable
-private fun WidgetCard(content: @Composable ColumnScope.() -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = PulseColors.Surface,
-        shape = RoundedCornerShape(26.dp),
-        border = BorderStroke(1.dp, PulseColors.Border),
-        shadowElevation = 1.dp
-    ) {
-        Column(Modifier.padding(19.dp), content = content)
-    }
-}
-
-@Composable
-private fun StreakTile(
-    icon: ImageVector,
-    value: Int,
-    unit: String,
-    title: String,
-    detail: String,
-    modifier: Modifier,
-    accentBackground: Boolean = false,
-    animateFlame: Boolean = false
-) {
-    val wobble = remember { Animatable(0f) }
-    LaunchedEffect(value, animateFlame) {
-        wobble.snapTo(0f)
-        if (animateFlame && value > 0 && BGMotion.duration(1) > 0) {
-            // Disattiva l'animazione quando Android chiede di ridurre il movimento.
-            repeat(6) {
-                wobble.animateTo(9f, animationSpec = tween(125))
-                wobble.animateTo(-9f, animationSpec = tween(125))
-                wobble.animateTo(0f, animationSpec = tween(250))
-            }
-        }
-    }
-    Surface(
-        modifier = modifier.height(148.dp),
-        color = if (accentBackground) PulseColors.SoftGreen else PulseColors.Surface,
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, if (accentBackground) PulseColors.SoftGreen else PulseColors.Border)
-    ) {
-        Column(Modifier.padding(15.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(Modifier.size(33.dp).background(
-                    if (accentBackground) PulseColors.Surface else PulseColors.SoftGreen,
-                    RoundedCornerShape(11.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(icon, contentDescription = null,
-                        tint = if (animateFlame && value > 0) Color(0xFFE6783D) else PulseColors.Accent,
-                        modifier = Modifier.size(19.dp).graphicsLayer {
-                            rotationZ = wobble.value
-                            scaleX = 1f + abs(wobble.value) / 45f
-                            scaleY = 1f + abs(wobble.value) / 55f
-                        })
-                }
-                // Icona e valore identificano già il tipo di streak.
-            }
-            Spacer(Modifier.height(11.dp))
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(value.toString(), fontSize = 30.sp,
-                    fontWeight = FontWeight.ExtraBold, color = PulseColors.Foreground,
-                    lineHeight = 34.sp)
-                Spacer(Modifier.width(5.dp))
-                Text(unit, color = PulseColors.Muted, fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 5.dp))
-            }
-            Text(title, color = PulseColors.Foreground, fontSize = 13.sp,
-                fontWeight = FontWeight.Bold, maxLines = 1)
-            if (detail.isNotBlank()) Text(detail, color = PulseColors.Muted,
-                fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun HomeAction(title: String, detail: String = "", onClick: () -> Unit) {
+    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
+        color = PulseColors.Surface) {
+        Row(Modifier.padding(horizontal = 18.dp, vertical = 15.dp).heightIn(min = 28.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Text(title, modifier = Modifier.weight(1f), color = PulseColors.Foreground,
+                style = MaterialTheme.typography.bodyLarge)
+            if (detail.isNotBlank()) Text(detail, color = PulseColors.Muted)
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Default.ChevronRight, null, tint = PulseColors.Muted, modifier = Modifier.size(18.dp))
         }
     }
 }
 
 @Composable
-private fun StepsRing(value: Int, modifier: Modifier) {
-    val ratio = (value.toFloat() / StreakCalculator.STEP_GOAL).coerceIn(0f, 1f)
-    val progress by animateFloatAsState(ratio,
-        animationSpec = tween(durationMillis = BGMotion.duration(750)), label = "Progressi passi")
-    val ringTrack = PulseColors.SoftGreen
-    val ringProgress = PulseColors.Accent
-    Box(modifier, contentAlignment = Alignment.Center) {
-        Canvas(
-            Modifier.fillMaxSize().semantics {
-                contentDescription = "$value di 6000 passi"
-            }
-        ) {
-            val stroke = 11.dp.toPx()
-            drawArc(ringTrack, 0f, 360f, false,
-                style = Stroke(width = stroke, cap = StrokeCap.Round))
-            if (progress > 0f) {
-                drawArc(ringProgress, -90f, progress * 360f, false,
-                    style = Stroke(width = stroke, cap = StrokeCap.Round))
-            }
-        }
-        Icon(
-            Icons.Default.DirectionsWalk, contentDescription = null,
-            tint = PulseColors.Accent, modifier = Modifier.size(33.dp)
-        )
-    }
-}
-
-@Composable
-private fun ProgressMetric(
-    label: String, value: String, hint: String, fraction: Float, modifier: Modifier
-) {
-    val animated by animateFloatAsState(
-        targetValue = fraction.coerceIn(0f, 1f),
-        animationSpec = tween(BGMotion.duration(750)), label = "Indicatore $label"
-    )
-    Surface(modifier = modifier, color = PulseColors.Surface, shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, PulseColors.Border)) {
-        Column(Modifier.padding(12.dp)) {
-            Text(label, fontSize = 11.sp, color = PulseColors.Muted,
-                fontWeight = FontWeight.Bold, letterSpacing = .9.sp)
-            Spacer(Modifier.height(8.dp))
-            Text(value, fontWeight = FontWeight.Black, fontSize = 23.sp,
-                color = PulseColors.Foreground, maxLines = 1)
-            Text(hint, color = PulseColors.Muted, fontSize = 11.sp,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = { animated },
-                modifier = Modifier.fillMaxWidth().height(5.dp).clip(CircleShape),
-                color = PulseColors.Accent, trackColor = PulseColors.SoftGreen
-            )
-        }
+private fun HomeToggle(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(title, modifier = Modifier.weight(1f), color = PulseColors.Foreground)
+        Switch(checked, onChange)
     }
 }
