@@ -234,7 +234,7 @@ fun DashboardScreen(
                 summary.workoutToday -> CoachPose.DONE
                 summary.restedToday -> CoachPose.REST
                 else -> CoachPose.HOME
-            }, showImport = true)
+            })
         }
 
         item {
@@ -302,7 +302,7 @@ fun DashboardScreen(
                         Text("Questa settimana",
                             fontWeight = FontWeight.Bold, fontSize = 15.sp,
                             color = PulseColors.Foreground)
-                        Text("${summary.workoutDaysThisWeek} di ${personalSettings.weeklyWorkouts} allenamenti",
+                        Text("${summary.workoutDaysThisWeek} / ${personalSettings.weeklyWorkouts} completati · 🎯",
                             color = PulseColors.Muted, fontSize = 12.sp)
                     }
                     TextButton(onClick = onOpenPlan) {
@@ -316,9 +316,16 @@ fun DashboardScreen(
                         (summary.workoutDaysThisWeek.toFloat() /
                             personalSettings.weeklyWorkouts.coerceAtLeast(1)).coerceIn(0f, 1f)
                     },
-                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                    modifier = Modifier.fillMaxWidth().height(10.dp).clip(CircleShape),
                     color = PulseColors.Accent,
                     trackColor = PulseColors.SoftGreen
+                )
+                Spacer(Modifier.height(5.dp))
+                Text(
+                    if (summary.workoutDaysThisWeek >= personalSettings.weeklyWorkouts)
+                        "🎉 Obiettivo raggiunto!"
+                    else "Mancano ${(personalSettings.weeklyWorkouts - summary.workoutDaysThisWeek).coerceAtLeast(0)} allenamenti",
+                    color = PulseColors.Muted, fontSize = 12.sp
                 )
             }
         }

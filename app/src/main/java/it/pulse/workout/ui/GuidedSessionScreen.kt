@@ -234,7 +234,7 @@ fun GuidedSessionScreen(
             state = scrollState,
             modifier = Modifier.fillMaxWidth().weight(1f),
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(11.dp)
         ) {
             item(key = "contextual-coach") {
                 val line = CoachConversation.inSession(
@@ -254,15 +254,8 @@ fun GuidedSessionScreen(
                     title = line.title,
                     pose = line.pose,
                     small = true,
-                    actionLabel = line.actionLabel,
-                    onAction = when (line.action) {
-                        CoachAction.FINISH -> ({ finishDialog = true })
-                        CoachAction.END_REST -> ({
-                            onUpdate(draft.copy(restUntilMillis = 0L))
-                        })
-                        CoachAction.RECORD_SET -> ({ saveQuickSet() })
-                        CoachAction.NONE -> null
-                    },
+                    // L'azione resta nel tasto fisso in basso, senza duplicati nel coach.
+                    actionLabel = null,
                     selectedRir = quickInput.actualRir,
                     onRir = if (!inRest && !allDone && exercise != null &&
                         quickInput.valid && !quickInput.warmup)

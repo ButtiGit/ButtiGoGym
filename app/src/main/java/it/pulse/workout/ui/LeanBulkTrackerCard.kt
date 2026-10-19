@@ -41,10 +41,8 @@ fun LeanBulkTrackerCard(
         shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("AVATAR BUILD · LEAN BULK", color = PulseColors.Accent,
-                fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
-            Text("Da 58 a 64–65 kg, con proporzioni equilibrate",
-                color = PulseColors.Foreground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("🎯  Obiettivo peso · 65 kg", color = PulseColors.Foreground,
+                fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Text("Ultimo peso", color = PulseColors.Muted, fontSize = 11.sp)
@@ -61,12 +59,18 @@ fun LeanBulkTrackerCard(
                 progress = { report.progress }, modifier = Modifier.fillMaxWidth().height(8.dp),
                 color = PulseColors.Accent, trackColor = PulseColors.SoftGreen
             )
-            Text("Primo obiettivo: 64–65 kg. La barra rappresenta il peso, non il muscolo.",
-                color = PulseColors.Muted, fontSize = 11.sp)
+            Text("${(report.progress * 100).toInt()}% verso l'obiettivo · partenza 58 kg",
+                color = PulseColors.Muted, fontSize = 12.sp)
             Button(
                 onClick = { error = null; weighing = true }, modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
             ) { Text("Registra peso di oggi", color = Color.White) }
+            var showInsights by remember { mutableStateOf(false) }
+            TextButton(onClick = { showInsights = !showInsights }) {
+                Text(if (showInsights) "Nascondi dettagli" else "Mostra andamento e consigli",
+                    color = PulseColors.Accent, fontSize = 12.sp)
+            }
+            if (showInsights) {
             HorizontalDivider(color = PulseColors.Border)
             val change = report.averageWeeklyChangeKg
             val interpretation = when (report.trend) {
@@ -96,8 +100,9 @@ fun LeanBulkTrackerCard(
                         else "Rivaluta dopo 14 giorni")
                 }
             }
-            Text("Pesati al mattino in condizioni simili; non serve registrare i pasti qui.",
+            Text("Pesati al mattino in condizioni simili.",
                 color = PulseColors.Muted, fontSize = 11.sp)
+            }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
         }
     }

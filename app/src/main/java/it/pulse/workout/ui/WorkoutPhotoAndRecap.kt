@@ -122,9 +122,29 @@ object WorkoutPhotoStorage {
     }
 }
 
-/** Esporta una story 1080x1350 con fotografia reale, logo e statistiche della seduta. */
+/** Story con foto e risultati: niente logo né nome dell'app. */
 object WorkoutRecapImage {
-    fun export(context: Context, record: SessionRecord, day: WorkoutDay?, destination: Uri) {
+    /** URI privato con permessi temporanei per il foglio di condivisione Android. */
+    fun share(context: Context, record: SessionRecord, day: WorkoutDay?): android.content.Intent {
+        val target = File(context.filesDir, "session_photos").apply { mkdirs() }
+            .resolve("recap_share_${record.id}.png")
+        if (!target.exists()) check(target.createNewFile()) { "Impossibile preparare l'immagine" }
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", target)
+        try {
+            export(context, record, day, uri, archive = false)
+        } catch (error: Exception) {
+            target.delete()
+            throw error
+        }
+        return android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+            type = "image/png"
+            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
+
+    fun export(context: Context, record: SessionRecord, day: WorkoutDay?,
+               destination: Uri, archive: Boolean = true) {
         val photo = requireNotNull(WorkoutPhotoStorage.fileFor(context, record)) {
             "Allega una foto prima di creare il recap"
         }
@@ -147,11 +167,8 @@ object WorkoutRecapImage {
         }
         canvas.drawRect(0f, 0f, 1080f, 1350f, dim)
 
-        val green = Color.rgb(16, 97, 25)
         val white = Color.WHITE
         val muted = Color.rgb(212, 230, 215)
-        val chipPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = green }
-        canvas.drawRoundRect(RectF(54f, 54f, 306f, 120f), 30f, 30f, chipPaint)
 
         fun type(size: Float, color: Int, bold: Boolean = false): Paint =
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -159,8 +176,7 @@ object WorkoutRecapImage {
                 this.color = color
                 typeface = Typeface.create("sans-serif", if (bold) Typeface.BOLD else Typeface.NORMAL)
             }
-        canvas.drawText("BUTTIGOGYM", 75f, 96f, type(28f, white, true))
-        canvas.drawText("WORKOUT RECAP", 55f, 955f, type(23f, muted, true))
+        canvas.drawText("IL MIO ALLENAMENTO", 55f, 955f, type(23f, muted, true))
         val name = day?.name ?: "Allenamento"
         val namePaint = type(59f, white, true)
         val maxNameWidth = 980f
@@ -200,7 +216,7 @@ object WorkoutRecapImage {
                 saved, "recap_${record.id}_${System.currentTimeMillis()}.png"
             )
             try {
-                internalCopy.outputStream().buffered().use {
+                if (archive) internalCopy.outputStream().buffered().use {
                     check(output.compress(Bitmap.CompressFormat.PNG, 100, it)) {
                         "Impossibile archiviare il recap"
                     }

@@ -6,6 +6,8 @@ import androidx.compose.ui.res.painterResource
 import it.pulse.workout.R
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -73,6 +75,8 @@ fun MyselfScreen(
         return
     }
     var selected by remember { mutableStateOf("chest") }
+    var showBalance by rememberSaveable { mutableStateOf(false) }
+    var showGroups by rememberSaveable { mutableStateOf(false) }
     var back by remember { mutableStateOf(false) }
     var clock by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
@@ -173,6 +177,12 @@ fun MyselfScreen(
             }
         }
         item {
+            TextButton(onClick = { showBalance = !showBalance }) {
+                Text(if (showBalance) "Nascondi equilibrio del programma" else "Mostra equilibrio del programma",
+                    color = PulseColors.Accent, fontSize = 12.sp)
+            }
+        }
+        if (showBalance) item {
             MyselfCard {
                 Text("Equilibrio del programma", color = PulseColors.Foreground,
                     fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
@@ -223,46 +233,45 @@ fun MyselfScreen(
             MyselfCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Body map", color = PulseColors.Foreground,
+                        Text("💪 I tuoi muscoli", color = PulseColors.Foreground,
                             fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-                        Text("Seleziona i gruppi muscolari",
-                            color = PulseColors.Muted, fontSize = 11.sp)
+                        Text("Scegli il gruppo e guarda i progressi",
+                            color = PulseColors.Muted, fontSize = 12.sp)
                     }
-                    Surface(color = PulseColors.Raised, shape = RoundedCornerShape(15.dp)) {
-                        Row(Modifier.padding(3.dp)) {
-                            listOf(false to "Fronte", true to "Retro").forEach { (side, label) ->
-                                Surface(
-                                    modifier = Modifier.clickable { back = side },
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = if (back == side) PulseColors.Surface else Color.Transparent
-                                ) {
-                                    Text(label, modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                        color = if (back == side) PulseColors.Accent else PulseColors.Muted,
-                                        fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
+                    Surface(color = PulseColors.SoftGreen,
+                        shape = RoundedCornerShape(12.dp)) {
+                        Text("LV ${muscle.level}",
+                            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            color = PulseColors.Accent, fontWeight = FontWeight.Bold)
                     }
                 }
-                Spacer(Modifier.height(10.dp))
-                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    MuscleFigure(
-                        back = back, muscles = muscles, selected = selected,
-                        onSelected = { selected = it },
-                        modifier = Modifier.fillMaxWidth().height(505.dp)
-                    )
-                }
-                Spacer(Modifier.height(7.dp))
-                Text("Anatomia MuscleMap · licenza MIT · Jsplice/MuscleMap",
-                    color = PulseColors.Muted, fontSize = 12.sp)
+                Spacer(Modifier.height(12.dp))
+                // Una mascotte vera al posto del manichino generico.
+                // I filtri selezionano la stessa statistica, senza alterare l'analisi.
+                MascotPoseImage(
+                    pose = CoachConversation.poseForMuscle(muscle.group.label),
+                    modifier = Modifier.fillMaxWidth().height(308.dp)
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(muscle.group.label + " · " + shortStatus(muscle),
+                    color = PulseColors.Foreground, fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    LegendDot("Oggi", trainedColor)
-                    LegendDot("Recupero", recoveryColor)
-                    LegendDot("Pronto", readyColor)
-                    LegendDot("Mai", neverColor)
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    muscles.forEach { value ->
+                        FilterChip(
+                            selected = selected == value.group.id,
+                            onClick = { selected = value.group.id },
+                            label = { Text(value.group.label, maxLines = 1, fontSize = 12.sp) }
+                        )
+                    }
                 }
+                Spacer(Modifier.height(8.dp))
+                Text("Verde = pronto · Giallo = recupero · I tempi sono stime",
+                    color = PulseColors.Muted, fontSize = 11.sp)
             }
         }
         item {
@@ -345,13 +354,19 @@ fun MyselfScreen(
             }
         }
         item {
+            TextButton(onClick = { showGroups = !showGroups }) {
+                Text(if (showGroups) "Nascondi altri gruppi" else "Elenco di tutti i muscoli ↓",
+                    color = PulseColors.Accent, fontSize = 13.sp)
+            }
+        }
+        if (showGroups) item {
             Text("Tutti i gruppi muscolari", color = PulseColors.Foreground,
                 fontWeight = FontWeight.ExtraBold, fontSize = 19.sp)
             Spacer(Modifier.height(4.dp))
             Text("Apri un muscolo per vedere recupero, streak e livelli.",
                 color = PulseColors.Muted, fontSize = 11.sp)
         }
-        items(muscles, key = { it.group.id }) { value ->
+        if (showGroups) items(muscles, key = { it.group.id }) { value ->
             Surface(
                 modifier = Modifier.fillMaxWidth().clickable {
                     selected = value.group.id

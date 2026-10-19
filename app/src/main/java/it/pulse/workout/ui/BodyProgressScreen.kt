@@ -173,7 +173,7 @@ fun BodyProgressScreen(onBack: () -> Unit) {
                 ) {
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(17.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Registra misure", color = Color.White, fontSize = 12.sp)
+                    Text("Misura il tuo fisico", color = Color.White, fontSize = 12.sp)
                 }
                 OutlinedButton(
                     onClick = { chooseDate { photoDate = it } },
@@ -503,6 +503,7 @@ private fun DeltaRow(label: String, first: Double?, second: Double?, unit: Strin
     }
 }
 
+/** Un parametro per volta: la mascotte indica dove posizionare il metro. */
 @Composable
 private fun BodyMeasurementsEditor(
     date: LocalDate,
@@ -516,66 +517,119 @@ private fun BodyMeasurementsEditor(
             mutableStateOf(previous?.measurementsCm?.get(field)?.toString().orEmpty())
         }
     }
+    var index by remember(date) { mutableIntStateOf(0) }
     var error by remember(date) { mutableStateOf<String?>(null) }
+    val field = BodyMeasure.entries.getOrNull(index - 1)
+    val currentText = if (field == null) weight else fields.getValue(field).value
+    val pose = when (field) {
+        BodyMeasure.CHEST -> it.pulse.workout.data.CoachPose.CHEST
+        BodyMeasure.SHOULDERS -> it.pulse.workout.data.CoachPose.SHOULDERS
+        BodyMeasure.WAIST -> it.pulse.workout.data.CoachPose.ABS
+        BodyMeasure.HIPS, BodyMeasure.THIGH, BodyMeasure.CALF ->
+            it.pulse.workout.data.CoachPose.LEGS
+        BodyMeasure.ARM -> it.pulse.workout.data.CoachPose.ARMS
+        BodyMeasure.FOREARM -> it.pulse.workout.data.CoachPose.FOREARMS
+        null -> it.pulse.workout.data.CoachPose.READY
+    }
+    val help = when (field) {
+        BodyMeasure.CHEST -> "Passa il metro attorno al torace, alla linea dei capezzoli."
+        BodyMeasure.SHOULDERS -> "Misura la circonferenza attorno alla parte più ampia delle spalle."
+        BodyMeasure.WAIST -> "Misura la vita nel punto più stretto, senza trattenere il respiro."
+        BodyMeasure.HIPS -> "Misura il punto più ampio dei fianchi e dei glutei."
+        BodyMeasure.ARM -> "Misura il braccio nel punto più largo, sempre nella stessa posizione."
+        BodyMeasure.FOREARM -> "Misura l'avambraccio nella sua parte più ampia."
+        BodyMeasure.THIGH -> "Misura la coscia nel punto più largo, in piedi."
+        BodyMeasure.CALF -> "Misura il polpaccio nel punto più largo."
+        null -> "Pesati al mattino, possibilmente nelle stesse condizioni."
+    }
+    fun setCurrent(value: String) {
+        if (value.length <= 7) {
+            if (field == null) weight = value else fields.getValue(field).value = value
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Misure · ${date.format(dateLabel)}") },
         text = {
-            Column(
-                Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState())
-            ) {
-                Text("Lascia vuoti i campi non misurati.",
+            Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Text("${index + 1} / ${BodyMeasure.entries.size + 1} · Tutti i campi sono facoltativi",
                     color = PulseColors.Muted, fontSize = 12.sp)
-                Spacer(Modifier.height(9.dp))
+                LinearProgressIndicator(
+                    progress = { (index + 1f) / (BodyMeasure.entries.size + 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = PulseColors.Accent,
+                    trackColor = PulseColors.SoftGreen
+                )
+                MascotPoseImage(pose, modifier = Modifier.fillMaxWidth().height(164.dp))
+                Text(if (field == null) "⚖️ Peso corporeo" else "📏 ${field.label}",
+                    color = PulseColors.Foreground, fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold)
+                Text(help, color = PulseColors.Muted, fontSize = 12.sp, lineHeight = 17.sp)
                 OutlinedTextField(
-                    value = weight,
-                    onValueChange = { if (it.length <= 7) weight = it },
-                    label = { Text("Peso corporeo · kg") },
+                    value = currentText,
+                    onValueChange = ::setCurrent,
+                    label = { Text(if (field == null) "Chilogrammi · kg" else "Centimetri · cm") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
                 )
-                BodyMeasure.entries.forEach { field ->
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedTextField(
-                        value = fields.getValue(field).value,
-                        onValueChange = { if (it.length <= 7) fields.getValue(field).value = it },
-                        label = { Text("${field.label} · cm") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(-0.5, 0.5).forEach { delta ->
+                        OutlinedButton(
+                            onClick = {
+                                val n = currentText.replace(',', '.').toDoubleOrNull()
+                                if (n != null) setCurrent(
+                                    String.format(Locale.ITALIAN, "%.1f", n + delta)
+                                )
+                            },
+                            enabled = currentText.replace(',', '.').toDoubleOrNull() != null,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(if (delta < 0) "− 0,5" else "+ 0,5",
+                                color = PulseColors.Accent)
+                        }
+                    }
                 }
-                if (error != null) {
-                    Spacer(Modifier.height(8.dp))
-                    Text(error.orEmpty(), color = MaterialTheme.colorScheme.error,
-                        fontSize = 11.sp)
+                Row(horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()) {
+                    TextButton(
+                        onClick = { index = (index - 1).coerceAtLeast(0) },
+                        enabled = index > 0
+                    ) { Text("← Prima", color = PulseColors.Accent) }
+                    TextButton(
+                        onClick = { index = (index + 1).coerceAtMost(BodyMeasure.entries.size) },
+                        enabled = index < BodyMeasure.entries.size
+                    ) { Text("Avanti →", color = PulseColors.Accent) }
+                }
+                error?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 }
             }
         },
         confirmButton = {
-            Button(
-                onClick = {
-                    val result = runCatching {
-                        fun parse(raw: String): Double? =
-                            raw.trim().takeIf { it.isNotEmpty() }
-                                ?.replace(',', '.')?.toDoubleOrNull()
-                                ?: if (raw.isBlank()) null else throw IllegalArgumentException("Numero non valido")
-                        val value = parse(weight)
-                        val cm = BodyMeasure.entries.mapNotNull { field ->
-                            parse(fields.getValue(field).value)?.let { field to it }
-                        }.toMap()
-                        val currentPhotos = previous?.photos.orEmpty()
-                        BodyProgressRules.validate(BodyProgressEntry(date, value, cm, currentPhotos))
-                        onSave(value, cm)
+            Button(onClick = {
+                val outcome = runCatching {
+                    fun parse(raw: String): Double? {
+                        if (raw.isBlank()) return null
+                        return raw.trim().replace(',', '.').toDoubleOrNull()
+                            ?: throw IllegalArgumentException("Numero non valido")
                     }
-                    error = result.getOrElse { it.message ?: "Valore non valido" }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-            ) { Text("Salva", color = Color.White) }
+                    val kilograms = parse(weight)
+                    val cm = BodyMeasure.entries.mapNotNull { measure ->
+                        parse(fields.getValue(measure).value)?.let { measure to it }
+                    }.toMap()
+                    BodyProgressRules.validate(
+                        BodyProgressEntry(date, kilograms, cm, previous?.photos.orEmpty())
+                    )
+                    onSave(kilograms, cm)
+                }
+                error = outcome.getOrElse { it.message ?: "Misura non valida" }
+            }) { Text("💚 Salva", color = Color.White) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Annulla", color = PulseColors.Accent) }
+            TextButton(onClick = onDismiss) {
+                Text("Chiudi", color = PulseColors.Accent)
+            }
         }
     )
 }
