@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -227,191 +228,67 @@ fun PlanScreen(
     onStart: (WorkoutDay) -> Unit,
     onStartQuick: (WorkoutDay) -> Unit
 ) {
+
     var editingDayId by remember { mutableStateOf<String?>(null) }
-    var showGuidelines by remember { mutableStateOf(false) }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = pagePad, end = pagePad, bottom = 30.dp)
-    ) {
+    var selectedDayId by remember { mutableStateOf<String?>(null) }
+    var toolsOpen by remember { mutableStateOf(false) }
+    LazyColumn(modifier = Modifier.fillMaxSize().background(PulseColors.Background),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
-            BrandHeader()
-            Eyebrow("SCHEDA")
-            Spacer(Modifier.height(12.dp))
-            PageTitle("La tua scheda.")
-            Spacer(Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                LabelChip("${days.count { !it.optional }} GIORNI + BONUS")
-                Spacer(Modifier.weight(1f))
-                TextButton(onClick = onRefresh, enabled = !refreshing) {
-                    Text(if (refreshing) "Sincronizzo…" else "↻ Aggiorna",
-                        color = PulseColors.Accent)
+                Text("La scheda", style = MaterialTheme.typography.headlineMedium,
+                    color = PulseColors.Foreground, modifier = Modifier.weight(1f))
+                IconButton(onClick = { toolsOpen = true }) {
+                    Icon(Icons.Default.MoreHoriz, "Opzioni scheda", tint = PulseColors.Foreground)
                 }
             }
-            Text("Versione scheda: $version", color = PulseColors.Muted, fontSize = 11.sp)
-            if (refreshState.startsWith("Offline") || refreshState.startsWith("Aggiornamento") ||
-                refreshState.startsWith("Sincronizzata"))
-                Text(refreshState, color = PulseColors.Muted, fontSize = 11.sp)
-            if (customizedDayIds.isNotEmpty()) {
-                Spacer(Modifier.height(12.dp))
-                Surface(
-                    shape = RoundedCornerShape(15.dp),
-                    color = PulseColors.SoftGreen,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(Modifier.padding(13.dp)) {
-                        Text("Scheda personalizzata: ${customizedDayIds.size} giornate",
-                            color = PulseColors.Accent, fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(5.dp))
-                        Text("Gli esercizi salvati sul telefono restano prioritari " +
-                            "rispetto agli aggiornamenti GitHub. Per applicare la nuova " +
-                            "programmazione a una giornata, apri Modifica → " +
-                            "Ripristina la scheda originale (con conferma). " +
-                            "Gli allenamenti nello storico non saranno cancellati.",
-                            color = PulseColors.Foreground, fontSize = 12.sp)
-                    }
-                }
-            }
-            Spacer(Modifier.height(22.dp))
         }
-        if (days.isEmpty()) {
-            item {
-                BGEmptyState(
-                    title = "Scheda ancora non disponibile",
-                    description = "Controlla la connessione o riprova ad aggiornare la scheda. " +
-                        "Il tuo storico resta salvato sul telefono.",
-                    symbol = Icons.Default.PlayArrow,
-                    actionLabel = "Riprova aggiornamento",
-                    onAction = onRefresh
-                )
-            }
+        if (days.isEmpty()) item {
+            BGPrimaryButton(if (refreshing) "Sincronizzazione…" else "Carica scheda", onRefresh, enabled = !refreshing)
         }
         items(days, key = { it.id }) { day ->
-            var expanded by remember(day.id) { mutableStateOf(false) }
-            PulseCard(Modifier.fillMaxWidth().animateContentSize(animationSpec = tween(BGMotion.duration(240)))) {
+            BGCard(padding = 20.dp) {
+                Text(day.weekday.lowercase(Locale.ITALIAN) + if (day.optional) " · Facoltativo" else "",
+                    color = PulseColors.Muted, style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(8.dp))
+                Text(day.name, style = MaterialTheme.typography.titleLarge, color = PulseColors.Foreground)
+                Spacer(Modifier.height(5.dp))
+                Text("${day.exercises.size} esercizi · ${day.duration}", color = PulseColors.Muted)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (day.optional) "★" else "0${days.indexOf(day) + 1}",
-                        color = PulseColors.Accent, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(18.dp))
-                    Eyebrow(day.weekday)
+                    TextButton(onClick = { selectedDayId = day.id }) { Text("Esercizi") }
                     Spacer(Modifier.weight(1f))
-                    if (activeDayId == day.id) LabelChip("IN CORSO", selected = true)
-                    else if (day.id in customizedDayIds) LabelChip("PERSONALIZZATA")
-                    else if (day.optional) LabelChip("FACOLTATIVO")
+                    TextButton(onClick = { editingDayId = day.id }) { Text("Modifica") }
                 }
-                Spacer(Modifier.height(17.dp))
-                Text(day.name, color = PulseColors.Foreground,
-                    fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
-                Spacer(Modifier.height(7.dp))
-                Text("${day.exercises.size} esercizi · ${day.duration}",
-                    color = PulseColors.Muted, fontSize = 12.sp)
-                Spacer(Modifier.height(13.dp))
-                Eyebrow("${day.exercises.count { !it.optional }} ESERCIZI PRINCIPALI · ${day.setCount} SERIE" +
-                    (if (day.optionalSetCount > 0) " · +${day.optionalSetCount} SERIE FACOLTATIVE" else ""),
-                    PulseColors.Accent)
-                Spacer(Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { expanded = !expanded }) {
-                        Text(if (expanded) "Chiudi ↑" else "Vedi esercizi ↓",
-                            color = PulseColors.Accent, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(Modifier.weight(1f))
-                    OutlinedButton(
-                        onClick = { editingDayId = day.id },
-                        shape = RoundedCornerShape(13.dp),
-                        border = BorderStroke(1.dp, PulseColors.Accent)
-                    ) {
-                        Text("Modifica", color = PulseColors.Accent, fontWeight = FontWeight.Bold)
-                    }
-                }
-                if (expanded) {
-                    HorizontalDivider(color = PulseColors.Border)
-                    Spacer(Modifier.height(9.dp))
-                    day.exercises.forEachIndexed { idx, exercise ->
-                        if (idx > 0) Spacer(Modifier.height(12.dp))
-                        if (exercise.optional) {
-                            Text("RICHIAMO FACOLTATIVO", color = PulseColors.Accent,
-                                fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        } else if (exercise.group.isNotBlank() &&
-                            (idx == 0 || day.exercises[idx - 1].group != exercise.group)) {
-                            Text(exercise.group.uppercase(Locale.ITALIAN), color = PulseColors.Accent,
-                                fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Text(exercise.name, color = PulseColors.Foreground,
-                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        Text("${exercise.sets} × ${exercise.target} · recupero ${exercise.restSeconds} s" +
-                            (if (exercise.optional) " · saltabile" else ""),
-                            color = PulseColors.Muted, fontSize = 12.sp)
-                    }
-                    if (day.cooldown.isNotBlank()) {
-                        Spacer(Modifier.height(14.dp))
-                        Text("FINE WO", color = PulseColors.Accent,
-                            fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        Text(day.cooldown, color = PulseColors.Muted, fontSize = 12.sp)
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                Button(onClick = { onStart(day) }, modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent),
-                    shape = RoundedCornerShape(14.dp)) {
-                    Text(if (activeDayId == day.id) "Riprendi allenamento" else
-                        if (day.optional) "Inizia bonus facoltativo" else "Inizia allenamento")
-                }
-                if (activeDayId != day.id &&
-                    it.pulse.workout.data.QuickWorkoutPlanner.create(day) != null) {
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { onStartQuick(day) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        border = BorderStroke(1.dp, PulseColors.Border)
-                    ) {
-                        Text("Versione rapida · circa 35–45 min", color = PulseColors.Accent)
-                    }
-                }
-            }
-            Spacer(Modifier.height(13.dp))
-        }
-        item {
-            Spacer(Modifier.height(9.dp))
-            PulseCard(Modifier.fillMaxWidth()
-                .animateContentSize(animationSpec = tween(BGMotion.duration(240)))
-                .clickable(
-                    onClickLabel = if (showGuidelines) "Nascondi note della scheda"
-                        else "Mostra note della scheda",
-                    role = androidx.compose.ui.semantics.Role.Button
-                ) { showGuidelines = !showGuidelines }
-                .semantics {
-                    stateDescription = if (showGuidelines) "Dettagli aperti" else "Dettagli chiusi"
-                }) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Note e progressione", fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold, color = PulseColors.Foreground)
-                    Spacer(Modifier.weight(1f))
-                    Icon(Icons.Default.ChevronRight, contentDescription = null,
-                        tint = PulseColors.Accent)
-                }
-                if (showGuidelines) {
-                    Spacer(Modifier.height(13.dp))
-                    guidelines.forEach { guideline ->
-                        Text("• $guideline", color = PulseColors.Muted, fontSize = 12.sp,
-                            modifier = Modifier.padding(bottom = 10.dp))
-                    }
-                }
+                BGPrimaryButton(if (activeDayId == day.id) "Riprendi" else "Inizia", { onStart(day) })
             }
         }
     }
-
-    val selectedDay = days.firstOrNull { it.id == editingDayId }
-    if (selectedDay != null) {
-        PlanDayEditor(
-            day = selectedDay,
-            customized = selectedDay.id in customizedDayIds,
-            onSave = { exercises -> onSaveDay(selectedDay.id, exercises) },
-            onRestore = { onRestoreDay(selectedDay.id) },
-            onClose = { editingDayId = null }
-        )
+    val selected = days.firstOrNull { it.id == selectedDayId }
+    if (selected != null) BGModal(selected.name, { selectedDayId = null }) {
+        selected.exercises.forEach { exercise ->
+            Column {
+                Text(exercise.name, style = MaterialTheme.typography.titleSmall, color = PulseColors.Foreground)
+                Text("${exercise.sets} × ${exercise.target} ${if (exercise.timeBased) "sec" else "rep"} · ${exercise.restSeconds}s recupero" +
+                    if (exercise.optional) " · Facoltativo" else "", color = PulseColors.Muted)
+            }
+        }
+        if (selected.cooldown.isNotBlank()) Text(selected.cooldown, color = PulseColors.Muted)
+        if (activeDayId != selected.id && QuickWorkoutPlanner.create(selected) != null)
+            TextButton(onClick = { selectedDayId = null; onStartQuick(selected) }) { Text("Allenamento rapido · 35–45 min") }
     }
+    if (toolsOpen) BGModal("La scheda", { toolsOpen = false }) {
+        BGPrimaryButton(if (refreshing) "Sincronizzazione…" else "Sincronizza scheda", onRefresh, enabled = !refreshing)
+        Text("Versione $version", color = PulseColors.Muted)
+        if (refreshState.isNotBlank()) Text(refreshState, color = PulseColors.Muted)
+        if (customizedDayIds.isNotEmpty()) Text("Le giornate personalizzate restano salvate. Puoi ripristinarle da Modifica.",
+            color = PulseColors.Muted)
+        guidelines.forEach { Text(it, color = PulseColors.Foreground) }
+    }
+    val editing = days.firstOrNull { it.id == editingDayId }
+    if (editing != null) PlanDayEditor(day = editing, customized = editing.id in customizedDayIds,
+        onSave = { onSaveDay(editing.id, it) }, onRestore = { onRestoreDay(editing.id) },
+        onClose = { editingDayId = null })
 }
 
 @Composable
@@ -420,92 +297,54 @@ fun HistoryScreen(
     days: List<WorkoutDay>,
     onPhotoSaved: (Long, String) -> Unit
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = pagePad, end = pagePad, bottom = 30.dp)
-    ) {
-        item {
-            BrandHeader()
-            Eyebrow("IL TUO PERCORSO")
-            Spacer(Modifier.height(12.dp))
-            PageTitle("Ogni serie\nconta.")
-            Spacer(Modifier.height(22.dp))
-            LabelChip("${history.size} ALLENAMENTI REGISTRATI")
-            Spacer(Modifier.height(26.dp))
-        }
-        if (history.isEmpty()) {
-            item {
-                BGEmptyState(
-                    title = "Ogni storia inizia con una serie",
-                    description = "Apri Scheda, completa il tuo primo allenamento e ritroverai " +
-                        "qui carichi, ripetizioni, durata e foto.",
-                    symbol = Icons.Default.PlayArrow
-                )
+
+    var selectedId by remember { mutableStateOf<Long?>(null) }
+    LazyColumn(modifier = Modifier.fillMaxSize().background(PulseColors.Background),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        item { Text("Storico", style = MaterialTheme.typography.headlineMedium, color = PulseColors.Foreground) }
+        if (history.isEmpty()) item {
+            BGCard {
+                Text("Il tuo primo allenamento ti aspetta.", color = PulseColors.Muted)
             }
-        } else {
-            items(history, key = { it.id }) { record ->
-                val day = record.daySnapshot ?: days.firstOrNull { it.id == record.dayId }
-                var expanded by remember(record.id) { mutableStateOf(false) }
-                PulseCard(Modifier.fillMaxWidth()
-                    .animateContentSize(animationSpec = tween(BGMotion.duration(240)))
-                    .clickable(
-                        onClickLabel = if (expanded) "Nascondi dettagli allenamento"
-                            else "Mostra dettagli allenamento",
-                        role = androidx.compose.ui.semantics.Role.Button
-                    ) { expanded = !expanded }
-                    .semantics {
-                        stateDescription = if (expanded) "Dettagli aperti" else "Dettagli chiusi"
-                    }) {
-                    Eyebrow(italianDate(record.completedAt).uppercase(Locale.ITALIAN), PulseColors.Accent)
-                    Spacer(Modifier.height(10.dp))
-                    Text(day?.name ?: "Allenamento", color = PulseColors.Foreground,
-                        fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                    Spacer(Modifier.height(8.dp))
-                    Text("${record.completedSets}/${record.totalSets} serie · ${formatDuration(record.durationSeconds.toLong())}",
-                        color = PulseColors.Muted, fontSize = 13.sp)
-                    Spacer(Modifier.height(12.dp))
-                    LinearProgressIndicator(
-                        progress = { (record.completedSets.toFloat() / record.totalSets.coerceAtLeast(1)).coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
-                        color = PulseColors.Accent,
-                        trackColor = PulseColors.Raised
-                    )
-                    Spacer(Modifier.height(15.dp))
-                    Eyebrow(if (expanded) "DETTAGLI APERTI  ↑" else "APRI KG E RIPETIZIONI  ↓", PulseColors.Accent)
-                    if (expanded) {
-                        Spacer(Modifier.height(14.dp))
-                        HorizontalDivider(color = PulseColors.Border)
-                        SessionPhotoAndRecap(record = record, day = day, onPhotoSaved = onPhotoSaved)
-                        day?.exercises?.forEach { exercise ->
-                            val warmups = record.entries.entries
-                                .filter { it.key.startsWith("warmup:${exercise.id}:") && it.value.done }
-                                .sortedBy { it.value.completedAt }
-                                .map { it.value }
-                            val sets = (1..exercise.sets).mapNotNull { index ->
-                                record.entries[WorkoutDraft.key(exercise.id, index)]?.takeIf { it.done }
-                            }
-                            if (sets.isNotEmpty() || warmups.isNotEmpty()) {
-                                Spacer(Modifier.height(14.dp))
-                                Text(exercise.name, color = PulseColors.Foreground,
-                                    fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                                Spacer(Modifier.height(3.dp))
-                                if (warmups.isNotEmpty()) {
-                                    Text("Riscaldamento: " + warmups.joinToString(" · ") {
-                                        if (exercise.timeBased) "${it.weight} kg · ${it.reps} sec"
-                                        else "${it.weight} kg × ${it.reps}"
-                                    }, color = PulseColors.Muted, fontSize = 12.sp)
-                                }
-                                if (sets.isNotEmpty()) {
-                                    Text(sets.joinToString("  ·  ") { entry ->
-                                        if (exercise.timeBased) "${entry.weight.ifBlank { "–" }} kg · ${entry.reps.ifBlank { "–" }} sec"
-                                        else "${entry.weight.ifBlank { "–" }} kg × ${entry.reps.ifBlank { "–" }}"
-                                    }, color = PulseColors.Muted, fontSize = 12.sp)
-                                }
-                            }
-                        }
+        }
+        items(history, key = { it.id }) { record ->
+            val day = record.daySnapshot ?: days.firstOrNull { it.id == record.dayId }
+            Surface(onClick = { selectedId = record.id }, shape = RoundedCornerShape(22.dp),
+                color = PulseColors.Surface, modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(italianDate(record.completedAt), color = PulseColors.Muted)
+                        Spacer(Modifier.height(6.dp))
+                        Text(day?.name ?: "Allenamento", style = MaterialTheme.typography.titleMedium,
+                            color = PulseColors.Foreground)
+                        Spacer(Modifier.height(4.dp))
+                        Text("${record.completedSets}/${record.totalSets} serie · ${formatDuration(record.durationSeconds.toLong())}",
+                            color = PulseColors.Muted)
                     }
+                    Icon(Icons.Default.ChevronRight, "Dettagli allenamento", tint = PulseColors.Muted)
                 }
-                Spacer(Modifier.height(12.dp))
+            }
+        }
+    }
+    val record = history.firstOrNull { it.id == selectedId }
+    if (record != null) {
+        val day = record.daySnapshot ?: days.firstOrNull { it.id == record.dayId }
+        BGModal(day?.name ?: "Allenamento", { selectedId = null }) {
+            Text(italianDate(record.completedAt), color = PulseColors.Muted)
+            SessionPhotoAndRecap(record, day, onPhotoSaved)
+            day?.exercises?.forEach { exercise ->
+                val warmups = record.entries.entries.filter { it.key.startsWith("warmup:${exercise.id}:") && it.value.done }
+                    .sortedBy { it.value.completedAt }.map { it.value }
+                val sets = (1..exercise.sets).mapNotNull { record.entries[WorkoutDraft.key(exercise.id, it)]?.takeIf { entry -> entry.done } }
+                if (sets.isNotEmpty() || warmups.isNotEmpty()) {
+                    Text(exercise.name, style = MaterialTheme.typography.titleSmall, color = PulseColors.Foreground)
+                    fun label(entry: SetEntry) = "${entry.weight} kg × ${entry.reps} ${if (exercise.timeBased) "sec" else "rep"}" +
+                        (entry.rir?.let { " · RIR $it" } ?: "")
+                    if (warmups.isNotEmpty()) Text("Riscaldamento: " + warmups.joinToString(" · ", transform = ::label),
+                        color = PulseColors.Muted)
+                    if (sets.isNotEmpty()) Text(sets.joinToString("\n", transform = ::label), color = PulseColors.Foreground)
+                }
             }
         }
     }

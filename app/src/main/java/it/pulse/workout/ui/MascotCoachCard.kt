@@ -1,61 +1,69 @@
 package it.pulse.workout.ui
 
 import android.speech.tts.TextToSpeech
-import androidx.compose.foundation.BorderStroke
+import android.view.accessibility.AccessibilityManager
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import it.pulse.workout.data.CoachPose
 import it.pulse.workout.data.MascotAssetPack
+import kotlinx.coroutines.delay
+import java.text.BreakIterator
 import java.util.Locale
 
-/** Unica fonte per tutte le pose: risorse incorporate, senza import ZIP. */
+/** Top-anchored framing preserves face and hands instead of zooming around the image center. */
 @Composable
-fun MascotPoseImage(
-    pose: CoachPose,
-    modifier: Modifier = Modifier,
-    portrait: Boolean = false
-) {
+fun MascotPoseImage(pose: CoachPose, modifier: Modifier = Modifier, portrait: Boolean = false) {
     val context = LocalContext.current
     val drawable = remember(context, pose) { MascotAssetPack.bundledDrawable(context, pose) }
-    val translation = with(LocalDensity.current) { pose.panY.dp.toPx() }
-    Image(
-        painter = painterResource(drawable),
-        contentDescription = "Mascotte: ${pose.name.lowercase(Locale.ITALIAN)}",
-        contentScale = if (portrait) ContentScale.Crop else ContentScale.Fit,
-        modifier = modifier.clip(RoundedCornerShape(14.dp)).graphicsLayer {
-            scaleX = if (portrait) pose.zoom else 1f
-            scaleY = if (portrait) pose.zoom else 1f
-            translationY = if (portrait) translation else 0f
+    val painter = painterResource(drawable)
+    if (!portrait) {
+        Image(painter, "Mascotte", modifier, contentScale = ContentScale.Fit)
+        return
+    }
+    Canvas(modifier.clearAndSetSemantics { contentDescription = "Mascotte" }) {
+        val visibleFraction = if (pose == CoachPose.LEGS) .86f else .63f
+        val native = painter.intrinsicSize
+        val scale = minOf(size.width / native.width, size.height / (native.height * visibleFraction))
+        val width = native.width * scale
+        val height = native.height * scale
+        clipRect {
+            translate((size.width - width) / 2f, 0f) {
+                with(painter) { draw(Size(width, height)) }
+            }
         }
-    )
+    }
 }
 
-/** Messaggio breve, immagine caratteriale e una sola azione collegata alla sessione. */
+/** Visual-novel dialogue, with one complete sentence exposed to accessibility services. */
 @Composable
 fun MascotCoachCard(
     message: String,
     small: Boolean = false,
     pose: CoachPose = CoachPose.HOME,
-    title: String = "IL TUO COACH",
+    title: String = "Butty",
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
     selectedRir: Int? = null,
@@ -63,84 +71,82 @@ fun MascotCoachCard(
     showImport: Boolean = false
 ) {
     val context = LocalContext.current
-    var voiceReady by remember { mutableStateOf(false) }
-    var voice by remember { mutableStateOf<TextToSpeech?>(null) }
-    DisposableEffect(context) {
-        val engine = TextToSpeech(context.applicationContext) { voiceReady = it == TextToSpeech.SUCCESS }
-        voice = engine
-        onDispose { engine.stop(); engine.shutdown(); voice = null }
+    val accessibility = remember(context) { context.getSystemService(AccessibilityManager::class.java) }
+    val animate = BGMotion.duration(1) > 0 && accessibility?.isTouchExplorationEnabled != true
+    var visible by rememberSaveable(message) { mutableIntStateOf(if (animate) 0 else message.length) }
+    val boundaries = remember(message) {
+        val iterator = BreakIterator.getCharacterInstance(Locale.ITALIAN).apply { setText(message) }
+        buildList { var end = iterator.next(); while (end != BreakIterator.DONE) {
+            add(end); end = iterator.next()
+        } }
     }
-    val mood = when (pose) {
-        CoachPose.DONE -> "🎉"
-        CoachPose.REST -> "😴"
-        CoachPose.ARMS, CoachPose.FOREARMS, CoachPose.CHEST, CoachPose.BACK,
-        CoachPose.ABS, CoachPose.LEGS, CoachPose.SHOULDERS -> "💪"
-        else -> "✨"
+    LaunchedEffect(message, animate) {
+        if (!animate) visible = message.length
+        else for (end in boundaries) {
+            if (visible >= message.length) break
+            if (end > visible) { delay(24); visible = end }
+        }
     }
-    Surface(
-        modifier = Modifier.fillMaxWidth().semantics {
-            contentDescription = "Coach: $title. $message"
-        },
-        color = PulseColors.Surface,
-        border = BorderStroke(1.dp, PulseColors.Border),
-        shape = RoundedCornerShape(19.dp)
-    ) {
-        Column(Modifier.padding(if (small) 10.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(
-                    Modifier.width(if (small) 73.dp else 90.dp)
-                        .height(if (small) 91.dp else 110.dp)
-                        .background(PulseColors.SoftGreen, RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    MascotPoseImage(pose, Modifier.fillMaxSize(), portrait = false)
-                }
-                Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("$mood  $title", Modifier.weight(1f),
-                            color = PulseColors.Accent, fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold, maxLines = 1)
-                        IconButton(
-                            onClick = {
-                                voice?.apply {
-                                    language = Locale.ITALIAN
-                                    speak(message, TextToSpeech.QUEUE_FLUSH, null, "mascot-coach")
-                                }
-                            },
-                            modifier = Modifier.size(36.dp), enabled = voiceReady
-                        ) {
-                            Icon(Icons.Default.VolumeUp, "Ascolta il coach",
-                                tint = PulseColors.Accent, modifier = Modifier.size(19.dp))
-                        }
-                    }
-                    Text(message, color = PulseColors.Foreground,
-                        fontSize = if (small) 12.sp else 13.sp,
-                        lineHeight = if (small) 17.sp else 19.sp)
-                }
-            }
-            if (onRir != null) {
-                Text("Come ti è sembrata?", color = PulseColors.Muted, fontSize = 12.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(0 to "🥵 Dura", 2 to "👌 Giusta", 4 to "⚡ Facile").forEach { (rir, label) ->
-                        FilterChip(
-                            selected = selectedRir == rir,
-                            onClick = { onRir(rir) },
-                            label = { Text(label, fontSize = 11.sp, maxLines = 1) },
-                            modifier = Modifier.weight(1f)
-                        )
+    var voiceOpen by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.fillMaxWidth().height(if (small) 160.dp else 220.dp)
+            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+            .background(PulseColors.Raised), contentAlignment = Alignment.BottomCenter) {
+            MascotPoseImage(pose, Modifier.fillMaxSize().padding(top = 8.dp), portrait = true)
+        }
+        Surface(color = PulseColors.Surface, shape = RoundedCornerShape(
+            bottomStart = 24.dp, bottomEnd = 24.dp)) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Butty", color = PulseColors.Accent, fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { voiceOpen = true }, modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Default.VolumeUp, "Ascolta il dialogo", modifier = Modifier.size(20.dp),
+                            tint = PulseColors.Muted)
                     }
                 }
-            }
-            if (actionLabel != null && onAction != null) {
-                OutlinedButton(onClick = onAction, modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(1.dp, PulseColors.Border),
-                    shape = RoundedCornerShape(12.dp)) {
-                    Text(actionLabel, fontWeight = FontWeight.SemiBold,
-                        color = PulseColors.Accent, fontSize = 12.sp)
+                Box(Modifier.fillMaxWidth().clickable(
+                    enabled = visible < message.length, onClickLabel = "Mostra tutto il dialogo"
+                ) { visible = message.length }.clearAndSetSemantics {
+                    contentDescription = "Butty: $message"
+                }) {
+                    // Reserve the complete sentence's height to keep inputs still while typing.
+                    Text(message, color = androidx.compose.ui.graphics.Color.Transparent,
+                        style = MaterialTheme.typography.bodyLarge)
+                    Text(message.take(visible), color = PulseColors.Foreground,
+                        style = MaterialTheme.typography.bodyLarge)
                 }
+                if (onRir != null) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(0 to "Dura", 2 to "Giusta", 4 to "Facile").forEach { (value, label) ->
+                        FilterChip(selectedRir == value, { onRir(value) }, label = { Text(label) })
+                    }
+                }
+                if (onAction != null && actionLabel != null)
+                    TextButton(onClick = onAction) { Text(actionLabel) }
             }
         }
     }
+    if (voiceOpen) CoachVoiceDialog(message, onDismiss = { voiceOpen = false })
+}
+
+@Composable
+private fun CoachVoiceDialog(message: String, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    var engine by remember { mutableStateOf<TextToSpeech?>(null) }
+    var ready by remember { mutableStateOf(false) }
+    DisposableEffect(context) {
+        val tts = TextToSpeech(context.applicationContext) { ready = it == TextToSpeech.SUCCESS }
+        engine = tts
+        onDispose { tts.stop(); tts.shutdown() }
+    }
+    LaunchedEffect(ready) {
+        if (ready) engine?.apply {
+            language = Locale.ITALIAN
+            speak(message, TextToSpeech.QUEUE_FLUSH, null, "butty-dialogue")
+        }
+    }
+    AlertDialog(onDismissRequest = onDismiss, title = { Text("Butty") },
+        text = { Text(message) }, confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Chiudi") }
+        })
 }

@@ -35,6 +35,8 @@ jobs:
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
             echo "::error::Invalid app versionName"; exit 1; }
           TAG="v$VERSION"
+          VERSION_CODE=$(sed -n 's/^[[:space:]]*versionCode = \([0-9]*\)/\1/p' app/build.gradle.kts | head -1)
+          [[ "$VERSION_CODE" =~ ^[1-9][0-9]*$ ]] || exit 1
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             [[ "$GITHUB_REF_NAME" == "$TAG" ]] || {
               echo "::error::Tag and Gradle version mismatch"; exit 1; }
@@ -52,6 +54,7 @@ jobs:
           fi
           echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+          echo "RELEASE_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
       - name: Install Java 17
         uses: actions/setup-java@v4
         with:
@@ -63,7 +66,7 @@ jobs:
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" --install "platforms;android-36" "build-tools;35.0.0"
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
       - name: Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -106,20 +109,25 @@ jobs:
           set -euo pipefail
           SOURCE="app/build/outputs/apk/release/app-release.apk"
           test -s "$SOURCE"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$SOURCE" > "$RUNNER_TEMP/newcert.txt"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$SOURCE" > "$RUNNER_TEMP/badging.txt"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$SOURCE" > "$RUNNER_TEMP/newcert.txt"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$SOURCE" > "$RUNNER_TEMP/badging.txt"
           grep -Fq "package: name='it.pulse.workout'" "$RUNNER_TEMP/badging.txt"
           grep -Fq "versionName='$RELEASE_VERSION'" "$RUNNER_TEMP/badging.txt"
-          grep -Fq "versionCode='22'" "$RUNNER_TEMP/badging.txt"
+          grep -Fq "versionCode='$RELEASE_VERSION_CODE'" "$RUNNER_TEMP/badging.txt"
           mkdir -p "$RUNNER_TEMP/old"
-          gh release download v1.3.0 --repo "$GITHUB_REPOSITORY" \
-            -p 'ButtiGoGym-1.3.0-STABLE.apk' -D "$RUNNER_TEMP/old"
-          PREVIOUS="$RUNNER_TEMP/old/ButtiGoGym-1.3.0-STABLE.apk"
+          PREVIOUS_TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')
+          [[ "$PREVIOUS_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+          PREVIOUS_NAME="ButtiGoGym-${PREVIOUS_TAG#v}-STABLE.apk"
+          gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" \
+            -p "$PREVIOUS_NAME" -D "$RUNNER_TEMP/old"
+          PREVIOUS="$RUNNER_TEMP/old/$PREVIOUS_NAME"
           test -s "$PREVIOUS"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$PREVIOUS" > "$RUNNER_TEMP/oldcert.txt"
-          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$PREVIOUS" > "$RUNNER_TEMP/oldbadging.txt"
-          grep -Fq "versionCode='21'" "$RUNNER_TEMP/oldbadging.txt"
-          grep -Fq "versionName='1.3.0'" "$RUNNER_TEMP/oldbadging.txt"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$PREVIOUS" > "$RUNNER_TEMP/oldcert.txt"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt2" dump badging "$PREVIOUS" > "$RUNNER_TEMP/oldbadging.txt"
+          grep -Fq "package: name='it.pulse.workout'" "$RUNNER_TEMP/oldbadging.txt"
+          PREVIOUS_CODE=$(sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p" "$RUNNER_TEMP/oldbadging.txt" | head -1)
+          [[ "$PREVIOUS_CODE" =~ ^[1-9][0-9]*$ && "$RELEASE_VERSION_CODE" -gt "$PREVIOUS_CODE" ]] || {
+            echo "::error::versionCode must increase from the previous stable release"; exit 1; }
           NEW_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/newcert.txt" | head -1)
           OLD_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/oldcert.txt" | head -1)
           [[ -n "$NEW_SHA" && "$NEW_SHA" == "$OLD_SHA" ]] || {
@@ -138,4 +146,4 @@ jobs:
             "$RUNNER_TEMP/release/ButtiGoGym-$RELEASE_VERSION-STABLE.apk.sha256" \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "ButtiGoGym $RELEASE_VERSION" \
-            --notes "Versione stabile Avatar Build: fasi 1–6. Installazione compatibile con gli APK release firmati con la stessa chiave. Usa il backup ZIP prima del primo aggiornamento. Le installazioni debug con firma diversa richiedono migrazione dei dati, non aggiornamento diretto."
+            --notes "Dialoghi della mascotte con testo progressivo, workout guidato a input singolo e interfaccia essenziale con modali. Installazione compatibile con gli APK release firmati con la stessa chiave. Usa il backup ZIP prima del primo aggiornamento. Le installazioni debug con firma diversa richiedono migrazione dei dati, non aggiornamento diretto."

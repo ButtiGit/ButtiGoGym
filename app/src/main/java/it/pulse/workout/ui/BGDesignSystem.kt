@@ -3,6 +3,8 @@ package it.pulse.workout.ui
 import android.animation.ValueAnimator
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,6 +37,27 @@ object BGLayout {
 object BGMotion {
     fun duration(normalMillis: Int): Int =
         if (ValueAnimator.areAnimatorsEnabled()) normalMillis else 0
+}
+
+/** Secondary tools never displace the current task or create an expanded page of controls. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BGModal(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = PulseColors.Surface) {
+        Column(Modifier.fillMaxWidth().fillMaxHeight(.88f)) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(title, style = MaterialTheme.typography.titleLarge,
+                    color = PulseColors.Foreground, modifier = Modifier.weight(1f))
+                TextButton(onClick = onDismiss) { Text("Chiudi") }
+            }
+            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())
+                .padding(start = 20.dp, end = 20.dp, bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        }
+    }
 }
 
 @Composable

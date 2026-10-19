@@ -22,6 +22,8 @@ import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,358 +56,120 @@ fun MyselfScreen(
     latestWeightKg: Double?,
     onSaveSettings: (PersonalSettings, Double?) -> String?
 ) {
-    var settingsOpen by rememberSaveable { mutableStateOf(false) }
-    if (settingsOpen) {
-        PersonalSettingsScreen(
-            settings = settings,
-            latestWeightKg = latestWeightKg,
-            onSave = onSaveSettings,
-            onBack = { settingsOpen = false }
-        )
-        return
+
+    var page by rememberSaveable { mutableStateOf<String?>(null) }
+    when (page) {
+        "settings" -> { PersonalSettingsScreen(settings, latestWeightKg, onSaveSettings) { page = null }; return }
+        "body" -> { BodyProgressScreen(onBack = { page = null }); return }
+        "analytics" -> { TrainingAnalyticsScreen(history) { page = null }; return }
     }
-    var bodyDiaryOpen by rememberSaveable { mutableStateOf(false) }
-    if (bodyDiaryOpen) {
-        BodyProgressScreen(onBack = { bodyDiaryOpen = false })
-        return
-    }
-    var detailedAnalytics by rememberSaveable { mutableStateOf(false) }
-    if (detailedAnalytics) {
-        TrainingAnalyticsScreen(history = history, onBack = { detailedAnalytics = false })
-        return
-    }
-    var selected by remember { mutableStateOf("chest") }
-    var showBalance by rememberSaveable { mutableStateOf(false) }
-    var showGroups by rememberSaveable { mutableStateOf(false) }
-    var back by remember { mutableStateOf(false) }
+    var selected by rememberSaveable { mutableStateOf("chest") }
+    var modal by rememberSaveable { mutableStateOf<String?>(null) }
     var clock by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
-        while (true) {
-            clock = System.currentTimeMillis()
-            kotlinx.coroutines.delay(60_000L)
-        }
+        while (true) { clock = System.currentTimeMillis(); kotlinx.coroutines.delay(60_000) }
     }
     val report = remember(history, clock) { MuscleAnalytics.analyze(history, clock) }
-    val muscles = report.muscles
-    val balance = report.balance
-    val muscle = muscles.first { it.group.id == selected }
-    val totalXp = muscles.sumOf { it.xp }
-    val scaledXp = totalXp / 4
-    val overallLevel = MuscleAnalytics.levelFromXp(scaledXp)
-    val base = MuscleAnalytics.levelThreshold(overallLevel) * 4
-    val next = MuscleAnalytics.levelThreshold(overallLevel + 1) * 4
-    val overallProgress = ((totalXp - base).toFloat() / (next - base).coerceAtLeast(1)).coerceIn(0f,1f)
-    val trained = muscles.count { it.state == MuscleRecovery.TRAINED_TODAY }
-    val resting = muscles.count { it.state == MuscleRecovery.RECOVERING }
-    val ready = muscles.count { it.state == MuscleRecovery.READY }
-    val n = DecimalFormat("#,##0")
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(PulseColors.Background),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 40.dp),
-        verticalArrangement = Arrangement.spacedBy(15.dp)
-    ) {
+    val muscle = report.muscles.firstOrNull { it.group.id == selected } ?: report.muscles.first()
+    val totalXp = report.muscles.sumOf { it.xp }
+    val level = MuscleAnalytics.levelFromXp(totalXp / 4)
+    val number = remember { DecimalFormat("#,##0") }
+    LazyColumn(modifier = Modifier.fillMaxSize().background(PulseColors.Background),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(painterResource(R.drawable.buttigogym_mascot),
-                    contentDescription = "Logo ButtiGoGym",
-                    modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)))
-                Spacer(Modifier.width(13.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("I TUOI PROGRESSI", color = PulseColors.Accent,
-                        fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.2.sp)
-                    Text("Myself", color = PulseColors.Foreground,
-                        fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.3).sp)
+                Text("Myself", style = MaterialTheme.typography.headlineMedium,
+                    color = PulseColors.Foreground, modifier = Modifier.weight(1f))
+                IconButton(onClick = { modal = "tools" }) {
+                    Icon(Icons.Default.MoreHoriz, "Opzioni progressi", tint = PulseColors.Foreground)
                 }
-                IconButton(onClick = { settingsOpen = true }) {
-                    Icon(Icons.Default.Settings, "Impostazioni personali",
-                        tint = PulseColors.Accent)
-                }
-            }
-            // Tocca i muscoli sulla mappa per aprire direttamente i progressi.
-        }
-        item {
-            BGPrimaryButton(
-                label = "Grafici, forza e record",
-                icon = Icons.Default.BarChart,
-                onClick = { detailedAnalytics = true }
-            )
-        }
-        item {
-            OutlinedButton(
-                onClick = { bodyDiaryOpen = true },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, PulseColors.Accent)
-            ) {
-                Text("Misure, peso e foto progresso",
-                    color = PulseColors.Accent, fontWeight = FontWeight.Bold)
             }
         }
         item {
-            MyselfCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(47.dp).background(PulseColors.SoftGreen, RoundedCornerShape(15.dp)),
-                        contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Bolt, null, tint = PulseColors.Accent, modifier = Modifier.size(24.dp))
-                    }
-                    Spacer(Modifier.width(13.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("LIVELLO COMPLESSIVO", color = PulseColors.Muted,
-                            fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
-                        Text("Livello $overallLevel", color = PulseColors.Foreground,
-                            fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
-                    }
-                    Text("${n.format(totalXp)} XP muscolari", color = PulseColors.Accent,
-                        fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-                Spacer(Modifier.height(15.dp))
-                LevelTrack(overallProgress)
-                Spacer(Modifier.height(8.dp))
-                Text("${n.format((next - totalXp).coerceAtLeast(0))} XP al livello ${overallLevel + 1}",
-                    color = PulseColors.Muted, fontSize = 12.sp)
-                Text("XP ottenuti dalle serie registrate. I premi delle missioni " +
-                    "sono separati e non aumentano artificialmente il livello muscolare.",
-                    color = PulseColors.Muted, fontSize = 11.sp)
+            TextButton(onClick = { modal = "muscles" }) {
+                Text(muscle.group.label, style = MaterialTheme.typography.titleLarge)
+                Icon(Icons.Default.KeyboardArrowDown, "Scegli muscolo")
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                StatusCount("Allenati oggi", trained, trainedColor, Modifier.weight(1f))
-                StatusCount("In recupero", resting, recoveryColor, Modifier.weight(1f))
-                StatusCount("Pronti", ready, readyColor, Modifier.weight(1f))
-            }
+            MascotCoachCard("${muscle.group.label}: ${shortStatus(muscle).lowercase(Locale.ITALIAN)}. Vediamo i tuoi progressi?",
+                pose = CoachConversation.poseForMuscle(muscle.group.label))
         }
+        item { BGPrimaryButton("Dettagli muscolo", { modal = "detail" }) }
         item {
-            TextButton(onClick = { showBalance = !showBalance }) {
-                Text(if (showBalance) "Nascondi equilibrio del programma" else "Mostra equilibrio del programma",
-                    color = PulseColors.Accent, fontSize = 12.sp)
+            TextButton(onClick = { modal = "level" }, modifier = Modifier.fillMaxWidth()) {
+                Text("Livello $level · ${number.format(totalXp)} XP")
             }
         }
-        if (showBalance) item {
-            MyselfCard {
-                Text("Equilibrio del programma", color = PulseColors.Foreground,
-                    fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-                Spacer(Modifier.height(4.dp))
-                Text("Ultimi 28 giorni · solo serie effettivamente salvate",
-                    fontSize = 11.sp, color = PulseColors.Muted)
-                Spacer(Modifier.height(12.dp))
-                if (balance.sessions28Days == 0) {
-                    Text("Nessuna seduta registrata nel periodo. Inizia ad allenarti per vedere la distribuzione degli stimoli.",
-                        fontSize = 12.sp, color = PulseColors.Muted)
-                } else {
-                    Text("${balance.sessions28Days} sedute con serie valide negli ultimi 28 giorni",
-                        fontSize = 12.sp, color = PulseColors.Accent,
-                        fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(12.dp))
-                    MuscleBalancePair("Spinta", balance.pushDirectSets,
-                        "Trazione", balance.pullDirectSets)
-                    Spacer(Modifier.height(12.dp))
-                    MuscleBalancePair("Quadricipiti", balance.quadDirectSets,
-                        "Femorali", balance.hamstringDirectSets)
-                    Spacer(Modifier.height(10.dp))
-                    Text("Addome e lombari: ${balance.coreDirectSets} serie dirette · " +
-                        "Avambracci: ${balance.forearmDirectSets}",
-                        fontSize = 12.sp, color = PulseColors.Foreground)
-                    Spacer(Modifier.height(12.dp))
-                    if (!balance.enoughHistoryForGaps) {
-                        Text("Con almeno 3 sedute registrate in 28 giorni mostreremo i gruppi senza stimoli nel periodo.",
-                            color = PulseColors.Muted, fontSize = 11.sp)
-                    } else if (balance.unstimulatedGroups.isNotEmpty()) {
-                        Text("Senza stimoli registrati negli ultimi 28 giorni",
-                            color = PulseColors.Foreground, fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp)
-                        Spacer(Modifier.height(4.dp))
-                        Text(balance.unstimulatedGroups.joinToString(" · "),
-                            color = PulseColors.Muted, fontSize = 12.sp)
-                    } else {
-                        Text("Tutti i gruppi della mappa hanno almeno uno stimolo registrato nel periodo.",
-                            color = PulseColors.Muted, fontSize = 11.sp)
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                Text("Sono conteggi descrittivi, non un punteggio di simmetria o un obiettivo di volume. " +
-                    "Una serie multi-muscolo può essere diretta per più gruppi.",
-                    color = PulseColors.Muted, fontSize = 12.sp)
+    }
+    if (modal != null) BGModal(when (modal) {
+        "muscles" -> "Scegli muscolo"
+        "detail" -> muscle.group.label
+        "balance" -> "Equilibrio del programma"
+        "level" -> "I tuoi progressi"
+        else -> "Progressi"
+    }, { modal = null }) {
+        when (modal) {
+            "tools" -> {
+                TextButton(onClick = { modal = null; page = "analytics" }) { Text("Grafici e record") }
+                TextButton(onClick = { modal = null; page = "body" }) { Text("Misure, peso e foto") }
+                TextButton(onClick = { modal = "balance" }) { Text("Equilibrio del programma") }
+                TextButton(onClick = { modal = "level" }) { Text("Livello e recupero") }
+                TextButton(onClick = { modal = null; page = "settings" }) { Text("Impostazioni personali") }
             }
-        }
-        item {
-            MyselfCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("💪 I tuoi muscoli", color = PulseColors.Foreground,
-                            fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-                        Text("Scegli il gruppo e guarda i progressi",
-                            color = PulseColors.Muted, fontSize = 12.sp)
-                    }
-                    Surface(color = PulseColors.SoftGreen,
-                        shape = RoundedCornerShape(12.dp)) {
-                        Text("LV ${muscle.level}",
-                            Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            color = PulseColors.Accent, fontWeight = FontWeight.Bold)
-                    }
+            "muscles" -> report.muscles.forEach { value ->
+                TextButton(onClick = { selected = value.group.id; modal = null }, modifier = Modifier.fillMaxWidth()) {
+                    Text(value.group.label, modifier = Modifier.weight(1f))
+                    Text(shortStatus(value), color = PulseColors.Muted)
                 }
-                Spacer(Modifier.height(12.dp))
-                // Una mascotte vera al posto del manichino generico.
-                // I filtri selezionano la stessa statistica, senza alterare l'analisi.
-                MascotPoseImage(
-                    pose = CoachConversation.poseForMuscle(muscle.group.label),
-                    modifier = Modifier.fillMaxWidth().height(308.dp)
-                )
-                Spacer(Modifier.height(12.dp))
-                Text(muscle.group.label + " · " + shortStatus(muscle),
-                    color = PulseColors.Foreground, fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
-                ) {
-                    muscles.forEach { value ->
-                        FilterChip(
-                            selected = selected == value.group.id,
-                            onClick = { selected = value.group.id },
-                            label = { Text(value.group.label, maxLines = 1, fontSize = 12.sp) }
-                        )
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                Text("Verde = pronto · Giallo = recupero · I tempi sono stime",
-                    color = PulseColors.Muted, fontSize = 11.sp)
             }
-        }
-        item {
-            MyselfCard {
-                Row(verticalAlignment = Alignment.Top) {
-                    Column(Modifier.weight(1f)) {
-                        Text("MUSCOLO SELEZIONATO", color = PulseColors.Muted,
-                            fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                        Spacer(Modifier.height(5.dp))
-                        Text(muscle.group.label, color = PulseColors.Foreground,
-                            fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
-                    }
-                    Surface(color = tintFor(muscle.state).copy(alpha = .34f),
-                        shape = RoundedCornerShape(100.dp)) {
-                        Text("LV ${muscle.level}", modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
-                            color = PulseColors.Foreground, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
-                    }
+            "detail" -> {
+                Text(statusText(muscle), color = PulseColors.Accent)
+                muscle.lastTrainingMillis?.let { Text("Ultimo stimolo: " +
+                    SimpleDateFormat("dd MMM · HH:mm", Locale.ITALIAN).format(Date(it)), color = PulseColors.Muted) }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    SmallStat("Serie", muscle.workingSets.toString(), Modifier.weight(1f))
+                    SmallStat("Volume", "${number.format(muscle.volumeKg)} kg", Modifier.weight(1f))
                 }
-                Spacer(Modifier.height(12.dp))
-                Text(statusText(muscle), color = PulseColors.Accent,
-                    fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                if (muscle.lastTrainingMillis != null) {
-                    Spacer(Modifier.height(5.dp))
-                    Text("Ultimo stimolo: " +
-                        SimpleDateFormat("dd MMM · HH:mm", Locale.ITALIAN).format(Date(muscle.lastTrainingMillis)),
-                        color = PulseColors.Muted, fontSize = 11.sp)
-                }
-                Spacer(Modifier.height(17.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SmallStat("Streak", "${muscle.streakWeeks} sett.", Modifier.weight(1f))
-                    SmallStat("Serie dirette", muscle.workingSets.toString(), Modifier.weight(1f))
-                    SmallStat("Volume", "${n.format(muscle.volumeKg)} kg", Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(16.dp))
-                Text("Stimolo registrato", fontSize = 15.sp,
-                    fontWeight = FontWeight.ExtraBold, color = PulseColors.Foreground)
-                Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     SmallStat("7gg dirette", muscle.directSets7Days.toString(), Modifier.weight(1f))
                     SmallStat("7gg indirette", muscle.indirectSets7Days.toString(), Modifier.weight(1f))
                 }
-                Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     SmallStat("28gg dirette", muscle.directSets28Days.toString(), Modifier.weight(1f))
                     SmallStat("28gg indirette", muscle.indirectSets28Days.toString(), Modifier.weight(1f))
                 }
-                Spacer(Modifier.height(6.dp))
-                Text("Dirette = muscolo primario; indirette = secondario. " +
-                    "I carichi non equivalgono a crescita misurata.",
-                    color = PulseColors.Muted, fontSize = 11.sp)
-                muscle.bestEstimatedStrengthKg?.let { estimated ->
-                    Spacer(Modifier.height(12.dp))
-                    Text("Miglior 1RM stimato (Epley): ${n.format(estimated)} kg",
-                        color = PulseColors.Foreground, fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp)
-                    Text("Stima riferita a un esercizio, non alla forza del singolo muscolo.",
-                        color = PulseColors.Muted, fontSize = 12.sp)
-                }
-                Spacer(Modifier.height(20.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Prossimo livello", color = PulseColors.Foreground,
-                        fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
-                    Spacer(Modifier.weight(1f))
-                    Text("LV ${muscle.level + 1}", color = PulseColors.Accent,
-                        fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                }
-                Spacer(Modifier.height(10.dp))
+                Text("Livello ${muscle.level} · Streak ${muscle.streakWeeks} settimane", color = PulseColors.Foreground)
                 LevelTrack(muscle.progressToNext)
-                Spacer(Modifier.height(9.dp))
-                Text("${n.format(muscle.levelCurrentXp)} / ${n.format(muscle.levelRequiredXp)} XP",
-                    color = PulseColors.Muted, fontSize = 12.sp)
-                Text("Ancora ${n.format((muscle.levelRequiredXp - muscle.levelCurrentXp).coerceAtLeast(0))} XP",
-                    color = PulseColors.Accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                if (muscle.topSet != null) {
-                    Spacer(Modifier.height(16.dp))
-                    Text("Miglior serie registrata", color = PulseColors.Muted, fontSize = 11.sp)
-                    Text(muscle.topSet, color = PulseColors.Foreground, fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold)
+                Text("${number.format(muscle.levelCurrentXp)} / ${number.format(muscle.levelRequiredXp)} XP", color = PulseColors.Muted)
+                muscle.bestEstimatedStrengthKg?.let { Text("Miglior 1RM stimato: ${number.format(it)} kg") }
+                muscle.topSet?.let { Text("Miglior serie: $it") }
+                Text("Il recupero è una stima. Volume, XP e livelli descrivono le serie registrate.", color = PulseColors.Muted)
+                if (active != null) Text("La sessione in corso conta dopo il salvataggio.", color = PulseColors.Muted)
+            }
+            "level" -> {
+                Text("Livello $level", style = MaterialTheme.typography.headlineSmall)
+                Text("${number.format(totalXp)} XP muscolari", color = PulseColors.Accent)
+                report.muscles.groupBy { it.state }.forEach { (state, entries) ->
+                    Text(when (state) {
+                        MuscleRecovery.NEVER -> "Non allenati: ${entries.size}"
+                        MuscleRecovery.TRAINED_TODAY -> "Allenati oggi: ${entries.size}"
+                        MuscleRecovery.RECOVERING -> "In recupero: ${entries.size}"
+                        MuscleRecovery.READY -> "Pronti: ${entries.size}"
+                    })
                 }
+                Text("XP e livelli derivano dalle serie salvate. Il recupero è una stima.", color = PulseColors.Muted)
             }
-        }
-        item {
-            TextButton(onClick = { showGroups = !showGroups }) {
-                Text(if (showGroups) "Nascondi altri gruppi" else "Elenco di tutti i muscoli ↓",
-                    color = PulseColors.Accent, fontSize = 13.sp)
-            }
-        }
-        if (showGroups) item {
-            Text("Tutti i gruppi muscolari", color = PulseColors.Foreground,
-                fontWeight = FontWeight.ExtraBold, fontSize = 19.sp)
-            Spacer(Modifier.height(4.dp))
-            Text("Apri un muscolo per vedere recupero, streak e livelli.",
-                color = PulseColors.Muted, fontSize = 11.sp)
-        }
-        if (showGroups) items(muscles, key = { it.group.id }) { value ->
-            Surface(
-                modifier = Modifier.fillMaxWidth().clickable {
-                    selected = value.group.id
-                    back = value.group.view == "back"
-                },
-                shape = RoundedCornerShape(18.dp),
-                color = if (selected == value.group.id) PulseColors.SoftGreen else PulseColors.Surface,
-                border = BorderStroke(1.dp, if (selected == value.group.id) PulseColors.Accent else PulseColors.Border)
-            ) {
-                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(11.dp).background(tintFor(value.state), CircleShape))
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(value.group.label, color = PulseColors.Foreground,
-                            fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text("Streak ${value.streakWeeks} sett. · ${shortStatus(value)}",
-                            color = PulseColors.Muted, fontSize = 12.sp)
-                        Spacer(Modifier.height(3.dp))
-                        Text("7gg: ${value.directSets7Days} dirette · " +
-                            "${value.indirectSets7Days} indirette",
-                            color = PulseColors.Muted, fontSize = 12.sp)
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("LV ${value.level}", color = PulseColors.Accent,
-                            fontWeight = FontWeight.ExtraBold, fontSize = 12.sp)
-                        Spacer(Modifier.height(5.dp))
-                        Box(Modifier.width(64.dp)) { LevelTrack(value.progressToNext, 4.dp) }
-                    }
-                }
-            }
-        }
-        item {
-            Text("Recupero stimato (36–72 h), XP e livelli gamificati. " +
-                "Serie e volume descrivono il lavoro, non misurano ipertrofia o recupero biologico.",
-                color = PulseColors.Muted, fontSize = 12.sp, lineHeight = 15.sp)
-            if (active != null) {
-                Spacer(Modifier.height(8.dp))
-                Text("Il workout in corso conta dopo il salvataggio.",
-                    color = PulseColors.Muted, fontSize = 12.sp)
+            "balance" -> {
+                val balance = report.balance
+                Text("${balance.sessions28Days} sedute · ultimi 28 giorni", color = PulseColors.Muted)
+                MuscleBalancePair("Spinta", balance.pushDirectSets, "Trazione", balance.pullDirectSets)
+                MuscleBalancePair("Quadricipiti", balance.quadDirectSets, "Femorali", balance.hamstringDirectSets)
+                Text("Core: ${balance.coreDirectSets} serie · Avambracci: ${balance.forearmDirectSets}")
+                if (balance.enoughHistoryForGaps && balance.unstimulatedGroups.isNotEmpty())
+                    Text("Senza stimoli registrati: " + balance.unstimulatedGroups.joinToString(" · "))
+                Text("Conteggi delle serie, non un obiettivo di volume o un punteggio di simmetria.", color = PulseColors.Muted)
             }
         }
     }
