@@ -1,0 +1,97 @@
+name: ButtiGoGym 1.2.0 - UI, tests, signed candidate
+
+on:
+  push:
+    branches: [feature/v1.2-guided-home]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        shell: bash
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install "platforms;android-36" "build-tools;35.0.0"
+      - name: Gradle 8.11.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Prepare offline plan and assets
+        run: |
+          python3 tools/build_muscle_map.py
+          python3 tools/validate_lean_bulk_plan.py
+          python3 tools/resolve_gifs.py
+          cp workouts/plan.json app/src/main/assets/workout-plan.json
+      - name: Unit tests and Android lint
+        run: gradle --no-daemon :app:testDebugUnitTest :app:lintDebug
+      - name: Restore permanent signing
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.BUTTIGOGYM_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.BUTTIGOGYM_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.BUTTIGOGYM_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.BUTTIGOGYM_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          [[ -n "$KEYSTORE_BASE64" && -n "$STORE_PASSWORD" &&
+             -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]] || exit 1
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/stable-signing.jks"
+          chmod 600 "$RUNNER_TEMP/stable-signing.jks"
+      - name: Assemble signed candidate
+        env:
+          BUTTIGOGYM_SIGNING_FILE: ${{ runner.temp }}/stable-signing.jks
+          BUTTIGOGYM_STORE_PASSWORD: ${{ secrets.BUTTIGOGYM_STORE_PASSWORD }}
+          BUTTIGOGYM_KEY_ALIAS: ${{ secrets.BUTTIGOGYM_KEY_ALIAS }}
+          BUTTIGOGYM_KEY_PASSWORD: ${{ secrets.BUTTIGOGYM_KEY_PASSWORD }}
+        run: gradle --no-daemon :app:assembleRelease
+      - name: Compare signatures with current stable and check version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" > "$RUNNER_TEMP/new.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$APK" > "$RUNNER_TEMP/new-badging.txt"
+          grep -Fq "package: name='it.pulse.workout'" "$RUNNER_TEMP/new-badging.txt"
+          grep -Fq "versionName='1.2.0'" "$RUNNER_TEMP/new-badging.txt"
+          grep -Fq "versionCode='20'" "$RUNNER_TEMP/new-badging.txt"
+          mkdir -p "$RUNNER_TEMP/previous"
+          gh release download v1.1.0 -p "ButtiGoGym-1.1.0-STABLE.apk" -D "$RUNNER_TEMP/previous" \
+            --repo "$GITHUB_REPOSITORY"
+          PREVIOUS="$RUNNER_TEMP/previous/ButtiGoGym-1.1.0-STABLE.apk"
+          test -s "$PREVIOUS"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$PREVIOUS" > "$RUNNER_TEMP/old.txt"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$PREVIOUS" > "$RUNNER_TEMP/old-badging.txt"
+          grep -Fq "versionCode='19'" "$RUNNER_TEMP/old-badging.txt"
+          NEW_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/new.txt" | head -1)
+          OLD_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/old.txt" | head -1)
+          [[ -n "$NEW_SHA" && "$NEW_SHA" == "$OLD_SHA" ]] || {
+            echo "::error::Signature mismatch: cannot in-place update"; exit 1;
+          }
+          echo "Certificate continuity verified: $NEW_SHA"
+          mkdir -p "$RUNNER_TEMP/candidate"
+          cp "$APK" "$RUNNER_TEMP/candidate/ButtiGoGym-1.2.0-CANDIDATE.apk"
+          (cd "$RUNNER_TEMP/candidate" && sha256sum *.apk > SHA256SUMS)
+      - name: Attach candidate to QA workflow
+        uses: actions/upload-artifact@v4
+        with:
+          name: ButtiGoGym-1.2.0-signed-candidate
+          path: ${{ runner.temp }}/candidate/*
+          retention-days: 14
+          if-no-files-found: error

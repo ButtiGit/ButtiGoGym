@@ -110,15 +110,16 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$SOURCE" > "$RUNNER_TEMP/badging.txt"
           grep -Fq "package: name='it.pulse.workout'" "$RUNNER_TEMP/badging.txt"
           grep -Fq "versionName='$RELEASE_VERSION'" "$RUNNER_TEMP/badging.txt"
-          grep -Fq "versionCode='19'" "$RUNNER_TEMP/badging.txt"
+          grep -Fq "versionCode='20'" "$RUNNER_TEMP/badging.txt"
           mkdir -p "$RUNNER_TEMP/old"
-          gh run download 38365098239 --repo "$GITHUB_REPOSITORY" -n ButtiGoGym-Android-APK -D "$RUNNER_TEMP/old"
-          PREVIOUS=$(find "$RUNNER_TEMP/old" -type f -name "app-release.apk" -print -quit)
+          gh release download v1.1.0 --repo "$GITHUB_REPOSITORY" \
+            -p 'ButtiGoGym-1.1.0-STABLE.apk' -D "$RUNNER_TEMP/old"
+          PREVIOUS="$RUNNER_TEMP/old/ButtiGoGym-1.1.0-STABLE.apk"
           test -s "$PREVIOUS"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$PREVIOUS" > "$RUNNER_TEMP/oldcert.txt"
           "$ANDROID_HOME/build-tools/35.0.0/aapt2" dump badging "$PREVIOUS" > "$RUNNER_TEMP/oldbadging.txt"
-          grep -Fq "versionCode='17'" "$RUNNER_TEMP/oldbadging.txt"
-          grep -Fq "versionName='0.9.5'" "$RUNNER_TEMP/oldbadging.txt"
+          grep -Fq "versionCode='19'" "$RUNNER_TEMP/oldbadging.txt"
+          grep -Fq "versionName='1.1.0'" "$RUNNER_TEMP/oldbadging.txt"
           NEW_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/newcert.txt" | head -1)
           OLD_SHA=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/oldcert.txt" | head -1)
           [[ -n "$NEW_SHA" && "$NEW_SHA" == "$OLD_SHA" ]] || {
