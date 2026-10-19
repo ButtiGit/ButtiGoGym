@@ -1160,3 +1160,25 @@ candidato è stato confrontato con il precedente senza conflitti.
   è mostrata come avviso dettagliato solo quando non è funzionante.
 - Versione 1.2.0, versionCode 20. La pipeline di release firma l'APK
   e controlla compatibilità con il certificato della stabile v1.1.0.
+
+
+## Coach mascotte 1.3 — immagini e conversazione
+
+Il coach nella Home e durante la sessione mostra messaggi basati sul vero stato della seduta.
+Le sue azioni (registrazione della serie, fine recupero, salvataggio) riutilizzano le stesse
+operazioni del workout esistente. Le risposte Dura/Giusta/Facile compilano rispettivamente
+RIR 0/2/4, modificabili anche manualmente. La voce italiana è **su richiesta**, con il
+pulsante Ascolta, e usa il TextToSpeech di Android: non serve account né connessione.
+
+Per utilizzare le pose originali e quelle generate, scaricare
+`ButtiGoGym_MascotPack_v1.3.zip` fornito separatamente, trasferirlo sul telefono,
+aprire la Home e premere **Carica le pose della mascotte (ZIP)**. Le immagini WebP
+vengono validate e salvate solo nello spazio privato dell'app, senza permessi storage.
+La Home permette di sostituire il pacchetto in futuro. Anche senza pack il coach
+funziona con l'illustrazione già inclusa nell'APK. La Home non richiede la rete.
+
+Gli aggiornamenti APK non cancellano i file privati: il pack rimane finché si aggiorna
+l'app con la medesima firma, senza disinstallarla. Il sistema esistente di GitHub
+Releases, checksum/certificato e richiesta conferma di installazione Android resta attivo.
+La versione `1.3.0` usa `versionCode 21`, successivo alla stabile 1.2.0 (20).
+Il workflow stabile confronta l'APK firmato con la versione 1.2.0 prima di pubblicare.

@@ -229,7 +229,12 @@ fun DashboardScreen(
                 trained = summary.workoutToday,
                 completedWeek = summary.workoutDaysThisWeek,
                 goal = personalSettings.weeklyWorkouts
-            ))
+            ), pose = when {
+                active != null -> CoachPose.READY
+                summary.workoutToday -> CoachPose.DONE
+                summary.restedToday -> CoachPose.REST
+                else -> CoachPose.HOME
+            }, showImport = true)
         }
 
         item {
