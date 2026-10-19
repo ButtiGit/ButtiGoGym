@@ -237,6 +237,14 @@ fun GuidedSessionScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
+                MascotCoachCard(
+                    it.pulse.workout.data.MascotCoach.inSession(
+                        resting = inRest, completed = allDone
+                    ),
+                    small = true
+                )
+            }
+            if (!notificationsVisible || timerStatus.startsWith("error:")) item {
                 Surface(
                     color = if (notificationsVisible && timerStatus == "running")
                         PulseColors.SoftGreen else PulseColors.Raised,

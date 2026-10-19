@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.AccessibilityNew
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -121,6 +123,43 @@ fun DashboardScreen(
     var stepsDialog by remember { mutableStateOf(false) }
     var healthHelpExpanded by rememberSaveable { mutableStateOf(false) }
     var backupExpanded by rememberSaveable { mutableStateOf(false) }
+    val localContext = LocalContext.current
+    val homeStore = remember(localContext) { HomeDisplaySettingsStore(localContext) }
+    var homeLayout by remember { mutableStateOf(homeStore.read()) }
+    var customizerOpen by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(backupStatus) {
+        if (backupStatus.startsWith("Ripristino riuscito"))
+            homeLayout = homeStore.read()
+    }
+    if (customizerOpen) {
+        HomeDisplaySettingsScreen(
+            settings = homeLayout,
+            onSettings = { updated -> homeStore.save(updated); homeLayout = updated },
+            onBack = { customizerOpen = false },
+            installedVersion = updateInstalledVersion,
+            updateStatus = updateStatus,
+            checking = updateChecking,
+            downloading = updateDownloading,
+            downloadProgress = updateProgress,
+            verified = updateVerified,
+            onCheckUpdate = onCheckUpdate,
+            onDownloadUpdate = onDownloadUpdate,
+            onInstallUpdate = onInstallUpdate,
+            backupStatus = backupStatus,
+            backupBusy = backupBusy,
+            onExportBackup = onExportBackup,
+            onImportBackup = onImportBackup,
+            waterEnabled = reminderWaterEnabled,
+            moveEnabled = reminderMoveEnabled,
+            onWaterChanged = onToggleWaterReminder,
+            onMoveChanged = onToggleMoveReminder,
+            onTestWater = onTestWaterReminder,
+            onTestMove = onTestMoveReminder,
+            remindersPermissionGranted = remindersPermissionGranted,
+            onEnableReminders = onEnableReminderNotifications
+        )
+        return
+    }
     val number = NumberFormat.getIntegerInstance(Locale.ITALIAN)
     val weekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     val weekSessions = remember(history, today) {
@@ -154,8 +193,8 @@ fun DashboardScreen(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(painter = painterResource(R.drawable.buttigogym_mascot),
-                        contentDescription = "Logo ButtiGoGym",
-                        modifier = Modifier.size(52.dp).clip(RoundedCornerShape(16.dp)))
+                        contentDescription = "ButtiGoGym",
+                        modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)))
                     Spacer(Modifier.width(10.dp))
                     Column {
                         Text("ButtiGoGym", color = PulseColors.Accent,
@@ -167,10 +206,9 @@ fun DashboardScreen(
                     Icon(Icons.Default.CalendarMonth, contentDescription = "Apri calendario allenamenti",
                         tint = PulseColors.Accent, modifier = Modifier.size(25.dp))
                 }
-                Surface(color = PulseColors.SoftGreen, shape = CircleShape) {
-                    Text(personalSettings.goal.compactLabel,
-                        Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        fontSize = 11.sp, fontWeight = FontWeight.Bold, color = PulseColors.Accent)
+                IconButton(onClick = { customizerOpen = true }) {
+                    Icon(Icons.Default.Settings, contentDescription = "Personalizza Home e aggiornamenti",
+                        tint = PulseColors.Accent, modifier = Modifier.size(24.dp))
                 }
             }
         }
@@ -181,23 +219,26 @@ fun DashboardScreen(
                     .replaceFirstChar { it.titlecase(Locale.ITALIAN) },
                 color = PulseColors.Muted, fontSize = 13.sp, fontWeight = FontWeight.Medium
             )
-            Spacer(Modifier.height(5.dp))
-            Text("Il tuo ritmo.", color = PulseColors.Foreground,
-                fontSize = 35.sp, fontWeight = FontWeight.ExtraBold,
-                lineHeight = 39.sp, letterSpacing = (-1.15).sp)
-            Spacer(Modifier.height(9.dp))
-            // I widget sottostanti raccontano già i progressi.
+            Spacer(Modifier.height(2.dp))
+        }
+
+        item {
+            MascotCoachCard(MascotCoach.today(
+                active = active != null,
+                resting = summary.restedToday,
+                trained = summary.workoutToday,
+                completedWeek = summary.workoutDaysThisWeek,
+                goal = personalSettings.weeklyWorkouts
+            ))
         }
 
         item {
             Surface(
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(22.dp),
                 color = PulseColors.Accent,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(Modifier.background(Brush.linearGradient(
-                    listOf(Color(0xFF083C15), PulseColors.Accent, Color(0xFF237B36))
-                )).padding(22.dp)) {
+                Column(Modifier.padding(18.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Surface(color = Color.White.copy(alpha = .16f),
                             shape = RoundedCornerShape(50)) {
@@ -211,12 +252,12 @@ fun DashboardScreen(
                             contentDescription = null, tint = Color.White.copy(alpha = .9f),
                             modifier = Modifier.size(27.dp))
                     }
-                    Spacer(Modifier.height(20.dp))
-                    Text(current.name, color = Color.White, fontSize = 25.sp,
+                    Spacer(Modifier.height(13.dp))
+                    Text(current.name, color = Color.White, fontSize = 23.sp,
                         fontWeight = FontWeight.ExtraBold, lineHeight = 29.sp)
                     Spacer(Modifier.height(7.dp))
                     Text("${current.exercises.size} esercizi · ${current.duration}",
-                        color = Color.White.copy(alpha = .82f), fontSize = 13.sp)
+                        color = Color.White.copy(alpha = .82f), fontSize = 12.sp)
                     Spacer(Modifier.height(20.dp))
                     Button(
                         onClick = { onStart(current) },
@@ -244,10 +285,36 @@ fun DashboardScreen(
                             Text("Allenamento rapido · 35–45 min", color = Color.White,
                                 fontWeight = FontWeight.Bold)
                         }
-                        Text("Volume ridotto rispetto alla seduta completa.",
-                            color = Color.White.copy(alpha = .8f), fontSize = 11.sp)
+                     }
+                }
+            }
+        }
+
+        item {
+            BGCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Questa settimana",
+                            fontWeight = FontWeight.Bold, fontSize = 15.sp,
+                            color = PulseColors.Foreground)
+                        Text("${summary.workoutDaysThisWeek} di ${personalSettings.weeklyWorkouts} allenamenti",
+                            color = PulseColors.Muted, fontSize = 12.sp)
+                    }
+                    TextButton(onClick = onOpenPlan) {
+                        Text("La scheda →", color = PulseColors.Accent,
+                            fontWeight = FontWeight.SemiBold)
                     }
                 }
+                Spacer(Modifier.height(8.dp))
+                LinearProgressIndicator(
+                    progress = {
+                        (summary.workoutDaysThisWeek.toFloat() /
+                            personalSettings.weeklyWorkouts.coerceAtLeast(1)).coerceIn(0f, 1f)
+                    },
+                    modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape),
+                    color = PulseColors.Accent,
+                    trackColor = PulseColors.SoftGreen
+                )
             }
         }
 
@@ -267,15 +334,15 @@ fun DashboardScreen(
             }
         }
 
-        item {
+        if (homeLayout.missions) item {
             WeeklyMissionsCard(weeklyMissions, weeklyReminderEnabled, onToggleWeeklyReminder)
         }
 
-        item {
+        if (homeLayout.weeklyReport) item {
             WeeklyReportCard(weeklyReport, todayCheckIn, onOpenCheckIn)
         }
 
-        item {
+        if (homeLayout.details) item {
             DashboardSectionTitle("Progressi")
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -317,7 +384,7 @@ fun DashboardScreen(
             }
         }
 
-        item {
+        if (homeLayout.streaks) item {
             DashboardSectionTitle("Streak · indicatori secondari",
                 "La costanza principale è nel bilancio delle ultime quattro settimane")
             Spacer(Modifier.height(12.dp))
@@ -350,7 +417,7 @@ fun DashboardScreen(
             }
         }
 
-        item {
+        if (homeLayout.steps) item {
             DashboardSectionTitle("Passi")
             Spacer(Modifier.height(12.dp))
             WidgetCard {
@@ -438,7 +505,7 @@ fun DashboardScreen(
             }
         }
 
-        item {
+        if (homeLayout.recovery) item {
             DashboardSectionTitle("Recupero")
             Spacer(Modifier.height(12.dp))
             WidgetCard {
@@ -488,7 +555,7 @@ fun DashboardScreen(
             }
         }
 
-        item {
+        if (homeLayout.weekPlan) item {
             DashboardSectionTitle("La settimana")
             Spacer(Modifier.height(12.dp))
             WidgetCard {
@@ -543,7 +610,7 @@ fun DashboardScreen(
             }
         }
 
-        item {
+        if (homeLayout.reminders) item {
             DashboardSectionTitle("Promemoria")
             Spacer(Modifier.height(12.dp))
             WidgetCard {
@@ -638,7 +705,7 @@ fun DashboardScreen(
             }
         }
 
-        item {
+        if (false) item {
             if (updateStatus !is AppUpdateStatus.Available) {
                 ReleaseUpdatePanel(
                     installedVersion = updateInstalledVersion,
@@ -655,8 +722,8 @@ fun DashboardScreen(
             }
         }
 
-        item {
-            DashboardSectionTitle("Impostazioni")
+        if (homeLayout.backup) item {
+            DashboardSectionTitle("Backup")
             Spacer(Modifier.height(12.dp))
             WidgetCard {
                 Row(

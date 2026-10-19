@@ -1137,3 +1137,26 @@ artifact su `main` (GitHub Actions 38365098239) è **0.9.5 / versionCode 17**.
 Il confronto di compatibilità viene fatto con questa APK firmata, non con
 il solo numero di versione presente nel codice di main. Il certificato del
 candidato è stato confrontato con il precedente senza conflitti.
+
+## V1.2.0 · Home guidata, mascotte e controlli visibilità (2026-10-19)
+
+- Home essenziale predefinita: mascotte con messaggio breve contestuale,
+  prossima seduta con due azioni, progresso della settimana.
+  Tutti i vecchi widget rimangono disponibili, ma nascosti per non
+  sovraccaricare il primo avvio.
+- L'icona ingranaggio in Home apre **Personalizza Home**: preferenze
+  indipendenti per missioni, report, statistiche, streak, passi, recupero,
+  calendario, promemoria e backup. Gli interruttori NON cancellano dati
+  e NON disattivano funzioni sottostanti.
+- Aggiornamenti, download/verifica APK, backup/ripristino e controlli
+  notifiche sempre accessibili da Personalizza Home, anche con widget nascosti.
+  Gli aggiornamenti disponibili continuano a essere mostrati direttamente
+  in Home per non perdere l'avviso.
+- Preferenze dentro `buttigogym_reminders_v1` già incluso nel backup ZIP.
+  Il ripristino ricarica le preferenze. Controlli di installazione in-app
+  e firma APK invariati.
+- La mascotte comunica anche durante la sessione (serie, riposo, fine),
+  senza fare diagnosi o bloccare la registrazione. La notifica del timer
+  è mostrata come avviso dettagliato solo quando non è funzionante.
+- Versione 1.2.0, versionCode 20. La pipeline di release firma l'APK
+  e controlla compatibilità con il certificato della stabile v1.1.0.
