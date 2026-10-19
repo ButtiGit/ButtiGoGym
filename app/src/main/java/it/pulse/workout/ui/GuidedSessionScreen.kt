@@ -236,12 +236,38 @@ fun GuidedSessionScreen(
             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
+            item(key = "contextual-coach") {
+                val line = CoachConversation.inSession(
+                    exercise = exercise,
+                    setNumber = draft.guidedWorkSet,
+                    resting = inRest,
+                    remainingSeconds = remainingSeconds,
+                    completed = allDone,
+                    weight = quickInput.weight,
+                    reps = quickInput.reps,
+                    valid = quickInput.valid,
+                    rir = quickInput.actualRir,
+                    warmup = quickInput.warmup
+                )
                 MascotCoachCard(
-                    it.pulse.workout.data.MascotCoach.inSession(
-                        resting = inRest, completed = allDone
-                    ),
-                    small = true
+                    message = line.message,
+                    title = line.title,
+                    pose = line.pose,
+                    small = true,
+                    actionLabel = line.actionLabel,
+                    onAction = when (line.action) {
+                        CoachAction.FINISH -> ({ finishDialog = true })
+                        CoachAction.END_REST -> ({
+                            onUpdate(draft.copy(restUntilMillis = 0L))
+                        })
+                        CoachAction.RECORD_SET -> ({ saveQuickSet() })
+                        CoachAction.NONE -> null
+                    },
+                    selectedRir = quickInput.actualRir,
+                    onRir = if (!inRest && !allDone && exercise != null &&
+                        quickInput.valid && !quickInput.warmup)
+                        ({ value -> changeQuickInput(quickInput.copy(actualRir = value)) })
+                    else null
                 )
             }
             if (!notificationsVisible || timerStatus.startsWith("error:")) item {
