@@ -1,16 +1,12 @@
 package it.pulse.workout.ui
 
 import android.Manifest
-import android.graphics.Bitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
 import it.pulse.workout.MainActivity
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
 
 class AppNavigationTest {
     @get:Rule(order = 0) val permissions = GrantPermissionRule.grant(
@@ -37,10 +33,6 @@ class AppNavigationTest {
     }
 
     private fun capture(name: String) {
-        rule.waitForIdle()
-        val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val dir = File(context.getExternalFilesDir(null), "screenshots").apply { mkdirs() }
-        File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        saveTestScreenshot(rule, name)
     }
 }

@@ -1,17 +1,13 @@
 package it.pulse.workout.ui
 
-import android.graphics.Bitmap
 import androidx.compose.runtime.*
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.test.platform.app.InstrumentationRegistry
 import it.pulse.workout.data.*
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
-import java.io.File
 
 class GuidedDialogueTest {
     @get:Rule val rule = createComposeRule()
@@ -108,10 +104,6 @@ class GuidedDialogueTest {
     }
 
     private fun capture(name: String) {
-        rule.waitForIdle()
-        val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val dir = File(context.getExternalFilesDir(null), "screenshots").apply { mkdirs() }
-        File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        saveTestScreenshot(rule, name)
     }
 }

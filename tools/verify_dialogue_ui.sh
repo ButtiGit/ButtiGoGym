@@ -4,5 +4,8 @@ set -u
 gradle --no-daemon :app:connectedDebugAndroidTest
 result=$?
 mkdir -p ui-screenshots
-adb pull /sdcard/Android/data/it.pulse.workout/files/screenshots/. ui-screenshots/ || true
+adb pull /sdcard/Pictures/ButtiGoGymQA/. ui-screenshots/ || true
+if [[ "$result" -eq 0 ]]; then
+  test -s ui-screenshots/00-home.png && test -s ui-screenshots/04-recupero.png || result=1
+fi
 exit "$result"
