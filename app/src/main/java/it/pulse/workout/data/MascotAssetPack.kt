@@ -19,6 +19,12 @@ object MascotAssetPack {
     fun hasPack(context: Context): Boolean =
         File(context.filesDir, "coach-poses/home.webp").isFile
 
+    /** Immagini del coach sempre disponibili direttamente dall'APK. */
+    fun bundledDrawable(context: Context, pose: CoachPose): Int =
+        context.resources.getIdentifier(
+            "mascot_${pose.asset.removeSuffix(".webp")}", "drawable", context.packageName
+        ).takeIf { it != 0 } ?: it.pulse.workout.R.drawable.buttigogym_mascot
+
     fun imageFor(context: Context, pose: CoachPose): File? {
         val dir = File(context.filesDir, "coach-poses")
         val preferred = File(dir, pose.asset)

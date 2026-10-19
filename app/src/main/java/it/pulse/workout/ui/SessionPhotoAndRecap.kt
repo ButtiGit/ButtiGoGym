@@ -151,26 +151,50 @@ internal fun SessionPhotoAndRecap(
                 StatRecap("DURATA", formatDuration(stats.durationSeconds.toLong()), Modifier.weight(1f))
                 StatRecap("KCAL ≈", "${stats.estimatedCalories}", Modifier.weight(1f))
             }
-            Spacer(Modifier.height(8.dp))
-            Text("Volume = kg × ripetizioni di ogni serie allenante; trasporti a tempo e riscaldamento esclusi.",
-                color = PulseColors.Muted, fontSize = 10.sp)
-            Text("Calorie indicative (MET 5,0 e 58 kg), non misurate da un sensore.",
-                color = PulseColors.Muted, fontSize = 10.sp)
+
         }
     }
     Spacer(Modifier.height(13.dp))
     Button(
-        onClick = { exporter.launch("ButtiGoGym-Recap-${record.id}.png") },
+        onClick = {
+            if (!busy && photo != null) {
+                busy = true
+                scope.launch {
+                    runCatching {
+                        withContext(Dispatchers.IO) {
+                            WorkoutRecapImage.share(context, record, day)
+                        }
+                    }.onSuccess { intent ->
+                        runCatching {
+                            context.startActivity(android.content.Intent.createChooser(intent, "Condividi il workout"))
+                        }.onFailure { notifyUser("Nessuna app disponibile per condividere") }
+                    }.onFailure {
+                        notifyUser("Condivisione non riuscita: ${it.message.orEmpty().take(75)}")
+                    }
+                    busy = false
+                }
+            }
+        },
         enabled = photo != null && !busy,
         modifier = Modifier.fillMaxWidth().height(52.dp),
         shape = RoundedCornerShape(15.dp),
         colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
     ) {
-        Text("Recap WO  ·  Scarica immagine", fontWeight = FontWeight.ExtraBold,
-            color = Color.White)
+        Text("Condividi il recap ↗", fontWeight = FontWeight.Bold, color = Color.White)
+    }
+    Spacer(Modifier.height(8.dp))
+    OutlinedButton(
+        onClick = { exporter.launch("ButtiGoGym-Recap-${record.id}.png") },
+        enabled = photo != null && !busy,
+        modifier = Modifier.fillMaxWidth().height(52.dp),
+        shape = RoundedCornerShape(15.dp),
+        border = BorderStroke(1.dp, PulseColors.Border)
+    ) {
+        Text("Salva immagine", fontWeight = FontWeight.SemiBold,
+            color = PulseColors.Accent)
     }
     if (photo == null) {
-        Text("Allega prima una foto per esportare il recap.",
+        Text("Allega una foto per condividere o salvare il recap.",
             color = PulseColors.Muted, fontSize = 11.sp)
     }
     if (feedback.isNotEmpty()) {
