@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.platform.LocalContext
 import it.pulse.workout.data.*
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -58,6 +59,11 @@ fun MyselfScreen(
 ) {
 
     var page by rememberSaveable { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    // Refresh the bodyweight after returning from the measurements diary too.
+    val rankingWeightKg = remember(page, latestWeightKg) {
+        BodyProgressStore(context).latestWeightKg() ?: latestWeightKg
+    }
     var selected by rememberSaveable { mutableStateOf("chest") }
     var showBack by rememberSaveable { mutableStateOf(false) }
     when (page) {
@@ -65,7 +71,7 @@ fun MyselfScreen(
         "body" -> { BodyProgressScreen(onBack = { page = null }); return }
         "analytics" -> { TrainingAnalyticsScreen(history) { page = null }; return }
         "strength" -> {
-            StrengthRanksScreen(history, latestWeightKg,
+            StrengthRanksScreen(history, rankingWeightKg,
                 onBack = { page = null },
                 onSelectMuscle = { id -> selected = id; page = null },
                 onEditWeight = { page = "settings" })
@@ -78,8 +84,8 @@ fun MyselfScreen(
         while (true) { clock = System.currentTimeMillis(); kotlinx.coroutines.delay(60_000) }
     }
     val report = remember(history, clock) { MuscleAnalytics.analyze(history, clock) }
-    val strength = remember(history, latestWeightKg) {
-        StrengthRanking.evaluate(history, latestWeightKg).associateBy { it.group.id }
+    val strength = remember(history, rankingWeightKg) {
+        StrengthRanking.evaluate(history, rankingWeightKg).associateBy { it.group.id }
     }
     val muscle = report.muscles.firstOrNull { it.group.id == selected } ?: report.muscles.first()
     val totalXp = report.muscles.sumOf { it.xp }
