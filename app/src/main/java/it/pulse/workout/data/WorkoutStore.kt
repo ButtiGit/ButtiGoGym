@@ -23,6 +23,13 @@ class WorkoutStore(context: Context) {
         )
     }.getOrNull()
 
+    /**
+     * Scarta solo la bozza attiva, senza aggiungere alcuna sessione allo storico.
+     * Scrittura sincrona: la sessione non può riapparire al riavvio dopo la conferma.
+     */
+    fun discardDraft(): Boolean =
+        preferences.edit().remove("active_draft").commit()
+
     fun saveDraft(draft: WorkoutDraft?) {
         if (draft == null) {
             preferences.edit().remove("active_draft").apply()

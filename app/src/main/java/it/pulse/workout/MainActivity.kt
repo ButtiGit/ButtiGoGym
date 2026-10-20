@@ -728,6 +728,15 @@ private fun PulseApp(
                             sessionVisible = false
                             tab = 3
                         },
+                        onDiscard = {
+                            if (store.discardDraft()) {
+                                draft = null
+                                sessionVisible = false
+                                notificationUiTick++
+                            } else {
+                                Toast.makeText(context, "Impossibile scartare la sessione, riprova", Toast.LENGTH_LONG).show()
+                            }
+                        },
                         onReset = {
                             val restarted = draft?.restarted(System.currentTimeMillis())
                             if (restarted != null) {

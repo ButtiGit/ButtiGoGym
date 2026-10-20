@@ -16,10 +16,11 @@ class GuidedDialogueTest {
     private var draft = mutableStateOf(WorkoutDraft(day.id, System.currentTimeMillis()))
     private var updates = 0
 
-    @Composable private fun Screen() {
+    @Composable private fun Screen(onDiscard: () -> Unit = {}) {
         PulseTheme {
             GuidedSessionScreen(day, draft.value, emptyList(), false, {},
-                { updates++; draft.value = it }, {}, {}, true, null, "running", {}, {}, {}, {})
+                { updates++; draft.value = it }, {}, {}, true, null, "running", {}, {}, {}, {},
+                onDiscard = onDiscard)
         }
     }
 
@@ -100,6 +101,28 @@ class GuidedDialogueTest {
             assertEquals(1, draft.value.warmups(exercise).size)
             assertEquals(1, draft.value.guidedWorkSet)
             assertFalse(draft.value.entry(exercise, 1).done)
+        }
+    }
+
+    @Test fun discardIsConfirmedAndDoesNotCallFinishOrUpdate() {
+        var discarded = false
+        var finished = false
+        rule.setContent {
+            PulseTheme {
+                GuidedSessionScreen(day, draft.value, emptyList(), false, {},
+                    { updates++; draft.value = it },
+                    { finished = true }, {}, true, null, "running", {}, {}, {}, {},
+                    onDiscard = { discarded = true })
+            }
+        }
+        rule.onNodeWithContentDescription("Opzioni allenamento").performClick()
+        rule.onNodeWithText("Scarta allenamento · non salvare").performClick()
+        rule.onNodeWithText("Scartare l'allenamento?").assertIsDisplayed()
+        rule.onNodeWithText("Scarta definitivamente").performClick()
+        rule.runOnIdle {
+            assertTrue(discarded)
+            assertFalse(finished)
+            assertEquals(0, updates)
         }
     }
 

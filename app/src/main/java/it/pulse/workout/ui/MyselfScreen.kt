@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.platform.LocalContext
 import it.pulse.workout.data.*
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
@@ -58,18 +59,34 @@ fun MyselfScreen(
 ) {
 
     var page by rememberSaveable { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    // Refresh the bodyweight after returning from the measurements diary too.
+    val rankingWeightKg = remember(page, latestWeightKg) {
+        BodyProgressStore(context).latestWeightKg() ?: latestWeightKg
+    }
+    var selected by rememberSaveable { mutableStateOf("chest") }
+    var showBack by rememberSaveable { mutableStateOf(false) }
     when (page) {
         "settings" -> { PersonalSettingsScreen(settings, latestWeightKg, onSaveSettings) { page = null }; return }
         "body" -> { BodyProgressScreen(onBack = { page = null }); return }
         "analytics" -> { TrainingAnalyticsScreen(history) { page = null }; return }
+        "strength" -> {
+            StrengthRanksScreen(history, rankingWeightKg,
+                onBack = { page = null },
+                onSelectMuscle = { id -> selected = id; page = null },
+                onEditWeight = { page = "settings" })
+            return
+        }
     }
-    var selected by rememberSaveable { mutableStateOf("chest") }
     var modal by rememberSaveable { mutableStateOf<String?>(null) }
     var clock by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) { clock = System.currentTimeMillis(); kotlinx.coroutines.delay(60_000) }
     }
     val report = remember(history, clock) { MuscleAnalytics.analyze(history, clock) }
+    val strength = remember(history, rankingWeightKg) {
+        StrengthRanking.evaluate(history, rankingWeightKg).associateBy { it.group.id }
+    }
     val muscle = report.muscles.firstOrNull { it.group.id == selected } ?: report.muscles.first()
     val totalXp = report.muscles.sumOf { it.xp }
     val level = MuscleAnalytics.levelFromXp(totalXp / 4)
@@ -87,16 +104,57 @@ fun MyselfScreen(
             }
         }
         item {
+            MyselfCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Mappa muscolare", modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = PulseColors.Foreground)
+                    Text("Recupero", color = PulseColors.Muted,
+                        style = MaterialTheme.typography.labelMedium)
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(selected = !showBack, onClick = { showBack = false },
+                        label = { Text("Fronte") })
+                    FilterChip(selected = showBack, onClick = { showBack = true },
+                        label = { Text("Retro") })
+                }
+                Spacer(Modifier.height(6.dp))
+                MuscleFigure(back = showBack, muscles = report.muscles,
+                    selected = selected, onSelected = { selected = it },
+                    modifier = Modifier.fillMaxWidth().height(390.dp)
+                        .clip(RoundedCornerShape(18.dp)))
+                Spacer(Modifier.height(11.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LegendDot("Pronti", readyColor)
+                    LegendDot("Recupero", recoveryColor)
+                    LegendDot("Oggi", trainedColor)
+                }
+                Spacer(Modifier.height(5.dp))
+                LegendDot("Senza storico", neverColor)
+                Spacer(Modifier.height(9.dp))
+                Text(muscle.group.label + " · " + shortStatus(muscle),
+                    color = PulseColors.Foreground,
+                    style = MaterialTheme.typography.titleSmall)
+                Text("Tocca il muscolo per selezionarlo. Il recupero resta una stima.",
+                    color = PulseColors.Muted,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        item {
             TextButton(onClick = { modal = "muscles" }) {
                 Text(muscle.group.label, style = MaterialTheme.typography.titleLarge)
                 Icon(Icons.Default.KeyboardArrowDown, "Scegli muscolo")
             }
         }
         item {
-            MascotCoachCard("${muscle.group.label}: ${shortStatus(muscle).lowercase(Locale.ITALIAN)}. Vediamo i tuoi progressi?",
-                pose = CoachConversation.poseForMuscle(muscle.group.label))
+            BGPrimaryButton("🏅 Rank di forza", { page = "strength" })
         }
-        item { BGPrimaryButton("Dettagli muscolo", { modal = "detail" }) }
+        item {
+            TextButton(onClick = { modal = "detail" }, modifier = Modifier.fillMaxWidth()) {
+                Text("Dettagli e livello di " + muscle.group.label)
+            }
+        }
         item {
             TextButton(onClick = { modal = "level" }, modifier = Modifier.fillMaxWidth()) {
                 Text("Livello $level · ${number.format(totalXp)} XP")
@@ -116,6 +174,7 @@ fun MyselfScreen(
                 TextButton(onClick = { modal = null; page = "body" }) { Text("Misure, peso e foto") }
                 TextButton(onClick = { modal = "balance" }) { Text("Equilibrio del programma") }
                 TextButton(onClick = { modal = "level" }) { Text("Livello e recupero") }
+                TextButton(onClick = { modal = null; page = "strength" }) { Text("Rank di forza e legenda") }
                 TextButton(onClick = { modal = null; page = "settings" }) { Text("Impostazioni personali") }
             }
             "muscles" -> report.muscles.forEach { value ->
@@ -145,6 +204,15 @@ fun MyselfScreen(
                 Text("${number.format(muscle.levelCurrentXp)} / ${number.format(muscle.levelRequiredXp)} XP", color = PulseColors.Muted)
                 muscle.bestEstimatedStrengthKg?.let { Text("Miglior 1RM stimato: ${number.format(it)} kg") }
                 muscle.topSet?.let { Text("Miglior serie: $it") }
+                strength[muscle.group.id]?.let { result ->
+                    Text("Rank di forza: " + (result.tier?.name ?: "Non classificato"),
+                        color = PulseColors.Accent,
+                        style = MaterialTheme.typography.titleSmall)
+                    result.evidence?.let { Text("Prestazione migliore: " + it) }
+                    Text("Il rank dipende da una singola prestazione confrontabile, non dalle serie accumulate.",
+                        color = PulseColors.Muted,
+                        style = MaterialTheme.typography.bodySmall)
+                }
                 Text("Il recupero è una stima. Volume, XP e livelli descrivono le serie registrate.", color = PulseColors.Muted)
                 if (active != null) Text("La sessione in corso conta dopo il salvataggio.", color = PulseColors.Muted)
             }
