@@ -24,13 +24,13 @@ private data class PulsePalette(
 
 /** Light-mode identity: #106119. Dark mode retains a contrasting, recognizable green. */
 private val LightPalette = PulsePalette(
-    Color(0xFFF5F5F7), Color.White, Color(0xFFF0F0F2),
+    Color(0xFFF3F6F0), Color.White, Color(0xFFECF1E8),
     Color(0xFFE9F3EA), Color(0xFF106119), Color(0xFF083C15),
     Color(0xFFF1A6B7), Color(0xFF1D1D1F), Color(0xFF68686D),
-    Color(0xFFE5E5EA), Color.White
+    Color(0xFFDCE5D6), Color.White
 )
 private val DarkPalette = PulsePalette(
-    Color(0xFF000000), Color(0xFF1C1C1E), Color(0xFF2C2C2E),
+    Color(0xFF0C130F), Color(0xFF152019), Color(0xFF202D23),
     Color(0xFF203C27), Color(0xFF2B8643), Color(0xFF8FDCA0),
     Color(0xFFE5A2B2), Color(0xFFE6F0E8), Color(0xFFA4B7A8),
     Color(0xFF34483A), Color.White
@@ -87,13 +87,23 @@ private val pulseShapes = Shapes(
 @Composable
 fun PulseTheme(darkTheme: Boolean = false, content: @Composable () -> Unit) {
     val palette = if (darkTheme) DarkPalette else LightPalette
+    val action = if (darkTheme) palette.accentDeep else palette.accent
+    val onAction = if (darkTheme) Color(0xFF083C15) else palette.onAccent
     val scheme = if (darkTheme) darkColorScheme(
-        primary = palette.accent,
-        onPrimary = palette.onAccent,
+        primary = action,
+        onPrimary = onAction,
         primaryContainer = palette.softGreen,
         onPrimaryContainer = palette.foreground,
-        secondary = palette.accent,
-        onSecondary = palette.onAccent,
+        secondary = action,
+        onSecondary = onAction,
+        secondaryContainer = palette.softGreen,
+        onSecondaryContainer = palette.foreground,
+        tertiary = palette.accentDeep,
+        tertiaryContainer = palette.softGreen,
+        onTertiaryContainer = palette.foreground,
+        surfaceContainer = palette.surface,
+        surfaceContainerHigh = palette.raised,
+        surfaceContainerHighest = palette.raised,
         background = palette.background,
         onBackground = palette.foreground,
         surface = palette.surface,
@@ -103,12 +113,20 @@ fun PulseTheme(darkTheme: Boolean = false, content: @Composable () -> Unit) {
         outline = palette.border,
         outlineVariant = palette.border
     ) else lightColorScheme(
-        primary = palette.accent,
-        onPrimary = palette.onAccent,
+        primary = action,
+        onPrimary = onAction,
         primaryContainer = palette.softGreen,
         onPrimaryContainer = palette.accent,
-        secondary = palette.accent,
-        onSecondary = palette.onAccent,
+        secondary = action,
+        onSecondary = onAction,
+        secondaryContainer = palette.softGreen,
+        onSecondaryContainer = palette.foreground,
+        tertiary = palette.accentDeep,
+        tertiaryContainer = palette.softGreen,
+        onTertiaryContainer = palette.foreground,
+        surfaceContainer = palette.surface,
+        surfaceContainerHigh = palette.raised,
+        surfaceContainerHighest = palette.raised,
         background = palette.background,
         onBackground = palette.foreground,
         surface = palette.surface,

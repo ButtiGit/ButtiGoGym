@@ -78,7 +78,7 @@ fun MascotCoachCard(
 ) {
     val context = LocalContext.current
     val accessibility = remember(context) { context.getSystemService(AccessibilityManager::class.java) }
-    val animate = BGMotion.duration(1) > 0 && accessibility?.isTouchExplorationEnabled != true
+    val animate = !small && BGMotion.duration(1) > 0 && accessibility?.isTouchExplorationEnabled != true
     var visible by rememberSaveable(message) { mutableIntStateOf(if (animate) 0 else message.length) }
     val boundaries = remember(message) {
         val iterator = BreakIterator.getCharacterInstance(Locale.ITALIAN).apply { setText(message) }
@@ -94,6 +94,23 @@ fun MascotCoachCard(
         }
     }
     var voiceOpen by remember { mutableStateOf(false) }
+    if (small) {
+        Surface(color = PulseColors.SoftGreen, shape = RoundedCornerShape(20.dp)) {
+            Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                MascotPoseImage(pose, Modifier.width(68.dp).height(80.dp), portrait = true)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(title, color = PulseColors.AccentDeep, style = MaterialTheme.typography.labelMedium)
+                    Text(message, color = PulseColors.Foreground, style = MaterialTheme.typography.bodyMedium)
+                }
+                IconButton(onClick = { voiceOpen = true }, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Default.VolumeUp, "Ascolta il dialogo", tint = PulseColors.AccentDeep)
+                }
+            }
+        }
+        if (voiceOpen) CoachVoiceDialog(message, onDismiss = { voiceOpen = false })
+        return
+    }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         val floating = rememberInfiniteTransition(label = "Butty fluttua")
         val wave by floating.animateFloat(
@@ -128,7 +145,7 @@ fun MascotCoachCard(
             bottomStart = 24.dp, bottomEnd = 24.dp)) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Butty", color = PulseColors.Accent, fontSize = 14.sp,
+                    Text("Butty", color = PulseColors.AccentDeep, fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                     IconButton(onClick = { voiceOpen = true }, modifier = Modifier.size(48.dp)) {
                         Icon(Icons.Default.VolumeUp, "Ascolta il dialogo", modifier = Modifier.size(20.dp),
