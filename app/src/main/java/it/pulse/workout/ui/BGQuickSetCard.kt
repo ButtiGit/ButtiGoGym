@@ -15,6 +15,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.text.font.FontWeight
@@ -32,7 +34,16 @@ internal fun BGQuickSetCard(
     input: QuickSetValues, timeBased: Boolean, previous: SetEntry?,
     onChange: (QuickSetValues) -> Unit
 ) {
-    var increment by rememberSaveable { mutableIntStateOf(2) }
+    val context = LocalContext.current
+    val prefs = remember(context) { context.getSharedPreferences("workout_entry_ui", android.content.Context.MODE_PRIVATE) }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focus = LocalFocusManager.current
+    fun picked(value: QuickSetValues) {
+        keyboard?.hide()
+        focus.clearFocus()
+        onChange(value)
+    }
+    var increment by rememberSaveable { mutableIntStateOf(prefs.getInt("weight_step", 2).coerceIn(0, 3)) }
     var showEffort by rememberSaveable { mutableStateOf(false) }
     val weightStep = listOf(.5, 1.0, 2.5, 5.0)[increment]
     BGCard(modifier = Modifier.animateContentSize(tween(BGMotion.duration(180))), padding = 16.dp) {
@@ -46,24 +57,28 @@ internal fun BGQuickSetCard(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             QuickValue(input.weight, "Peso · kg", true, Modifier.weight(1f),
                 { if (it.length <= 7 && it.all { c -> c.isDigit() || c == ',' || c == '.' }) onChange(input.copy(weight = it)) },
-                { onChange(input.adjustKg(-weightStep)) }, { onChange(input.adjustKg(weightStep)) })
+                { picked(input.adjustKg(-weightStep)) }, { picked(input.adjustKg(weightStep)) })
             QuickValue(input.reps, if (timeBased) "Secondi" else "Ripetizioni", false, Modifier.weight(1f),
                 { if (it.length <= 3 && it.all(Char::isDigit)) onChange(input.copy(reps = it)) },
-                { onChange(input.adjustReps(-1)) }, { onChange(input.adjustReps(1)) })
+                { picked(input.adjustReps(-1)) }, { picked(input.adjustReps(1)) })
         }
-        TextButton(onClick = { increment = (increment + 1) % 4 }, modifier = Modifier.heightIn(min = 48.dp)) {
+        TextButton(onClick = {
+            keyboard?.hide(); focus.clearFocus()
+            increment = (increment + 1) % 4
+            prefs.edit().putInt("weight_step", increment).apply()
+        }, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("Passo peso: ${formatKgForWorkout(weightStep)} kg · cambia")
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             (if (timeBased) listOf(30, 45, 60) else listOf(8, 10, 12)).forEach { amount ->
                 FilterChip(selected = input.reps == amount.toString(),
-                    onClick = { onChange(input.copy(reps = amount.toString())) },
+                    onClick = { picked(input.copy(reps = amount.toString())) },
                     label = { Text("$amount ${if (timeBased) "sec" else "rep"}") },
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp))
             }
         }
         if (previous != null && previous.done && !previous.warmup) {
-            TextButton(onClick = { onChange(input.withPreviousSet(previous)) }, modifier = Modifier.fillMaxWidth()) {
+            TextButton(onClick = { picked(input.withPreviousSet(previous)) }, modifier = Modifier.fillMaxWidth()) {
                 Text("Ripeti ultima · ${previous.weight} kg × ${previous.reps}${if (timeBased) " sec" else " rep"}")
             }
         } else Text("Corpo libero? Imposta 0 kg.", color = PulseColors.Muted,
