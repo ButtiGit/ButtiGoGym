@@ -32,8 +32,8 @@ class StrengthRanksScreenTest {
         rule.setContent { PulseTheme {
             StrengthRanksScreen(listOf(record), 60.0, {}, { selected = it }, {})
         } }
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Petto"))
-        rule.onNodeWithText("Petto").performClick()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Pettorali"))
+        rule.onNodeWithText("Pettorali").performClick()
         rule.onNodeWithText("Vedi il muscolo →").performScrollTo().assertIsDisplayed()
         saveTestScreenshot(rule, "10-rank-expanded")
         rule.onNodeWithText("Vedi il muscolo →").performClick()
