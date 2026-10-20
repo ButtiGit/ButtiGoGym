@@ -146,4 +146,4 @@ jobs:
             "$RUNNER_TEMP/release/ButtiGoGym-$RELEASE_VERSION-STABLE.apk.sha256" \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "ButtiGoGym $RELEASE_VERSION" \
-            --notes "ButtiGoGym 1.8.0: corretto il crash dei badge nel Rank di forza; nuova identità verde, schede personali, medaglioni dei rank, dettagli espandibili, progressi verso il prossimo badge e timbri settimanali. Mascotte originale e aggiornamenti dall’app mantenuti. Firma verificata rispetto alla precedente release stabile; dati conservati con aggiornamento compatibile."
+            --notes "ButtiGoGym 1.9.0: nuova palette coerente verde/salvia anche in modalità scura; Home focalizzata sull’allenamento; mascotte compatta; inserimento rapido di peso e ripetizioni, passi regolabili, richiami dell’ultima serie, RIR facoltativo e modalità guidata selezionabile. Salvataggio sempre esplicito, recupero e annullamento mantenuti. Firma confrontata con la release stabile precedente per l’aggiornamento dall’app."

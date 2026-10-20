@@ -146,7 +146,7 @@ fun DashboardScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("ButtiGoGym", style = MaterialTheme.typography.headlineMedium, color = PulseColors.Foreground)
+                    Text("ButtiGoGym", style = MaterialTheme.typography.headlineSmall, color = PulseColors.Accent)
                     Text(today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.ITALIAN)),
                         color = PulseColors.Muted, style = MaterialTheme.typography.bodyMedium)
                 }
@@ -157,15 +157,6 @@ fun DashboardScreen(
                     Icon(Icons.Default.Settings, "Strumenti e aggiornamenti", tint = PulseColors.Foreground)
                 }
             }
-        }
-        item {
-            MascotCoachCard(MascotCoach.today(active != null, summary.restedToday, summary.workoutToday,
-                summary.workoutDaysThisWeek, personalSettings.weeklyWorkouts), pose = when {
-                active != null -> CoachPose.READY
-                summary.workoutToday -> CoachPose.DONE
-                summary.restedToday -> CoachPose.REST
-                else -> CoachPose.HOME
-            })
         }
         item {
             BGCard(padding = 20.dp) {
@@ -182,6 +173,15 @@ fun DashboardScreen(
                 Spacer(Modifier.height(20.dp))
                 BGPrimaryButton(if (active != null) "Riprendi" else "Inizia", { onStart(current) })
             }
+        }
+        item {
+            MascotCoachCard(MascotCoach.today(active != null, summary.restedToday, summary.workoutToday,
+                summary.workoutDaysThisWeek, personalSettings.weeklyWorkouts), small = true, pose = when {
+                active != null -> CoachPose.READY
+                summary.workoutToday -> CoachPose.DONE
+                summary.restedToday -> CoachPose.REST
+                else -> CoachPose.HOME
+            })
         }
         item {
             BGCard(modifier = Modifier.clickable { modal = "week" }, padding = 16.dp) {

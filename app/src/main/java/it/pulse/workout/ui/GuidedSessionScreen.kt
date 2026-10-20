@@ -76,6 +76,9 @@ fun GuidedSessionScreen(
     onRetryTimer: () -> Unit,
     onDiscard: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val entryPrefs = remember(context) { context.getSharedPreferences("workout_entry_ui", android.content.Context.MODE_PRIVATE) }
+    var guidedInput by rememberSaveable { mutableStateOf(entryPrefs.getBoolean("guided", false)) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(draft.startedAt) {
         while (true) { now = System.currentTimeMillis(); delay(1000) }
@@ -116,7 +119,7 @@ fun GuidedSessionScreen(
     fun change(value: QuickSetValues) { pending = pending + (inputKey to value) }
     fun navigate(index: Int) { hideKeyboard(); modal = null; onUpdate(draft.navigateToExercise(day, index)) }
     fun back() {
-        if (!inRest && !allDone && step != GuidedSetStep.WEIGHT) {
+        if (guidedInput && !inRest && !allDone && step != GuidedSetStep.WEIGHT) {
             hideKeyboard(); step = step.previous(input)
         } else onBack()
     }
@@ -126,9 +129,9 @@ fun GuidedSessionScreen(
         if (inRest) {
             onUpdate(draft.copy(restUntilMillis = 0)); return
         }
-        if (!step.accepts(input)) return
+        if (if (guidedInput) !step.accepts(input) else !input.valid) return
         hideKeyboard()
-        if (step != GuidedSetStep.REVIEW) { step = step.next(input); return }
+        if (guidedInput && step != GuidedSetStep.REVIEW) { step = step.next(input); return }
         val updated = runCatching { draft.recordSet(
             day, input.weight.replace(',', '.'), input.reps, input.warmup,
             System.currentTimeMillis(), if (input.warmup) null else input.actualRir
@@ -145,6 +148,7 @@ fun GuidedSessionScreen(
     val line = when {
         allDone -> "Bel lavoro! Salviamo il tuo allenamento?"
         inRest -> "Respira. Ripartiamo quando sei pronto."
+        !guidedInput -> "Peso, ripetizioni e via. Salva quando hai finito la serie."
         step == GuidedSetStep.WEIGHT -> "Una serie alla volta. Quanti kg usi?"
         step == GuidedSetStep.REPS -> if (exercise?.timeBased == true)
             "Quanto è durata la serie?" else "Quante ripetizioni hai completato?"
@@ -161,7 +165,8 @@ fun GuidedSessionScreen(
             }
             Column(Modifier.weight(1f)) {
                 Text(day.name, style = MaterialTheme.typography.titleSmall, color = PulseColors.Foreground)
-                Text(formatDuration(elapsed), style = MaterialTheme.typography.bodySmall, color = PulseColors.Muted)
+                Text("${complete}/${day.setCount} serie · ${formatDuration(elapsed)}",
+                    style = MaterialTheme.typography.labelMedium, color = PulseColors.Accent)
             }
             IconButton(onClick = { hideKeyboard(); modal = "options" }) {
                 Icon(Icons.Default.MoreHoriz, "Opzioni allenamento", tint = PulseColors.Foreground)
@@ -202,6 +207,15 @@ fun GuidedSessionScreen(
                         TextButton(onClick = { onUpdate(draft.copy(restUntilMillis = draft.restUntilMillis + 15_000)) }) {
                             Text("+15 s")
                         }
+                    }
+                }
+                !guidedInput && exercise != null -> {
+                    val lastInSession = recorded.lastOrNull { it.exercise.id == exercise.id && !it.warmup }?.entry
+                    val old = advice?.previous(draft.guidedWorkSet)
+                    val previous = lastInSession ?: old?.let { SetEntry(
+                        weight = formatKgForWorkout(it.weightKg), reps = it.repetitions.toString(), done = true) }
+                    key(draft.startedAt, inputKey) {
+                        BGQuickSetCard(input, exercise.timeBased, previous, onChange = ::change)
                     }
                 }
                 step == GuidedSetStep.WEIGHT || step == GuidedSetStep.REPS -> {
@@ -270,10 +284,10 @@ fun GuidedSessionScreen(
             BGPrimaryButton(label = when {
                 allDone -> "Salva allenamento"
                 inRest -> "Sono pronto"
-                step == GuidedSetStep.REVIEW -> if (input.warmup) "Salva riscaldamento" else "Salva serie"
+                !guidedInput || step == GuidedSetStep.REVIEW -> if (input.warmup) "Salva riscaldamento" else "Salva serie"
                 step == GuidedSetStep.EFFORT && input.actualRir == null -> "Salta"
                 else -> "Continua"
-            }, onClick = ::advance, enabled = allDone || inRest || step.accepts(input),
+            }, onClick = ::advance, enabled = allDone || inRest || (if (guidedInput) step.accepts(input) else input.valid),
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp))
         }
     }
@@ -288,6 +302,12 @@ fun GuidedSessionScreen(
     }, onDismiss = { modal = null }) {
         when (modal) {
             "options" -> {
+                TextButton(onClick = {
+                    guidedInput = !guidedInput
+                    entryPrefs.edit().putBoolean("guided", guidedInput).apply()
+                    step = GuidedSetStep.WEIGHT
+                    modal = null
+                }) { Text(if (guidedInput) "Passa all’inserimento rapido" else "Passa all’inserimento passo passo") }
                 if (exercise != null) {
                     TextButton(onClick = { modal = "technique" }) { Text("Tecnica e dimostrazione") }
                     TextButton(onClick = { modal = "exercises" }) { Text("Cambia esercizio") }

@@ -8,8 +8,16 @@ import it.pulse.workout.data.*
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
+import org.junit.Before
+import org.junit.After
+import androidx.test.platform.app.InstrumentationRegistry
 
 class GuidedDialogueTest {
+    private val prefs get() = InstrumentationRegistry.getInstrumentation().targetContext
+        .getSharedPreferences("workout_entry_ui", android.content.Context.MODE_PRIVATE)
+    @Before fun useGuidedMode() { prefs.edit().putBoolean("guided", true).commit() }
+    @After fun clearEntryMode() { prefs.edit().clear().commit() }
+
     @get:Rule val rule = createComposeRule()
     private val exercise = Exercise("bench", "Panca", "PETTO", 2, "8–12", restSeconds = 90)
     private val day = WorkoutDay("test", "Lunedì", "Petto", "", "30 min", listOf(exercise))

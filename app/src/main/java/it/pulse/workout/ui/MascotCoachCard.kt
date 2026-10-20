@@ -78,7 +78,7 @@ fun MascotCoachCard(
 ) {
     val context = LocalContext.current
     val accessibility = remember(context) { context.getSystemService(AccessibilityManager::class.java) }
-    val animate = BGMotion.duration(1) > 0 && accessibility?.isTouchExplorationEnabled != true
+    val animate = !small && BGMotion.duration(1) > 0 && accessibility?.isTouchExplorationEnabled != true
     var visible by rememberSaveable(message) { mutableIntStateOf(if (animate) 0 else message.length) }
     val boundaries = remember(message) {
         val iterator = BreakIterator.getCharacterInstance(Locale.ITALIAN).apply { setText(message) }
@@ -94,6 +94,23 @@ fun MascotCoachCard(
         }
     }
     var voiceOpen by remember { mutableStateOf(false) }
+    if (small) {
+        Surface(color = PulseColors.SoftGreen, shape = RoundedCornerShape(20.dp)) {
+            Row(Modifier.fillMaxWidth().padding(10.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                MascotPoseImage(pose, Modifier.width(68.dp).height(80.dp), portrait = true)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(title, color = PulseColors.Accent, style = MaterialTheme.typography.labelMedium)
+                    Text(message, color = PulseColors.Foreground, style = MaterialTheme.typography.bodyMedium)
+                }
+                IconButton(onClick = { voiceOpen = true }, modifier = Modifier.size(48.dp)) {
+                    Icon(Icons.Default.VolumeUp, "Ascolta il dialogo", tint = PulseColors.Accent)
+                }
+            }
+        }
+        if (voiceOpen) CoachVoiceDialog(message, onDismiss = { voiceOpen = false })
+        return
+    }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         val floating = rememberInfiniteTransition(label = "Butty fluttua")
         val wave by floating.animateFloat(

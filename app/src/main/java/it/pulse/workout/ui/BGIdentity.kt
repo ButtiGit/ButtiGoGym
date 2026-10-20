@@ -38,21 +38,16 @@ fun BGIdentityCard(eyebrow: String, title: String, subtitle: String, emblem: Str
             for (i in 1..4) drawCircle(Color.White.copy(alpha = .07f),
                 radius = (30 + i * 24).dp.toPx(), center = center, style = Stroke(1.dp.toPx()))
         }
-        Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(eyebrow, modifier = Modifier.weight(1f), color = Color(0xFFC0E5B9),
                     style = MaterialTheme.typography.labelSmall, letterSpacing = 1.3.sp)
                 Text(emblem, color = Color(0xFFE1F7BF), fontSize = 24.sp,
                     modifier = Modifier.clearAndSetSemantics {})
             }
-            Text(title, color = Color.White, style = MaterialTheme.typography.headlineSmall)
+            Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge)
             Text(subtitle, color = Color(0xFFE0EEDD), style = MaterialTheme.typography.bodyMedium)
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.clearAndSetSemantics {}) {
-                repeat(7) { index ->
-                    Box(Modifier.width(if (index == 0) 28.dp else 8.dp).height(4.dp)
-                        .background(Color(0xFFD3EE9F).copy(alpha = if (index == 0) 1f else .35f), CircleShape))
-                }
-            }
+
         }
     }
 }
