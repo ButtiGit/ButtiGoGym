@@ -2,6 +2,10 @@ package it.pulse.workout.ui
 
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -99,6 +103,10 @@ fun GuidedSessionScreen(
     var finishDialog by rememberSaveable { mutableStateOf(false) }
     var resetDialog by rememberSaveable { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var justSaved by remember { mutableStateOf(false) }
+    LaunchedEffect(justSaved) {
+        if (justSaved) { delay(1350); justSaved = false }
+    }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val haptics = LocalHapticFeedback.current
@@ -128,6 +136,7 @@ fun GuidedSessionScreen(
             pending = pending - inputKey
             step = GuidedSetStep.WEIGHT
             error = null
+            justSaved = true
             onUpdate(it)
         }.onFailure { error = it.message }
     }
@@ -156,8 +165,21 @@ fun GuidedSessionScreen(
                 Icon(Icons.Default.MoreHoriz, "Opzioni allenamento", tint = PulseColors.Foreground)
             }
         }
-        LinearProgressIndicator(progress = { (complete.toFloat() / day.setCount.coerceAtLeast(1)).coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(3.dp), color = PulseColors.Accent, trackColor = PulseColors.SoftGreen)
+        BGAnimatedProgress((complete.toFloat() / day.setCount.coerceAtLeast(1)).coerceIn(0f, 1f),
+            modifier = Modifier.padding(horizontal = 18.dp))
+        AnimatedVisibility(
+            visible = justSaved,
+            enter = fadeIn(tween(BGMotion.duration(180))),
+            exit = fadeOut(tween(BGMotion.duration(180)))
+        ) {
+            Surface(color = PulseColors.SoftGreen,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp)) {
+                Text("✨ Serie registrata! Continua così 💚",
+                    modifier = Modifier.padding(12.dp), color = PulseColors.Accent,
+                    style = MaterialTheme.typography.labelLarge)
+            }
+        }
         Column(Modifier.weight(1f).verticalScroll(scroll).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)) {
             if (exercise != null) {
@@ -177,8 +199,7 @@ fun GuidedSessionScreen(
                     if (day.cooldown.isNotBlank()) Text(day.cooldown, color = PulseColors.Muted)
                 }
                 inRest -> {
-                    Text(formatDuration(remaining), fontSize = 64.sp, fontWeight = FontWeight.SemiBold,
-                        color = PulseColors.Foreground, modifier = Modifier.align(Alignment.CenterHorizontally))
+                    BGBreathingTimer(remaining, exercise?.restSeconds ?: 90)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                         TextButton(onClick = { onUpdate(draft.copy(restUntilMillis =
                             (draft.restUntilMillis - 15_000).coerceAtLeast(now))) }) { Text("−15 s") }
@@ -206,6 +227,18 @@ fun GuidedSessionScreen(
                         keyboardOptions = KeyboardOptions(keyboardType = if (weight) KeyboardType.Decimal else KeyboardType.Number,
                             imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { advance() })
+                    )
+                    BGValueScrubber(
+                        raw = if (weight) input.weight else input.reps,
+                        onValueChange = { next ->
+                            if (weight) change(input.copy(weight = next))
+                            else change(input.copy(reps = next))
+                        },
+                        unit = if (weight) "kg" else if (exercise?.timeBased == true) "sec" else "rep",
+                        min = if (weight) 0f else 1f,
+                        max = if (weight) 250f else if (exercise?.timeBased == true) 300f else 50f,
+                        step = if (weight) 0.5f else 1f,
+                        decimal = weight
                     )
                     if (weight) {
                         val previous = advice?.previous(draft.guidedWorkSet)?.weightKg

@@ -185,8 +185,21 @@ fun DashboardScreen(
             }
         }
         item {
-            HomeAction("La settimana", "${summary.workoutDaysThisWeek}/${personalSettings.weeklyWorkouts}") {
-                modal = "week"
+            BGCard(modifier = Modifier.clickable { modal = "week" }, padding = 16.dp) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🎯 Obiettivo settimanale", modifier = Modifier.weight(1f),
+                        color = PulseColors.Foreground, style = MaterialTheme.typography.titleSmall)
+                    Text("${summary.workoutDaysThisWeek}/${personalSettings.weeklyWorkouts}",
+                        color = PulseColors.Accent, style = MaterialTheme.typography.titleMedium)
+                }
+                Spacer(Modifier.height(10.dp))
+                BGAnimatedProgress((summary.workoutDaysThisWeek.toFloat() /
+                    personalSettings.weeklyWorkouts.coerceAtLeast(1)).coerceIn(0f, 1f))
+                Spacer(Modifier.height(6.dp))
+                Text(if (summary.workoutDaysThisWeek >= personalSettings.weeklyWorkouts)
+                        "🏆 Obiettivo raggiunto!" else
+                        "Ancora ${(personalSettings.weeklyWorkouts - summary.workoutDaysThisWeek).coerceAtLeast(0)} sedute al traguardo",
+                    color = PulseColors.Muted, style = MaterialTheme.typography.bodySmall)
             }
         }
         if (updateStatus is AppUpdateStatus.Available || updateDownloading || updateVerified) item {
