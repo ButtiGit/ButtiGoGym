@@ -146,7 +146,7 @@ fun DashboardScreen(
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Oggi", style = MaterialTheme.typography.headlineMedium, color = PulseColors.Foreground)
+                    Text("ButtiGoGym", style = MaterialTheme.typography.headlineMedium, color = PulseColors.Foreground)
                     Text(today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.ITALIAN)),
                         color = PulseColors.Muted, style = MaterialTheme.typography.bodyMedium)
                 }
@@ -177,9 +177,8 @@ fun DashboardScreen(
                         Icon(Icons.Default.MoreHoriz, "Opzioni allenamento", tint = PulseColors.Muted)
                     }
                 }
-                Text(current.name, style = MaterialTheme.typography.titleLarge, color = PulseColors.Foreground)
-                Spacer(Modifier.height(6.dp))
-                Text("${current.exercises.size} esercizi · ${current.duration}", color = PulseColors.Muted)
+                BGIdentityCard(if (active != null) "SESSIONE ATTIVA" else "IL TUO PROSSIMO PASSO",
+                    current.name, "${current.exercises.size} esercizi · ${current.duration}", "↗")
                 Spacer(Modifier.height(20.dp))
                 BGPrimaryButton(if (active != null) "Riprendi" else "Inizia", { onStart(current) })
             }
@@ -193,6 +192,19 @@ fun DashboardScreen(
                         color = PulseColors.Accent, style = MaterialTheme.typography.titleMedium)
                 }
                 Spacer(Modifier.height(10.dp))
+                Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    repeat(personalSettings.weeklyWorkouts.coerceIn(1, 7)) { index ->
+                        val done = index < summary.workoutDaysThisWeek
+                        Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
+                            color = if (done) PulseColors.Accent else PulseColors.SoftGreen) {
+                            Box(Modifier.height(38.dp), contentAlignment = Alignment.Center) {
+                                Text(if (done) "✓" else "${index + 1}",
+                                    color = if (done) PulseColors.DarkInk else PulseColors.Accent,
+                                    fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
                 BGAnimatedProgress((summary.workoutDaysThisWeek.toFloat() /
                     personalSettings.weeklyWorkouts.coerceAtLeast(1)).coerceIn(0f, 1f))
                 Spacer(Modifier.height(6.dp))
