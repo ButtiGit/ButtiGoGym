@@ -73,7 +73,8 @@ fun GuidedSessionScreen(
     onEnableNotifications: () -> Unit,
     onNotificationSettings: () -> Unit,
     onTestNotification: () -> Unit,
-    onRetryTimer: () -> Unit
+    onRetryTimer: () -> Unit,
+    onDiscard: () -> Unit = {}
 ) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(draft.startedAt) {
@@ -102,6 +103,7 @@ fun GuidedSessionScreen(
     var modal by rememberSaveable { mutableStateOf<String?>(null) }
     var finishDialog by rememberSaveable { mutableStateOf(false) }
     var resetDialog by rememberSaveable { mutableStateOf(false) }
+    var discardDialog by rememberSaveable { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var justSaved by remember { mutableStateOf(false) }
     LaunchedEffect(justSaved) {
@@ -319,6 +321,9 @@ fun GuidedSessionScreen(
                     Text("Termina e salva")
                 }
                 TextButton(onClick = { modal = null; resetDialog = true }) { Text("Ricomincia") }
+                TextButton(onClick = { modal = null; discardDialog = true }) {
+                    Text("Scarta allenamento · non salvare", color = MaterialTheme.colorScheme.error)
+                }
             }
             "technique" -> if (exercise != null) {
                 Text("${exercise.sets} × ${exercise.target} · RIR ${exercise.rir} · ${exercise.restSeconds} s recupero",
@@ -363,6 +368,21 @@ fun GuidedSessionScreen(
             }
         }
     }
+    if (discardDialog) AlertDialog(
+        onDismissRequest = { discardDialog = false },
+        title = { Text("Scartare l'allenamento?") },
+        text = { Text("Elimino questa seduta di prova, comprese le serie già registrate. Non verrà conteggiata nello storico, nel recupero o negli obiettivi. Gli allenamenti precedenti rimangono intatti.") },
+        confirmButton = {
+            TextButton(onClick = {
+                discardDialog = false
+                pending = emptyMap()
+                onDiscard()
+            }) { Text("Scarta definitivamente", color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = {
+            TextButton(onClick = { discardDialog = false }) { Text("Continua ad allenarti") }
+        }
+    )
     if (resetDialog) AlertDialog(onDismissRequest = { resetDialog = false },
         title = { Text("Ricominciare?") },
         text = { Text("Le serie di questa sessione saranno cancellate. Lo storico rimane salvato.") },
