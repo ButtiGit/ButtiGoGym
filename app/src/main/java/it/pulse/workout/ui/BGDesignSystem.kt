@@ -2,7 +2,16 @@ package it.pulse.workout.ui
 
 import android.animation.ValueAnimator
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.runtime.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
@@ -112,9 +121,22 @@ fun BGPrimaryButton(
     enabled: Boolean = true,
     icon: ImageVector? = null
 ) {
-    Button(onClick = onClick, enabled = enabled,
-        modifier = modifier.fillMaxWidth().heightIn(min = BGLayout.controlHeight),
-        shape = RoundedCornerShape(16.dp),
+    val interactions = remember { MutableInteractionSource() }
+    val pressed by interactions.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed && enabled) .965f else 1f,
+        animationSpec = tween(BGMotion.duration(130)), label = "Pressione pulsante")
+    val haptics = LocalHapticFeedback.current
+    val shape = RoundedCornerShape(18.dp)
+    Button(onClick = {
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        onClick()
+    }, enabled = enabled,
+        interactionSource = interactions,
+        modifier = modifier.fillMaxWidth().heightIn(min = BGLayout.controlHeight)
+            .graphicsLayer(scaleX = scale, scaleY = scale)
+            .shadow(if (enabled) 5.dp else 0.dp, shape),
+        shape = shape,
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp, pressedElevation = 0.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = PulseColors.Accent,
             contentColor = PulseColors.DarkInk

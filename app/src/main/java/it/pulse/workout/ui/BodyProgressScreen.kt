@@ -560,7 +560,7 @@ private fun BodyMeasurementsEditor(
                     color = PulseColors.Accent,
                     trackColor = PulseColors.SoftGreen
                 )
-                MascotPoseImage(pose, modifier = Modifier.fillMaxWidth().height(164.dp))
+                MascotPoseImage(pose, modifier = Modifier.fillMaxWidth().height(124.dp))
                 Text(if (field == null) "⚖️ Peso corporeo" else "📏 ${field.label}",
                     color = PulseColors.Foreground, fontSize = 16.sp,
                     fontWeight = FontWeight.Bold)
@@ -573,23 +573,12 @@ private fun BodyMeasurementsEditor(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(-0.5, 0.5).forEach { delta ->
-                        OutlinedButton(
-                            onClick = {
-                                val n = currentText.replace(',', '.').toDoubleOrNull()
-                                if (n != null) setCurrent(
-                                    String.format(Locale.ITALIAN, "%.1f", n + delta)
-                                )
-                            },
-                            enabled = currentText.replace(',', '.').toDoubleOrNull() != null,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(if (delta < 0) "− 0,5" else "+ 0,5",
-                                color = PulseColors.Accent)
-                        }
-                    }
-                }
+                BGValueScrubber(
+                    raw = currentText, onValueChange = ::setCurrent,
+                    unit = if (field == null) "kg" else "cm",
+                    min = 0f, max = if (field == null) 250f else 230f,
+                    step = 0.5f, decimal = true
+                )
                 Row(horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()) {
                     TextButton(

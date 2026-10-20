@@ -42,10 +42,19 @@ internal fun ActualRirPicker(
                     selected = value == option,
                     onClick = { onValueChange(option) },
                     label = {
-                        Text(option?.toString() ?: "—",
-                            fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        val emoji = when (option) {
+                            null -> "🤔 —"
+                            0 -> "🔥 0"
+                            1 -> "😤 1"
+                            2 -> "💪 2"
+                            3 -> "🙂 3"
+                            4 -> "😌 4"
+                            else -> "🌱 5"
+                        }
+                        Text(emoji, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = PulseColors.Accent,
                         selectedLabelColor = Color.White),

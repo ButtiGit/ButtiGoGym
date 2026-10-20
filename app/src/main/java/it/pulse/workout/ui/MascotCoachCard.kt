@@ -2,6 +2,11 @@ package it.pulse.workout.ui
 
 import android.speech.tts.TextToSpeech
 import android.view.accessibility.AccessibilityManager
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -18,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -89,10 +95,34 @@ fun MascotCoachCard(
     }
     var voiceOpen by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+        val floating = rememberInfiniteTransition(label = "Butty fluttua")
+        val wave by floating.animateFloat(
+            initialValue = 0f, targetValue = -4f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1900, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ), label = "Movimento mascotte"
+        )
         Box(Modifier.fillMaxWidth().height(if (small) 160.dp else 220.dp)
             .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-            .background(PulseColors.Raised), contentAlignment = Alignment.BottomCenter) {
-            MascotPoseImage(pose, Modifier.fillMaxSize().padding(top = 8.dp), portrait = true)
+            .background(Brush.verticalGradient(listOf(
+                PulseColors.Rose.copy(alpha = .22f), PulseColors.Raised
+            ))), contentAlignment = Alignment.BottomCenter) {
+            AnimatedContent(
+                targetState = pose,
+                transitionSpec = {
+                    fadeIn(tween(BGMotion.duration(240))) togetherWith
+                        fadeOut(tween(BGMotion.duration(180)))
+                },
+                label = "Posa di Butty"
+            ) { currentPose ->
+                MascotPoseImage(
+                    currentPose,
+                    Modifier.fillMaxSize().padding(top = 8.dp)
+                        .offset(y = if (BGMotion.duration(1) > 0) wave.dp else 0.dp),
+                    portrait = true
+                )
+            }
         }
         Surface(color = PulseColors.Surface, shape = RoundedCornerShape(
             bottomStart = 24.dp, bottomEnd = 24.dp)) {
