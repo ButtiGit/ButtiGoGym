@@ -174,13 +174,7 @@ fun GuidedSessionScreen(
             enter = fadeIn(tween(BGMotion.duration(180))),
             exit = fadeOut(tween(BGMotion.duration(180)))
         ) {
-            Surface(color = PulseColors.SoftGreen,
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp)) {
-                Text("✨ Serie registrata! Continua così 💚",
-                    modifier = Modifier.padding(12.dp), color = PulseColors.Accent,
-                    style = MaterialTheme.typography.labelLarge)
-            }
+            BGSetSuccess()
         }
         Column(Modifier.weight(1f).verticalScroll(scroll).padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)) {

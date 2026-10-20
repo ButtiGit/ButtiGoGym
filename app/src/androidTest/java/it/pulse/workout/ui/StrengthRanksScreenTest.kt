@@ -2,6 +2,7 @@ package it.pulse.workout.ui
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import it.pulse.workout.data.*
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -19,6 +20,24 @@ class StrengthRanksScreenTest {
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("Legenda · dal livello più basso al più alto"))
         rule.onNodeWithText("Leggenda").performScrollTo().assertIsDisplayed()
         saveTestScreenshot(rule, "08-rank-legenda")
+    }
+
+    @Test fun recordedRankExpandsAndReturnsTheSelectedMuscle() {
+        val exercise = Exercise("bench", "Panca", "PETTO", 2, "8–12", primaryMuscles = listOf("chest"))
+        val day = WorkoutDay("rank-test", "LUN", "Petto", "", "30 min", listOf(exercise))
+        val record = SessionRecord(id = 100L, dayId = day.id, completedAt = 100L,
+            durationMinutes = 30, completedSets = 1, totalSets = 2, daySnapshot = day,
+            entries = mapOf("bench:1" to SetEntry("45", "10", done = true)))
+        var selected = ""
+        rule.setContent { PulseTheme {
+            StrengthRanksScreen(listOf(record), 60.0, {}, { selected = it }, {})
+        } }
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Petto"))
+        rule.onNodeWithText("Petto").performClick()
+        rule.onNodeWithText("Vedi il muscolo →").performScrollTo().assertIsDisplayed()
+        saveTestScreenshot(rule, "10-rank-expanded")
+        rule.onNodeWithText("Vedi il muscolo →").performClick()
+        rule.runOnIdle { assertEquals("chest", selected) }
     }
 
     @Test fun validWeightAndDarkThemeRenderWithoutCrashing() {

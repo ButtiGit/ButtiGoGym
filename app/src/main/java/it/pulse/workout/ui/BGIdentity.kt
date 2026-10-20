@@ -70,3 +70,35 @@ fun BGRankMedallion(symbol: String, tint: Color) {
         }
     }
 }
+
+/** A short sparkle burst on a saved set; never blocks controls or loops. */
+@Composable
+fun BGSetSuccess() {
+    val burst = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { burst.animateTo(1f, tween(BGMotion.duration(850))) }
+    Surface(color = PulseColors.SoftGreen, shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp)) {
+        Box {
+            val tint = PulseColors.Accent
+            Canvas(Modifier.matchParentSize().clearAndSetSemantics {}) {
+                val t = burst.value
+                repeat(12) { i ->
+                    val x = size.width * (i + .5f) / 12f
+                    val y = size.height * .5f + kotlin.math.sin(i.toFloat() * 2f) * t * size.height * .45f
+                    drawCircle(tint.copy(alpha = (1f - t) * .6f),
+                        radius = (2f + i % 3).dp.toPx(), center = Offset(x, y))
+                }
+            }
+            Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("✓", color = tint, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Column {
+                    Text("Serie registrata!", color = PulseColors.Foreground,
+                        style = MaterialTheme.typography.titleSmall)
+                    Text("Un altro passo avanti. 💚", color = PulseColors.Accent,
+                        style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+    }
+}
