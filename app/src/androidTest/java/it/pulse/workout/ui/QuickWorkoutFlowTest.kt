@@ -69,8 +69,7 @@ class QuickWorkoutFlowTest {
     @Test fun darkTimedSetAcceptsBodyweightAndQuickDuration() {
         rule.setContent { Screen(dark = true, timed = true) }
         rule.onNodeWithTag("quick-weight").performTextInput("0")
-        rule.onNodeWithTag("quick-weight").performImeAction()
-        rule.onNodeWithTag("quick-reps").performImeAction()
+        rule.onNodeWithTag("quick-reps").performClick().performImeAction()
         rule.onNodeWithText("60 sec").performScrollTo().performClick()
         rule.onNodeWithTag("quick-reps").assertTextContains("60")
         rule.onNodeWithText("Salva serie").assertIsEnabled()
