@@ -19,6 +19,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import it.pulse.workout.data.*
 import java.util.Locale
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateContentSize
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+
+/** ARGB Long must use Color(Long), never the packed Compose Color(ULong) constructor. */
+internal fun strengthTierColor(tier: StrengthTier): Color = Color(tier.colorHex)
 
 /** Prestazione dimostrata: il badge NON deriva da XP, streak o numero di serie. */
 @Composable
@@ -42,16 +50,13 @@ fun StrengthRanksScreen(
     ) {
         item { BGBackHeader("Myself", "Rank di forza", onBack) }
         item {
-            BGCard {
-                Text("🏆 La tua classifica", style = MaterialTheme.typography.titleLarge,
-                    color = PulseColors.Foreground)
-                Spacer(Modifier.height(6.dp))
-                Text("I rank vengono dalla migliore serie registrata per ogni muscolo: più serie uguali non alzano il badge.",
-                    style = MaterialTheme.typography.bodyMedium, color = PulseColors.Muted)
-                Spacer(Modifier.height(6.dp))
-                Text("Calcolo indicativo: 1RM stimato dalla serie (1–20 rip.) diviso per un riferimento interno dell'esercizio proporzionato al tuo peso. Macchine diverse e carichi per manubrio possono dare risultati non confrontabili.",
-                    color = PulseColors.Muted, style = MaterialTheme.typography.bodySmall)
-            }
+            BGIdentityCard("STRENGTH CLUB", "La tua forza, dimostrata.",
+                "${ranks.count { it.tier != null }} / ${ranks.size} muscoli classificati",
+                ranks.firstOrNull { it.tier != null }?.tier?.symbol ?: "✦")
+        }
+        item {
+            Text("La migliore serie decide il badge. XP e frequenza restano separati.",
+                color = PulseColors.Muted, style = MaterialTheme.typography.bodyMedium)
         }
         if (!StrengthRanking.hasBodyWeight(bodyWeightKg)) {
             item {
@@ -70,38 +75,49 @@ fun StrengthRanksScreen(
         }
         items(ranks, key = { it.group.id }) { rank ->
             val tier = rank.tier
-            val badgeColor = if (tier == null) PulseColors.Muted else Color(tier.colorHex.toULong())
-            Surface(
-                modifier = Modifier.fillMaxWidth()
-                    .clickable { onSelectMuscle(rank.group.id) },
-                shape = RoundedCornerShape(19.dp),
-                color = PulseColors.Surface,
-                border = BorderStroke(1.dp, PulseColors.Border)
-            ) {
-                Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically,
+            val badgeColor = if (tier == null) PulseColors.Muted else strengthTierColor(tier)
+            var expanded by rememberSaveable(rank.group.id) { mutableStateOf(false) }
+            val haptics = LocalHapticFeedback.current
+            BGCard(modifier = Modifier.animateContentSize(tween(BGMotion.duration(240)))) {
+                Row(Modifier.fillMaxWidth().clickable {
+                    haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    expanded = !expanded
+                }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Box(Modifier.size(46.dp).clip(CircleShape)
-                        .background(badgeColor.copy(alpha = .13f)),
-                        contentAlignment = Alignment.Center) {
-                        Text(tier?.symbol ?: "—", fontSize = 23.sp)
-                    }
+                    BGRankMedallion(tier?.symbol ?: "?", badgeColor)
                     Column(Modifier.weight(1f)) {
                         Text(rank.group.label, style = MaterialTheme.typography.titleSmall,
                             color = PulseColors.Foreground)
-                        Text(tier?.name ?: "Non classificato", color = badgeColor,
+                        Text(tier?.name ?: "Non classificato", color = PulseColors.Foreground,
                             style = MaterialTheme.typography.labelLarge)
-                        Text(rank.evidence ?: "Nessuna serie valida e confrontabile",
-                            color = PulseColors.Muted, style = MaterialTheme.typography.bodySmall,
-                            maxLines = 2)
+                        Text(if (expanded) "Chiudi dettagli −" else "Prestazione e prossimo badge +",
+                            color = PulseColors.Muted, style = MaterialTheme.typography.labelSmall)
                     }
-                    if (rank.ratio != null) {
-                        Text(format.format(rank.ratio) + "×",
-                            color = badgeColor, fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp)
+                    rank.ratio?.let {
+                        Text(format.format(it) + "×", color = PulseColors.Foreground,
+                            fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
+                }
+                if (expanded) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(rank.evidence ?: "Registra una serie valida e inserisci il peso corporeo per iniziare.",
+                        color = PulseColors.Muted, style = MaterialTheme.typography.bodyMedium)
+                    val ratio = rank.ratio
+                    val next = StrengthRanking.tiers.firstOrNull { it.minRatio > (ratio ?: -1.0) }
+                    if (ratio != null && tier != null && next != null) {
+                        Spacer(Modifier.height(12.dp))
+                        BGAnimatedProgress(((ratio - tier.minRatio) / (next.minRatio - tier.minRatio)).toFloat())
+                        Spacer(Modifier.height(6.dp))
+                        Text("Prossimo: ${next.name} · da ${format.format(next.minRatio)}×",
+                            color = PulseColors.Foreground, style = MaterialTheme.typography.labelMedium)
+                    } else if (ratio != null && next == null) {
+                        Text("Livello massimo · Leggenda", color = PulseColors.Accent)
+                    }
+                    TextButton(onClick = { onSelectMuscle(rank.group.id) }) { Text("Vedi il muscolo →") }
                 }
             }
         }
+
         item {
             BGCard {
                 Text("Legenda · dal livello più basso al più alto",
@@ -111,7 +127,7 @@ fun StrengthRanksScreen(
                     Row(Modifier.fillMaxWidth().padding(vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(35.dp).clip(CircleShape)
-                            .background(Color(tier.colorHex.toULong()).copy(alpha = .13f)),
+                            .background(strengthTierColor(tier).copy(alpha = .13f)),
                             contentAlignment = Alignment.Center) {
                             Text(tier.symbol, fontSize = 18.sp)
                         }
@@ -123,7 +139,7 @@ fun StrengthRanksScreen(
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Text("Non classificato = peso non inserito, serie assenti o esercizio senza un riferimento affidabile. I rank sono una gamification personalizzata, non standard scientifici di forza.",
+                Text("Indice: 1RM stimato (1–20 rip.) / riferimento dell’esercizio proporzionato al peso corporeo. Macchine e carichi per manubrio possono non essere confrontabili. Non classificato = peso non inserito, serie assenti o esercizio senza un riferimento affidabile. I rank sono una gamification personalizzata, non standard scientifici di forza.",
                     color = PulseColors.Muted, style = MaterialTheme.typography.bodySmall)
             }
         }

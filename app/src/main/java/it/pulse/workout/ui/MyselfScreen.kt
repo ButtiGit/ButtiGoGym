@@ -104,6 +104,10 @@ fun MyselfScreen(
             }
         }
         item {
+            BGIdentityCard("BUTTIGOGYM / MYSELF", "Costruisci la tua versione migliore.",
+                "Livello $level · ${number.format(totalXp)} XP", "✦")
+        }
+        item {
             MyselfCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Mappa muscolare", modifier = Modifier.weight(1f),

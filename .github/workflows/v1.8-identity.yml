@@ -1,0 +1,49 @@
+name: ButtiGoGym 1.8 identity and rank regression
+on:
+  push:
+    branches: [feature/v1.8-identity-rank-fix]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Android SDK
+        run: '"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0"'
+      - name: Prepare assets
+        run: |
+          python3 tools/build_muscle_map.py
+          python3 tools/validate_lean_bulk_plan.py
+          python3 tools/resolve_gifs.py
+          cp workouts/plan.json app/src/main/assets/workout-plan.json
+      - name: Tests, lint and compile
+        run: gradle --no-daemon :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Rank and navigation on Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash tools/verify_identity_ui.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ButtiGoGym-1.8-verification
+          path: |
+            app/build/reports/
+            ui-screenshots/
