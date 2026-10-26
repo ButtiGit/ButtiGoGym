@@ -180,7 +180,7 @@ internal fun SessionPhotoAndRecap(
         shape = RoundedCornerShape(15.dp),
         colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
     ) {
-        Text("Condividi il recap ↗", fontWeight = FontWeight.Bold, color = Color.White)
+        Text("Condividi il recap ↗", fontWeight = FontWeight.Bold, color = PulseColors.DarkInk)
     }
     Spacer(Modifier.height(8.dp))
     OutlinedButton(

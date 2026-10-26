@@ -22,19 +22,14 @@ private data class PulsePalette(
     val border: Color, val onAccent: Color
 )
 
-/** Light-mode identity: #106119. Dark mode retains a contrasting, recognizable green. */
-private val LightPalette = PulsePalette(
-    Color(0xFFF3F6F0), Color.White, Color(0xFFECF1E8),
-    Color(0xFFE9F3EA), Color(0xFF106119), Color(0xFF083C15),
-    Color(0xFFF1A6B7), Color(0xFF1D1D1F), Color(0xFF68686D),
-    Color(0xFFDCE5D6), Color.White
-)
+/** Fixed monochrome identity: black surfaces, white actions, no light-mode override. */
 private val DarkPalette = PulsePalette(
-    Color(0xFF0C130F), Color(0xFF152019), Color(0xFF202D23),
-    Color(0xFF203C27), Color(0xFF2B8643), Color(0xFF8FDCA0),
-    Color(0xFFE5A2B2), Color(0xFFE6F0E8), Color(0xFFA4B7A8),
-    Color(0xFF34483A), Color.White
+    Color.Black, Color(0xFF111111), Color(0xFF202020),
+    Color(0xFF242424), Color.White, Color(0xFFE4E4E4),
+    Color(0xFFBDBDBD), Color(0xFFF5F5F5), Color(0xFFAAAAAA),
+    Color(0xFF363636), Color.Black
 )
+private val LightPalette = DarkPalette
 
 private val LocalPulsePalette = compositionLocalOf { LightPalette }
 
@@ -86,37 +81,14 @@ private val pulseShapes = Shapes(
 
 @Composable
 fun PulseTheme(darkTheme: Boolean = false, content: @Composable () -> Unit) {
-    val palette = if (darkTheme) DarkPalette else LightPalette
-    val action = if (darkTheme) palette.accentDeep else palette.accent
-    val onAction = if (darkTheme) Color(0xFF083C15) else palette.onAccent
-    val scheme = if (darkTheme) darkColorScheme(
+    val palette = DarkPalette
+    val action = palette.accent
+    val onAction = palette.onAccent
+    val scheme = darkColorScheme(
         primary = action,
         onPrimary = onAction,
         primaryContainer = palette.softGreen,
         onPrimaryContainer = palette.foreground,
-        secondary = action,
-        onSecondary = onAction,
-        secondaryContainer = palette.softGreen,
-        onSecondaryContainer = palette.foreground,
-        tertiary = palette.accentDeep,
-        tertiaryContainer = palette.softGreen,
-        onTertiaryContainer = palette.foreground,
-        surfaceContainer = palette.surface,
-        surfaceContainerHigh = palette.raised,
-        surfaceContainerHighest = palette.raised,
-        background = palette.background,
-        onBackground = palette.foreground,
-        surface = palette.surface,
-        onSurface = palette.foreground,
-        surfaceVariant = palette.raised,
-        onSurfaceVariant = palette.muted,
-        outline = palette.border,
-        outlineVariant = palette.border
-    ) else lightColorScheme(
-        primary = action,
-        onPrimary = onAction,
-        primaryContainer = palette.softGreen,
-        onPrimaryContainer = palette.accent,
         secondary = action,
         onSecondary = onAction,
         secondaryContainer = palette.softGreen,

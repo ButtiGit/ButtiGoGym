@@ -113,22 +113,21 @@ private fun PulseRoot(openWorkoutFromNotification: MutableState<Boolean>) {
     val bodyStore = remember(context) { BodyProgressStore(context) }
     var settings by remember { mutableStateOf(preferences.read()) }
     var latestWeight by remember { mutableStateOf(bodyStore.latestWeightKg()) }
-    val systemDark = isSystemInDarkTheme()
-    val dark = when (settings.appearance) {
-        AppearancePreference.DARK -> true
-        AppearancePreference.LIGHT -> false
-        AppearancePreference.SYSTEM -> systemDark
+    val dark = true
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            // Remove only obsolete avatar packs, never workout or progress photos.
+            listOf("coach-poses", "coach-poses-old").forEach { java.io.File(context.filesDir, it).deleteRecursively() }
+            context.cacheDir.listFiles()?.filter { it.name.startsWith("coach-import-") }?.forEach { it.deleteRecursively() }
+        }
     }
 
     SideEffect {
         (context as? android.app.Activity)?.window?.let { window ->
-            window.statusBarColor = if (dark) android.graphics.Color.rgb(13, 21, 16)
-                else android.graphics.Color.rgb(246, 248, 246)
-            window.navigationBarColor = if (dark) android.graphics.Color.rgb(23, 33, 26)
-                else android.graphics.Color.WHITE
+            window.statusBarColor = android.graphics.Color.BLACK
+            window.navigationBarColor = android.graphics.Color.BLACK
             @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility = if (dark) 0 else
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            window.decorView.systemUiVisibility = 0
         }
     }
     PulseTheme(darkTheme = dark) {

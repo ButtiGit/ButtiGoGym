@@ -57,7 +57,7 @@ internal fun ActualRirPicker(
                     shape = RoundedCornerShape(16.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = PulseColors.Accent,
-                        selectedLabelColor = Color.White),
+                        selectedLabelColor = PulseColors.DarkInk),
                     border = BorderStroke(1.dp, PulseColors.Border)
                 )
             }

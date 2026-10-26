@@ -16,6 +16,8 @@
     <uses-feature android:name="android.hardware.sensor.stepcounter" android:required="false" />
     <application
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="ButtiGoGym"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"

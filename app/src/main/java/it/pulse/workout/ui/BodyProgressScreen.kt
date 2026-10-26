@@ -173,7 +173,7 @@ fun BodyProgressScreen(onBack: () -> Unit) {
                 ) {
                     Icon(Icons.Default.Add, null, modifier = Modifier.size(17.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Misura il tuo fisico", color = Color.White, fontSize = 12.sp)
+                    Text("Misura il tuo fisico", color = PulseColors.DarkInk, fontSize = 12.sp)
                 }
                 OutlinedButton(
                     onClick = { chooseDate { photoDate = it } },
@@ -226,7 +226,7 @@ fun BodyProgressScreen(onBack: () -> Unit) {
                                     label = { Text(angle.label, fontSize = 11.sp) },
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = PulseColors.Accent,
-                                        selectedLabelColor = Color.White
+                                        selectedLabelColor = PulseColors.DarkInk
                                     )
                                 )
                             }
@@ -343,7 +343,7 @@ fun BodyProgressScreen(onBack: () -> Unit) {
                         deleteDate = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-                ) { Text("Elimina", color = Color.White) }
+                ) { Text("Elimina", color = PulseColors.DarkInk) }
             },
             dismissButton = {
                 TextButton(onClick = { deleteDate = null }) {
@@ -503,7 +503,7 @@ private fun DeltaRow(label: String, first: Double?, second: Double?, unit: Strin
     }
 }
 
-/** Un parametro per volta: la mascotte indica dove posizionare il metro. */
+/** Un parametro per volta, con istruzioni per posizionare il metro. */
 @Composable
 private fun BodyMeasurementsEditor(
     date: LocalDate,
@@ -521,16 +521,6 @@ private fun BodyMeasurementsEditor(
     var error by remember(date) { mutableStateOf<String?>(null) }
     val field = BodyMeasure.entries.getOrNull(index - 1)
     val currentText = if (field == null) weight else fields.getValue(field).value
-    val pose = when (field) {
-        BodyMeasure.CHEST -> it.pulse.workout.data.CoachPose.CHEST
-        BodyMeasure.SHOULDERS -> it.pulse.workout.data.CoachPose.SHOULDERS
-        BodyMeasure.WAIST -> it.pulse.workout.data.CoachPose.ABS
-        BodyMeasure.HIPS, BodyMeasure.THIGH, BodyMeasure.CALF ->
-            it.pulse.workout.data.CoachPose.LEGS
-        BodyMeasure.ARM -> it.pulse.workout.data.CoachPose.ARMS
-        BodyMeasure.FOREARM -> it.pulse.workout.data.CoachPose.FOREARMS
-        null -> it.pulse.workout.data.CoachPose.READY
-    }
     val help = when (field) {
         BodyMeasure.CHEST -> "Passa il metro attorno al torace, alla linea dei capezzoli."
         BodyMeasure.SHOULDERS -> "Misura la circonferenza attorno alla parte più ampia delle spalle."
@@ -560,7 +550,6 @@ private fun BodyMeasurementsEditor(
                     color = PulseColors.Accent,
                     trackColor = PulseColors.SoftGreen
                 )
-                MascotPoseImage(pose, modifier = Modifier.fillMaxWidth().height(124.dp))
                 Text(if (field == null) "⚖️ Peso corporeo" else "📏 ${field.label}",
                     color = PulseColors.Foreground, fontSize = 16.sp,
                     fontWeight = FontWeight.Bold)
@@ -613,7 +602,7 @@ private fun BodyMeasurementsEditor(
                     onSave(kilograms, cm)
                 }
                 error = outcome.getOrElse { it.message ?: "Misura non valida" }
-            }) { Text("💚 Salva", color = Color.White) }
+            }) { Text("💚 Salva", color = PulseColors.DarkInk) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {

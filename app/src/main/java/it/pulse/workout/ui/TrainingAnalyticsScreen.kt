@@ -281,7 +281,7 @@ private fun AnalyticsChoice(label: String, selected: Boolean,
         shape = RoundedCornerShape(14.dp),
         color = if (selected) PulseColors.Accent else PulseColors.Surface) {
         Box(Modifier.padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-            Text(label, color = if (selected) Color.White else PulseColors.Foreground,
+            Text(label, color = if (selected) PulseColors.DarkInk else PulseColors.Foreground,
                 fontWeight = FontWeight.Bold, fontSize = 12.sp)
         }
     }

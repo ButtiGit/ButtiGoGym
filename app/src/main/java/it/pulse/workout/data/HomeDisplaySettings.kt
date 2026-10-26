@@ -64,19 +64,3 @@ class HomeDisplaySettingsStore(context: Context) {
 }
 
 /** Messaggi brevi deterministici basati su eventi reali, non su una chat AI. */
-object MascotCoach {
-    fun today(active: Boolean, resting: Boolean, trained: Boolean,
-              completedWeek: Int, goal: Int): String = when {
-        active -> "Hai una seduta in corso. Riprendiamo da dove eri rimasto!"
-        resting -> "Oggi recuperiamo. Una passeggiata tranquilla può bastare."
-        trained -> "Allenamento fatto! Ottimo. Ora recupera e ricaricati."
-        completedWeek >= goal -> "Obiettivo settimanale raggiunto. Procedi con calma."
-        else -> "Pronto? Ti guido io. Partiamo dal prossimo allenamento."
-    }
-
-    fun inSession(resting: Boolean, completed: Boolean): String = when {
-        completed -> "Bel lavoro! Salva la seduta per aggiornare i progressi."
-        resting -> "Recupera e respira. Quando sei pronto, ripartiamo."
-        else -> "Una serie alla volta: movimento controllato, poi registra i risultati."
-    }
-}

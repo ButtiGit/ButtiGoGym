@@ -23,12 +23,12 @@ fun PreWorkoutCheckInDialog(
     BGModal("Prima di iniziare", onDismiss) {
         val record = if (energy != null && sleep != null && soreness != null)
             PreWorkoutCheckIn(LocalDate.now(), energy!!, sleep!!, soreness!!) else null
-        MascotCoachCard(message = when (step) {
+        Text(text = when (step) {
             0 -> "Come va l'energia oggi?"
             1 -> "Quanto hai dormito stanotte?"
             2 -> "Hai i muscoli indolenziti?"
             else -> record?.let(PreWorkoutCheckInRules::recommendation).orEmpty()
-        }, small = true, pose = if (step == 3) CoachPose.READY else CoachPose.HOME)
+        }, color = PulseColors.Foreground, style = MaterialTheme.typography.titleMedium)
         when (step) {
             0 -> WorkoutEnergy.entries.forEach { option ->
                 OutlinedButton(onClick = { energy = option; step = 1 }, modifier = Modifier.fillMaxWidth()) { Text(option.label) }

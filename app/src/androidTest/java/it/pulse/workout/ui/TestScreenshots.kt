@@ -7,12 +7,15 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onAllNodes
+import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.onLast
 import androidx.test.platform.app.InstrumentationRegistry
 
 /** MediaStore survives the test runner uninstalling the app after the suite. API 35 CI only. */
 internal fun saveTestScreenshot(rule: ComposeTestRule, name: String) {
     rule.waitForIdle()
-    val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
+    val bitmap = rule.onAllNodes(isRoot()).onLast().captureToImage().asAndroidBitmap()
     val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
     val values = ContentValues().apply {
         put(MediaStore.Images.Media.DISPLAY_NAME, "$name.png")

@@ -146,4 +146,4 @@ jobs:
             "$RUNNER_TEMP/release/ButtiGoGym-$RELEASE_VERSION-STABLE.apk.sha256" \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "ButtiGoGym $RELEASE_VERSION" \
-            --notes "ButtiGoGym 1.9.0: nuova palette coerente verde/salvia anche in modalità scura; Home focalizzata sull’allenamento; mascotte compatta; inserimento rapido di peso e ripetizioni, passi regolabili, richiami dell’ultima serie, RIR facoltativo e modalità guidata selezionabile. Salvataggio sempre esplicito, recupero e annullamento mantenuti. Firma confrontata con la release stabile precedente per l’aggiornamento dall’app."
+            --notes "ButtiGoGym 2.0.0: tema nero e bianco; rimozione di avatar, foto della mascotte e voce; catalogo offline di 293 esercizi con 36 modelli Panatta e filtri; aggiunta, rimozione, sostituzione e macchine personali. Invio volontario dello storico completo alle Issues GitHub, con anteprima pubblica, token cifrato e ripresa degli invii interrotti. Firma verificata rispetto alla precedente versione stabile per aggiornare dall’app senza disinstallare."

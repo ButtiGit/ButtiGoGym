@@ -46,8 +46,8 @@ class ExerciseSubstitutionCatalogTest {
 
     @Test fun alternativeNeverSharesMachineIdentifierWithOriginal() {
         val choices=ExerciseSubstitutionCatalog.alternatives(chest,day)
-        assertEquals(2,choices.size)
-        assertTrue(choices.all { it.exercise.id.startsWith("alt_") })
+        assertTrue(choices.size > 2)
+        assertTrue(choices.any { it.exercise.id.startsWith("panatta_") })
         assertTrue(choices.none { it.exercise.id == chest.id })
         assertTrue(choices.all { it.exercise.gifUrl.isEmpty() })
     }

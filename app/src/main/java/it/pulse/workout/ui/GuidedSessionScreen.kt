@@ -188,11 +188,7 @@ fun GuidedSessionScreen(
                 Text("Serie ${draft.guidedWorkSet} di ${exercise.sets} · ${exercise.target} ${if (exercise.timeBased) "sec" else "rep"}",
                     color = PulseColors.Muted, style = MaterialTheme.typography.bodyMedium)
             }
-            MascotCoachCard(line, small = true, pose = when {
-                allDone -> CoachPose.DONE
-                inRest -> CoachPose.REST
-                else -> CoachConversation.poseForMuscle(exercise?.muscle.orEmpty())
-            })
+            Text(line, color = PulseColors.Muted, style = MaterialTheme.typography.bodyMedium)
             when {
                 allDone -> {
                     Text("$complete serie · ${formatDuration(elapsed)}", style = MaterialTheme.typography.titleMedium,
@@ -356,6 +352,7 @@ fun GuidedSessionScreen(
                 }
             }
             "substitute" -> if (exercise != null) {
+                Text("Alternative per gruppo muscolare · carichi non equivalenti", color = PulseColors.Muted)
                 ExerciseSubstitutionCatalog.alternatives(exercise, day).forEach { option ->
                     TextButton(onClick = {
                         runCatching { draft.substituteCurrentExercise(day, option.exercise) }

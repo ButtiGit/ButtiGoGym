@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.SwapHoriz
+import it.pulse.workout.data.ExerciseLibrary
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -46,6 +48,8 @@ fun PlanDayEditor(
     onRestore: () -> String?,
     onClose: () -> Unit
 ) {
+    var libraryOpen by remember { mutableStateOf(false) }
+    var replaceFromLibrary by remember { mutableStateOf<Exercise?>(null) }
     var exercises by remember(day.id) { mutableStateOf(day.exercises) }
     var exerciseEditing by remember { mutableStateOf<Exercise?>(null) }
     var removeTarget by remember { mutableStateOf<Exercise?>(null) }
@@ -77,6 +81,10 @@ fun PlanDayEditor(
                             fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         Text(day.name, color = PulseColors.Foreground,
                             fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                    IconButton(onClick = { replaceFromLibrary = null; libraryOpen = true },
+                        enabled = exercises.size < CustomPlanRules.MAX_EXERCISES) {
+                        Icon(Icons.Default.Add, "Aggiungi dal database")
                     }
                     IconButton(onClick = ::closeEditor) {
                         Icon(Icons.Default.Close, "Chiudi editor", tint = PulseColors.Foreground)
@@ -142,6 +150,10 @@ fun PlanDayEditor(
                                     }
                                 }
                                 Column {
+                                    IconButton(onClick = { replaceFromLibrary = exercise; libraryOpen = true },
+                                        modifier = Modifier.size(40.dp)) {
+                                        Icon(Icons.Default.SwapHoriz, "Sostituisci ${exercise.name} dal database")
+                                    }
                                     IconButton(onClick = { exerciseEditing = exercise },
                                         modifier = Modifier.size(34.dp)) {
                                         Icon(Icons.Default.Edit,
@@ -163,6 +175,10 @@ fun PlanDayEditor(
                     }
                     item {
                         Spacer(Modifier.height(4.dp))
+                        BGPrimaryButton("Aggiungi dal database", {
+                            replaceFromLibrary = null; libraryOpen = true
+                        }, enabled = exercises.size < CustomPlanRules.MAX_EXERCISES)
+                        Spacer(Modifier.height(8.dp))
                         OutlinedButton(
                             onClick = {
                                 if (exercises.size < CustomPlanRules.MAX_EXERCISES) {
@@ -214,11 +230,21 @@ fun PlanDayEditor(
                         modifier = Modifier.fillMaxWidth().height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent),
                         shape = RoundedCornerShape(14.dp)
-                    ) { Text("Salva personalizzazioni", fontWeight = FontWeight.Bold, color = Color.White) }
+                    ) { Text("Salva personalizzazioni", fontWeight = FontWeight.Bold, color = PulseColors.DarkInk) }
                 }
             }
         }
     }
+
+    if (libraryOpen) ExerciseLibraryPicker(
+        existingIds = exercises.filterNot { it.id == replaceFromLibrary?.id }.map { it.id }.toSet(),
+        onPick = { chosen ->
+            val original = replaceFromLibrary
+            val added = chosen.asExercise(original)
+            exercises = if (original == null) CustomPlanRules.append(exercises, added)
+                else CustomPlanRules.validate(exercises.map { if (it.id == original.id) added else it })
+            libraryOpen = false; replaceFromLibrary = null; errorMessage = null
+        }, onClose = { libraryOpen = false; replaceFromLibrary = null })
 
     exerciseEditing?.let { chosen ->
         PlanExerciseForm(
@@ -248,7 +274,7 @@ fun PlanDayEditor(
                         removeTarget = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-                ) { Text("Rimuovi", color = Color.White) }
+                ) { Text("Rimuovi", color = PulseColors.DarkInk) }
             },
             dismissButton = {
                 TextButton(onClick = { removeTarget = null }) { Text("Annulla") }
@@ -270,7 +296,7 @@ fun PlanDayEditor(
                         if (errorMessage == null) onClose()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-                ) { Text("Ripristina", color = Color.White) }
+                ) { Text("Ripristina", color = PulseColors.DarkInk) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmRestore = false }) { Text("Annulla") }
@@ -287,7 +313,7 @@ fun PlanDayEditor(
                 Button(
                     onClick = { confirmDiscard = false; onClose() },
                     colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-                ) { Text("Scarta", color = Color.White) }
+                ) { Text("Scarta", color = PulseColors.DarkInk) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDiscard = false }) { Text("Continua a modificare") }
@@ -304,6 +330,8 @@ private fun PlanExerciseForm(
     onSave: (Exercise) -> Unit
 ) {
     var name by remember(exercise.id) { mutableStateOf(exercise.name) }
+    var equipment by remember(exercise.id) { mutableStateOf(exercise.equipment) }
+    var note by remember(exercise.id) { mutableStateOf(exercise.note) }
     var muscle by remember(exercise.id) { mutableStateOf(exercise.muscle) }
     var sets by remember(exercise.id) { mutableStateOf(exercise.sets.toString()) }
     var target by remember(exercise.id) { mutableStateOf(exercise.target) }
@@ -329,6 +357,11 @@ private fun PlanExerciseForm(
                     label = { Text("Nome esercizio") }, singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(equipment, { if (it.length <= 120) equipment = it },
+                    label = { Text("Attrezzo / modello macchina") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(note, { if (it.length <= 500) note = it },
+                    label = { Text("Note e regolazioni") }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
                 Box {
                     OutlinedButton(
@@ -401,7 +434,7 @@ private fun PlanExerciseForm(
                     val selectedMuscle = muscle.trim().uppercase()
                     val mappingChanged = isNew || selectedMuscle != exercise.muscle.uppercase()
                     onSave(exercise.copy(
-                        name = name.trim(), muscle = selectedMuscle,
+                        name = name.trim(), muscle = selectedMuscle, equipment = equipment.trim(), note = note.trim(),
                         sets = sets.toInt(), target = target.trim(), restSeconds = rest.toInt(),
                         rir = rir.trim(), optional = optional, timeBased = timed,
                         primaryMuscles = if (mappingChanged)
@@ -412,7 +445,7 @@ private fun PlanExerciseForm(
                 },
                 enabled = validated,
                 colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-            ) { Text("Conferma", color = Color.White) }
+            ) { Text("Conferma", color = PulseColors.DarkInk) }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Annulla", color = PulseColors.Accent) }

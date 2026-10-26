@@ -91,7 +91,7 @@ fun BGBreathingTimer(remaining: Long, total: Int) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(formatDuration(remaining), color = PulseColors.Foreground,
                 style = MaterialTheme.typography.headlineMedium)
-            Text("Respira 🌿", color = PulseColors.Accent,
+            Text("Recupero", color = PulseColors.Accent,
                 style = MaterialTheme.typography.labelMedium)
         }
     }
