@@ -58,10 +58,6 @@ private fun BrandHeader() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(R.drawable.buttigogym_mascot),
-                contentDescription = "Logo ButtiGoGym",
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)))
-            Spacer(Modifier.width(11.dp))
             Text("ButtiGoGym", color = PulseColors.Accent,
                 fontWeight = FontWeight.Black, fontSize = 19.sp)
         }
@@ -298,11 +294,13 @@ fun HistoryScreen(
     onPhotoSaved: (Long, String) -> Unit
 ) {
 
+    var showUpload by remember { mutableStateOf(false) }
     var selectedId by remember { mutableStateOf<Long?>(null) }
     LazyColumn(modifier = Modifier.fillMaxSize().background(PulseColors.Background),
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item { Text("Storico", style = MaterialTheme.typography.headlineMedium, color = PulseColors.Foreground) }
+        item { BGPrimaryButton("Invia storico", { showUpload = true }, enabled = history.isNotEmpty()) }
         if (history.isEmpty()) item {
             BGCard {
                 Text("Il tuo primo allenamento ti aspetta.", color = PulseColors.Muted)
@@ -327,6 +325,7 @@ fun HistoryScreen(
             }
         }
     }
+    if (showUpload) HistoryUploadPanel(history, days, onClose = { showUpload = false })
     val record = history.firstOrNull { it.id == selectedId }
     if (record != null) {
         val day = record.daySnapshot ?: days.firstOrNull { it.id == record.dayId }

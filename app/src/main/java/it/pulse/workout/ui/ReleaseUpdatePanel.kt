@@ -80,7 +80,7 @@ fun ReleaseUpdatePanel(
                     progress = { downloadProgress.coerceIn(0, 100) / 100f },
                     modifier = Modifier.fillMaxWidth(),
                     color = PulseColors.Accent,
-                    trackColor = Color.White
+                    trackColor = PulseColors.SoftGreen
                 )
             }
 
@@ -102,7 +102,7 @@ fun ReleaseUpdatePanel(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(13.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-                    ) { Text("Installa aggiornamento", color = Color.White) }
+                    ) { Text("Installa aggiornamento", color = PulseColors.DarkInk) }
                 } else {
                     Button(
                         onClick = onDownload, enabled = !downloading && !checking,
@@ -113,7 +113,7 @@ fun ReleaseUpdatePanel(
                         Icon(Icons.Default.CloudDownload, contentDescription = null,
                             modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Scarica versione ${newRelease.release.version}", color = Color.White)
+                        Text("Scarica versione ${newRelease.release.version}", color = PulseColors.DarkInk)
                     }
                 }
                 TextButton(onClick = onCheck, enabled = !checking && !downloading) {

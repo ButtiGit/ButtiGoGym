@@ -31,7 +31,7 @@ fun BGIdentityCard(eyebrow: String, title: String, subtitle: String, emblem: Str
     val reveal = remember { Animatable(0f) }
     LaunchedEffect(Unit) { reveal.animateTo(1f, tween(BGMotion.duration(420))) }
     Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
-        .background(Brush.linearGradient(listOf(Color(0xFF083C15), Color(0xFF106119), Color(0xFF26763B))))
+        .background(Brush.linearGradient(listOf(Color(0xFF181818), Color(0xFF242424), Color(0xFF303030))))
         .graphicsLayer { alpha = reveal.value; translationY = (1f - reveal.value) * 12.dp.toPx() }) {
         Canvas(Modifier.matchParentSize().clearAndSetSemantics {}) {
             val center = Offset(size.width * .97f, size.height * .15f)
@@ -40,13 +40,13 @@ fun BGIdentityCard(eyebrow: String, title: String, subtitle: String, emblem: Str
         }
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(eyebrow, modifier = Modifier.weight(1f), color = Color(0xFFC0E5B9),
+                Text(eyebrow, modifier = Modifier.weight(1f), color = Color(0xFFBDBDBD),
                     style = MaterialTheme.typography.labelSmall, letterSpacing = 1.3.sp)
-                Text(emblem, color = Color(0xFFE1F7BF), fontSize = 24.sp,
+                Text(emblem, color = Color.White, fontSize = 24.sp,
                     modifier = Modifier.clearAndSetSemantics {})
             }
             Text(title, color = Color.White, style = MaterialTheme.typography.titleLarge)
-            Text(subtitle, color = Color(0xFFE0EEDD), style = MaterialTheme.typography.bodyMedium)
+            Text(subtitle, color = Color(0xFFCCCCCC), style = MaterialTheme.typography.bodyMedium)
 
         }
     }
@@ -90,7 +90,7 @@ fun BGSetSuccess() {
                 Column {
                     Text("Serie registrata!", color = PulseColors.Foreground,
                         style = MaterialTheme.typography.titleSmall)
-                    Text("Un altro passo avanti. 💚", color = PulseColors.Accent,
+                    Text("Un altro passo avanti.", color = PulseColors.Accent,
                         style = MaterialTheme.typography.labelMedium)
                 }
             }

@@ -175,15 +175,6 @@ fun DashboardScreen(
             }
         }
         item {
-            MascotCoachCard(MascotCoach.today(active != null, summary.restedToday, summary.workoutToday,
-                summary.workoutDaysThisWeek, personalSettings.weeklyWorkouts), small = true, pose = when {
-                active != null -> CoachPose.READY
-                summary.workoutToday -> CoachPose.DONE
-                summary.restedToday -> CoachPose.REST
-                else -> CoachPose.HOME
-            })
-        }
-        item {
             BGCard(modifier = Modifier.clickable { modal = "week" }, padding = 16.dp) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("🎯 Obiettivo settimanale", modifier = Modifier.weight(1f),

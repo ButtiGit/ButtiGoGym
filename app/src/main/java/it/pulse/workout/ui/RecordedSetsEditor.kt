@@ -205,7 +205,7 @@ internal fun RecordedSetsEditor(
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = PulseColors.Accent)
-                    ) { Text("Salva correzione", color = Color.White) }
+                    ) { Text("Salva correzione", color = PulseColors.DarkInk) }
                 },
                 dismissButton = {
                     TextButton(onClick = { editing = null }) {
@@ -239,7 +239,7 @@ internal fun RecordedSetsEditor(
                         containerColor = PulseColors.Accent)
                 ) {
                     Text(if (target.warmup) "Elimina" else "Annulla serie",
-                        color = Color.White)
+                        color = PulseColors.DarkInk)
                 }
             },
             dismissButton = {

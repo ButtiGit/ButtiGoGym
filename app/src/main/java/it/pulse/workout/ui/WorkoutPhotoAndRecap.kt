@@ -162,13 +162,13 @@ object WorkoutRecapImage {
 
         val dim = Paint().apply {
             shader = LinearGradient(0f, 480f, 0f, 1350f,
-                intArrayOf(Color.TRANSPARENT, Color.argb(214, 4, 18, 10),
-                    Color.argb(248, 4, 17, 9)), null, Shader.TileMode.CLAMP)
+                intArrayOf(Color.TRANSPARENT, Color.argb(214, 4, 4, 4),
+                    Color.argb(248, 8, 8, 8)), null, Shader.TileMode.CLAMP)
         }
         canvas.drawRect(0f, 0f, 1080f, 1350f, dim)
 
         val white = Color.WHITE
-        val muted = Color.rgb(212, 230, 215)
+        val muted = Color.rgb(212, 212, 212)
 
         fun type(size: Float, color: Int, bold: Boolean = false): Paint =
             Paint(Paint.ANTI_ALIAS_FLAG).apply {

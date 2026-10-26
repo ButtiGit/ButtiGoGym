@@ -64,7 +64,7 @@ fun LeanBulkTrackerCard(
             Button(
                 onClick = { error = null; weighing = true }, modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
-            ) { Text("Registra peso di oggi", color = Color.White) }
+            ) { Text("Registra peso di oggi", color = PulseColors.DarkInk) }
             var showInsights by remember { mutableStateOf(false) }
             TextButton(onClick = { showInsights = !showInsights }) {
                 Text(if (showInsights) "Nascondi dettagli" else "Mostra andamento e consigli",

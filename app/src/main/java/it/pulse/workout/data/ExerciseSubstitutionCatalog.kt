@@ -89,7 +89,7 @@ object ExerciseSubstitutionCatalog {
     )
 
     fun alternatives(current: Exercise, day: WorkoutDay): List<ExerciseSubstitution> =
-        options[current.id].orEmpty().mapNotNull { candidate ->
+        (options[current.id].orEmpty().mapNotNull { candidate ->
             val id = "alt_${current.id}_${candidate.key}"
             if (day.exercises.any { it.id == id }) null
             else ExerciseSubstitution(
@@ -99,7 +99,10 @@ object ExerciseSubstitutionCatalog {
                     alternative = "", gifUrl = ""),
                 candidate.guidance
             )
-        }
+        } + ExerciseLibrary.alternatives(current, day).map { candidate ->
+            ExerciseSubstitution(candidate.asExercise(current),
+                "Alternativa per gruppo muscolare; ricalibra il carico sul nuovo attrezzo.")
+        }).distinctBy { it.exercise.id }
 }
 
 /** Cambia SOLO la snapshot della sessione in corso, mai il piano su GitHub. */

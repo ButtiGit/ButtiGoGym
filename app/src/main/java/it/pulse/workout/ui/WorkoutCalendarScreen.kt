@@ -299,9 +299,9 @@ fun WorkoutCalendarScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
                         ) {
                             Icon(Icons.Default.FitnessCenter, null,
-                                tint = Color.White, modifier = Modifier.size(18.dp))
+                                tint = PulseColors.DarkInk, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
-                            Text("Programma allenamento", color = Color.White)
+                            Text("Programma allenamento", color = PulseColors.DarkInk)
                         }
                         DropdownMenu(expanded = optionsVisible,
                             onDismissRequest = { optionsVisible = false }) {
@@ -389,7 +389,7 @@ fun WorkoutCalendarScreen(
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)
                         ) {
-                            Text("Inizia la seduta di oggi", color = Color.White)
+                            Text("Inizia la seduta di oggi", color = PulseColors.DarkInk)
                         }
                     }
                 } else {

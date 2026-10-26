@@ -13,8 +13,8 @@ android {
         applicationId = "it.pulse.workout"
         minSdk = 26
         targetSdk = 35
-        versionCode = 27
-        versionName = "1.9.0"
+        versionCode = 28
+        versionName = "2.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -47,7 +47,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 }
 

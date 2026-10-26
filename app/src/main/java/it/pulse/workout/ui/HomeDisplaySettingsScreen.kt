@@ -144,7 +144,7 @@ fun HomeDisplaySettingsScreen(
                 Button(onClick = onExportBackup, enabled = !backupBusy,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent)) {
-                    Text("Esporta backup", color = Color.White)
+                    Text("Esporta backup", color = PulseColors.DarkInk)
                 }
                 Spacer(Modifier.height(5.dp))
                 OutlinedButton(onClick = onImportBackup, enabled = !backupBusy,

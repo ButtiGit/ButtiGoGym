@@ -1,4 +1,4 @@
 <resources>
-    <color name="pulse_background">#FFFFFF</color>
-    <color name="pulse_accent">#106119</color>
+    <color name="pulse_background">#000000</color>
+    <color name="pulse_accent">#FFFFFF</color>
 </resources>

@@ -64,7 +64,8 @@ class GuidedDialogueTest {
         val restorer = StateRestorationTester(rule)
         restorer.setContent { Screen() }
         rule.onNode(hasSetTextAction()).performTextInput("20")
-        rule.onNodeWithText("Continua").performClick()
+        rule.onNode(hasSetTextAction()).performImeAction()
+        rule.onNodeWithText("Ripetizioni").assertExists()
         rule.onNode(hasSetTextAction()).performTextInput("8")
         restorer.emulateSavedInstanceStateRestore()
         rule.onAllNodes(hasSetTextAction()).assertCountEquals(1)

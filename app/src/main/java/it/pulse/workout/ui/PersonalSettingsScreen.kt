@@ -134,7 +134,7 @@ fun PersonalSettingsScreen(
                                 label = { Text(dayLabels.getValue(day), fontSize = 11.sp) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = PulseColors.Accent,
-                                    selectedLabelColor = Color.White
+                                    selectedLabelColor = PulseColors.DarkInk
                                 )
                             )
                         }
@@ -167,25 +167,8 @@ fun PersonalSettingsScreen(
         }
         item {
             SettingsPanel("Aspetto e interazioni") {
-                Text("Tema", color = PulseColors.Foreground,
+                Text("Tema nero · dettagli bianchi", color = PulseColors.Foreground,
                     fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Spacer(Modifier.height(5.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    AppearancePreference.entries.forEach { option ->
-                        FilterChip(
-                            selected = draft.appearance == option,
-                            onClick = {
-                                draft = draft.copy(appearance = option)
-                                saved = false
-                            },
-                            label = { Text(option.label, fontSize = 11.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = PulseColors.Accent,
-                                selectedLabelColor = Color.White
-                            )
-                        )
-                    }
-                }
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -241,9 +224,9 @@ fun PersonalSettingsScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = PulseColors.Accent),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(Icons.Default.Save, null, tint = Color.White)
+                Icon(Icons.Default.Save, null, tint = PulseColors.DarkInk)
                 Spacer(Modifier.width(8.dp))
-                Text("Salva impostazioni", color = Color.White,
+                Text("Salva impostazioni", color = PulseColors.DarkInk,
                     fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.height(25.dp))

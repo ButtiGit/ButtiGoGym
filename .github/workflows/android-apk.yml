@@ -94,15 +94,10 @@ jobs:
           test -s app/src/main/java/it/pulse/workout/ui/WorkoutPhotoAndRecap.kt
           test -s app/src/main/java/it/pulse/workout/ui/SessionPhotoAndRecap.kt
 
-      - name: Verify new mascot launcher resources
-        shell: bash
+      - name: Verify monochrome launcher
         run: |
-          test -s app/src/main/res/drawable-nodpi/buttigogym_mascot.webp
           test -s app/src/main/res/drawable/ic_launcher_foreground.xml
-          test -s app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
-          test -s app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
-          file app/src/main/res/drawable-nodpi/buttigogym_mascot.webp | grep -q "Web/P"
-          ! grep -q 'monochrome' app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+          ! find app/src/main/res -iname '*mascot*' | grep .
 
       - name: Validate lean bulk plan
         run: python3 tools/validate_lean_bulk_plan.py
