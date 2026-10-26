@@ -3,11 +3,13 @@ package it.pulse.workout.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import it.pulse.workout.BuildConfig
 import it.pulse.workout.data.*
@@ -62,7 +64,8 @@ fun HistoryUploadPanel(history: List<SessionRecord>, days: List<WorkoutDay>, onC
                 open("https://github.com/settings/personal-access-tokens/new?name=ButtiGoGym%20storico&target_name=ButtiGit&issues=write&expires_in=90")
             }) { Text("Crea token GitHub") }
             OutlinedTextField(token, { token = it }, label = { Text("Token GitHub") },
-                visualTransformation = PasswordVisualTransformation(), singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password), singleLine = true,
                 modifier = Modifier.fillMaxWidth())
             BGPrimaryButton("Collega GitHub", {
                 runCatching { tokenStore.save(token.trim()) }.onSuccess {

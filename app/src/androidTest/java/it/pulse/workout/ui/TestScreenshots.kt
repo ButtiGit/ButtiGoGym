@@ -14,7 +14,9 @@ import androidx.test.platform.app.InstrumentationRegistry
 /** MediaStore survives the test runner uninstalling the app after the suite. API 35 CI only. */
 internal fun saveTestScreenshot(rule: ComposeTestRule, name: String) {
     rule.waitForIdle()
-    val bitmap = rule.onAllNodes(isRoot()).onLast().captureToImage().asAndroidBitmap()
+    val instrumentation = InstrumentationRegistry.getInstrumentation()
+    instrumentation.waitForIdleSync()
+    val bitmap = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
     val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
     val values = ContentValues().apply {
         put(MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
