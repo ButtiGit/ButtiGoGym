@@ -1,35 +1,35 @@
 {
   "schemaVersion": 1,
-  "revision": "2026-10-15.1",
-  "title": "ButtiGoGym · Avatar Build | Lean bulk proporzionata",
+  "revision": "2026-10-27.1",
+  "title": "ButtiGoGym · Progressione massa — blocco 1",
   "goal": "168 cm · 58 kg → prima tappa 64–65 kg; 67–69 kg solo dopo rivalutazione. Spalle tonde, petto alto, schiena a V, braccia/avambracci pieni e gambe proporzionate.",
   "gym": "Revolution Fitness Club — Cuneo",
   "requiredSessionsPerWeek": 3,
   "optionalSessionsPerWeek": 1,
   "guidelines": [
-    "Obiettivo: crescita muscolare controllata, senza bulk aggressivo. Mantieni il programma 6–8 settimane e rivaluta performance, recupero e circonferenze.",
-    "3 sedute principali obbligatorie (lun/mer/ven); 1 bonus facoltativo solo con recupero adeguato. Aumentare i giorni non è obbligatorio.",
-    "Prima dei pesi: 5 minuti di riscaldamento generale e 1–3 serie progressive leggere sui fondamentali; non contano come serie allenanti.",
-    "Lavora in genere con 1–3 ripetizioni in riserva (RIR). Evita il cedimento sistematico, specialmente sugli esercizi pesanti; interrompi in caso di dolore anomalo.",
-    "Recupera 2–3 minuti nei multiarticolari e 60–120 secondi negli isolamenti; non sacrificare la tecnica per rispettare il cronometro.",
-    "Progressione doppia: prima aumenta le ripetizioni nel range con tecnica e RIR stabili; quando completi tutte le serie al limite alto, aggiungi il minimo carico disponibile.",
-    "I richiami di petto/schiena il lunedì e di spalle/gambe il venerdì fanno parte delle 3 sedute e NON sono facoltativi.",
-    "Avambracci: 8 serie dirette/settimana oltre a hammer curl, rematori e lavoro di presa. Tieni i lavori di presa alla fine della seduta per non limitare il resto.",
-    "Nutrizione di partenza (stima da adattare al peso reale): 2450 kcal al giorno, 120 g proteine, 70 g grassi, 335 g carboidrati. Anche i giorni di riposo.",
-    "Incremento desiderato del peso medio: circa 0,15–0,25 kg/settimana; pesa 3–4 mattine/settimana, misura il girovita ogni 2–4 settimane e rivaluta le calorie dopo 2–3 settimane (+/- 100 kcal se necessario).",
-    "Punta a 7–9 ore di sonno. Se la performance peggiora e il recupero è insufficiente, riduci prima il volume, non aggiungere allenamenti.",
-    "Bonus facoltativo: meglio dopo almeno 48 ore di recupero dai richiami gambe del venerdì; in alternativa fai soltanto camminata/mobilità. Non allenarti intensamente se non recuperato.",
-    "Camminata finale: 10–15 minuti facili a circa 4,5–5,5 km/h, a un ritmo che consenta di conversare.",
-    "Macchine: usa le alternative equivalenti in caso di indisponibilità; verifica la configurazione effettiva presso Revolution Cuneo."
+    "Blocco personalizzato dallo storico del 12–26 ottobre 2026: 3 sedute fisse lun/mer/ven, bonus solo facoltativo. Primo controllo dopo 2 settimane; mantieni gli esercizi 4–6 settimane se progredisci.",
+    "20 serie lunedì, 19 mercoledì e 19 venerdì. Tempi obiettivo 75–95 minuti per i pesi; eventuale camminata finale separata. Non accorciare recuperi o tecnica per finire prima.",
+    "Prima dei pesi: 5 minuti generali e 1–3 avvicinamenti progressivi sui primi multiarticolari, poco affaticanti. Registra questi ultimi come riscaldamento, non come serie allenanti.",
+    "Usa 2 RIR nei multiarticolari e 1–2 negli isolamenti: sono ripetizioni che potresti ancora fare con la stessa tecnica. Nelle prime due esposizioni al Romanian deadlift lascia 3 RIR. Il cedimento non è obbligatorio.",
+    "Progressione doppia: mantieni lo stesso carico nelle serie allenanti. Aumenta prima le ripetizioni nel range; quando tutte raggiungono il limite alto con tecnica e RIR stabili, usa il minimo incremento disponibile. Se scendi sotto il minimo, riduci il carico.",
+    "I carichi nelle note sono punti di partenza tratti dalle tue registrazioni, validi solo sullo stesso attrezzo e con la stessa convenzione. Non sono prescrizioni obbligatorie: correggili per restare nel range e al RIR indicato.",
+    "Manubri: registra sempre il peso di UN manubrio; bilanciere: peso totale inclusa barra; macchine a dischi: dichiara nelle note se il valore è totale o per lato. Non confrontare i kg di macchine diverse.",
+    "Panatta: usa le alternative nel database, verifica modello e regolazioni, e conserva lo stesso modello nel blocco. Cambiando macchina riparti con un carico da calibrare; non trasferire automaticamente i kg precedenti.",
+    "Petto e dorsali del lunedì vengono prima degli isolamenti delle braccia; i richiami gambe del venerdì prima degli ultimi isolamenti. Sono parte della seduta principale, non bonus.",
+    "Conferma solo le serie realmente eseguite. Registra almeno il RIR dell’ultima serie di ogni esercizio. Una serie non confermata o senza dati non dimostra che sia stata eseguita.",
+    "Dopo 2 settimane valuta ripetizioni allo stesso carico, completamento delle sedute, dolore e recupero. Se completi tutto e progredisci non aggiungere serie. Se peggiori per due esposizioni e recuperi male, riduci le serie di circa un terzo per una settimana e rivaluta.",
+    "Priorità a spalle, petto alto, dorsali e braccia, mantenendo gambe complete. Il bonus non deve compensare sedute troppo lunghe o esercizi continuamente saltati; nessun obbligo di quarto giorno.",
+    "Per crescere serve anche energia sufficiente e proteine adeguate. Mantieni inizialmente il riferimento alimentare già impostato; lo storico WO non contiene peso attuale o diario alimentare e non permette di correggere le calorie.",
+    "Camminata finale facoltativa: 10–15 minuti facili a ritmo conversazione. Punta a 7–9 ore di sonno e interrompi un esercizio in caso di dolore anomalo."
   ],
   "days": [
     {
       "id": "mon",
       "weekday": "LUNEDÌ",
       "name": "Spalle, braccia e avambracci",
-      "description": "Deltoidi, braccia e avambracci protagonisti; richiami programmati di petto e dorsali per stimolare i gruppi due volte a settimana.",
-      "duration": "80–100 min",
-      "cooldown": "Tapis roulant: 10–15 minuti a 4,5–5,5 km/h, ritmo conversazione.",
+      "description": "Spalle prioritarie, poi richiami petto/dorsali prima delle braccia. Avambracci alla fine; 20 serie allenanti.",
+      "duration": "75–95 min",
+      "cooldown": "Facoltativo, oltre al tempo dei pesi: 10–15 minuti di camminata facile a ritmo conversazione.",
       "optional": false,
       "exercises": [
         {
@@ -37,13 +37,13 @@
           "name": "Shoulder press macchina",
           "muscle": "SPALLE",
           "sets": 2,
-          "target": "6–10",
+          "target": "8–12",
           "restSeconds": 150,
           "equipment": "Macchina shoulder press",
           "gifQuery": "lever shoulder press",
-          "note": "Spingi senza inarcare eccessivamente la zona lombare.",
+          "note": "Riferimento: 28,1 kg × 9 il 26/10. Prova 28,1 kg solo sulla stessa macchina: prima porta entrambe le serie a 12 con 2 RIR.",
           "alternative": "Shoulder press con manubri",
-          "rir": "1–2",
+          "rir": "2",
           "primaryMuscles": [
             "shoulders"
           ],
@@ -59,11 +59,11 @@
           "name": "Alzate laterali ai cavi",
           "muscle": "SPALLE",
           "sets": 3,
-          "target": "12–18",
-          "restSeconds": 75,
+          "target": "10–15",
+          "restSeconds": 90,
           "equipment": "Cavi",
           "gifQuery": "cable lateral raise",
-          "note": "Controlla l'eccentrica, non usare slancio.",
+          "note": "Usa un carico che consenta almeno 10 ripetizioni pulite. 4,5 kg × 8 è sotto il nuovo range: parti più leggero, senza slancio.",
           "alternative": "",
           "rir": "1–2",
           "primaryMuscles": [
@@ -76,117 +76,17 @@
           "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/goJ6ezq.gif"
         },
         {
-          "id": "reverse_fly",
-          "name": "Reverse pec deck (deltoidi posteriori)",
-          "muscle": "SPALLE POSTERIORI",
-          "sets": 2,
-          "target": "12–18",
-          "restSeconds": 75,
-          "equipment": "Reverse pec deck",
-          "gifQuery": "reverse fly machine",
-          "note": "",
-          "alternative": "Alzate posteriori con manubri",
-          "rir": "1–2",
-          "primaryMuscles": [
-            "rear_delts"
-          ],
-          "secondaryMuscles": [
-            "upper_back",
-            "traps"
-          ],
-          "group": "Spalle"
-        },
-        {
-          "id": "bicep_curl",
-          "name": "Curl manubri su panca inclinata",
-          "muscle": "BICIPITI",
-          "sets": 2,
-          "target": "8–12",
-          "restSeconds": 90,
-          "equipment": "Manubri + panca inclinata",
-          "gifQuery": "incline dumbbell curl",
-          "note": "",
-          "alternative": "",
-          "rir": "1–2",
-          "primaryMuscles": [
-            "biceps"
-          ],
-          "secondaryMuscles": [
-            "forearms"
-          ],
-          "group": "Bicipiti",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ae9UoXQ.gif"
-        },
-        {
-          "id": "hammer_curl",
-          "name": "Hammer curl manubri",
-          "muscle": "BICIPITI",
-          "sets": 2,
-          "target": "10–12",
-          "restSeconds": 75,
-          "equipment": "Manubri",
-          "gifQuery": "dumbbell hammer curl",
-          "note": "",
-          "alternative": "",
-          "rir": "1–2",
-          "primaryMuscles": [
-            "biceps",
-            "forearms"
-          ],
-          "secondaryMuscles": [],
-          "group": "Bicipiti",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/slDvUAU.gif"
-        },
-        {
-          "id": "tricep_pushdown",
-          "name": "Pushdown al cavo con corda",
-          "muscle": "TRICIPITI",
-          "sets": 2,
-          "target": "10–15",
-          "restSeconds": 75,
-          "equipment": "Cavo alto + corda",
-          "gifQuery": "rope triceps pushdown",
-          "note": "",
-          "alternative": "",
-          "rir": "1–2",
-          "primaryMuscles": [
-            "triceps"
-          ],
-          "secondaryMuscles": [],
-          "group": "Tricipiti",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/dU605di.gif"
-        },
-        {
-          "id": "triceps_overhead",
-          "name": "Estensioni tricipiti sopra testa al cavo",
-          "muscle": "TRICIPITI",
-          "sets": 1,
-          "target": "10–15",
-          "restSeconds": 90,
-          "equipment": "Cavo + corda",
-          "gifQuery": "cable overhead triceps extension",
-          "note": "",
-          "alternative": "",
-          "rir": "1–2",
-          "primaryMuscles": [
-            "triceps"
-          ],
-          "secondaryMuscles": [],
-          "group": "Tricipiti",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/2IxROQ1.gif"
-        },
-        {
           "id": "mon_chest_recall",
           "name": "Chest press — richiamo petto",
           "muscle": "PETTO",
           "sets": 2,
-          "target": "10–12",
-          "restSeconds": 90,
+          "target": "8–12",
+          "restSeconds": 120,
           "equipment": "Macchina chest press",
           "gifQuery": "lever chest press",
-          "note": "Richiamo obbligatorio e tecnico, con 1–3 RIR: lavora sul petto senza arrivare al cedimento.",
+          "note": "Prima delle braccia. Riferimento confermato: 39 kg × 10 e 41,3 × 7 il 19/10. Parti circa da 39 sulla stessa macchina, 2 RIR.",
           "alternative": "",
-          "rir": "1–3",
+          "rir": "2",
           "primaryMuscles": [
             "chest"
           ],
@@ -203,13 +103,13 @@
           "name": "Lat machine — richiamo dorsali",
           "muscle": "SCHIENA",
           "sets": 2,
-          "target": "10–12",
-          "restSeconds": 120,
+          "target": "8–12",
+          "restSeconds": 150,
           "equipment": "Lat machine",
           "gifQuery": "wide grip lat pulldown",
-          "note": "Richiamo dorsali obbligatorio: controlla le scapole e lascia 1–3 ripetizioni in riserva.",
+          "note": "Prima delle braccia. Riferimento 26/10: 45 kg × 8/9. Mantieni 45 sulla stessa macchina e cerca 9/9, senza cedimento.",
           "alternative": "",
-          "rir": "1–3",
+          "rir": "2",
           "primaryMuscles": [
             "lats"
           ],
@@ -221,15 +121,94 @@
           "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/LEprlgG.gif"
         },
         {
+          "id": "bicep_curl",
+          "name": "Curl manubri su panca inclinata",
+          "muscle": "BICIPITI",
+          "sets": 2,
+          "target": "8–12",
+          "restSeconds": 90,
+          "equipment": "Manubri + panca inclinata",
+          "gifQuery": "incline dumbbell curl",
+          "note": "Riferimento recente: 9 kg × 10/10. Registra il peso di un manubrio; prova 11/10 prima di aumentare.",
+          "alternative": "",
+          "rir": "1–2",
+          "primaryMuscles": [
+            "biceps"
+          ],
+          "secondaryMuscles": [
+            "forearms"
+          ],
+          "group": "Bicipiti",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/ae9UoXQ.gif"
+        },
+        {
+          "id": "triceps_overhead",
+          "name": "Estensioni tricipiti sopra testa al cavo",
+          "muscle": "TRICIPITI",
+          "sets": 2,
+          "target": "10–15",
+          "restSeconds": 90,
+          "equipment": "Cavo + corda",
+          "gifQuery": "cable overhead triceps extension",
+          "note": "Prima del pushdown per renderlo più facile da completare. Ultimo dato: 11 kg × 10/12 il 12/10; ricalibra per 1–2 RIR.",
+          "alternative": "",
+          "rir": "1–2",
+          "primaryMuscles": [
+            "triceps"
+          ],
+          "secondaryMuscles": [],
+          "group": "Tricipiti",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/2IxROQ1.gif"
+        },
+        {
+          "id": "hammer_curl",
+          "name": "Hammer curl manubri",
+          "muscle": "BICIPITI",
+          "sets": 2,
+          "target": "8–12",
+          "restSeconds": 90,
+          "equipment": "Manubri",
+          "gifQuery": "dumbbell hammer curl",
+          "note": "Ultimo dato: 8 kg × 7/7. Parti più leggero per ottenere almeno 8 ripetizioni pulite. Sempre peso di un manubrio; non confrontare con i vecchi 15,8/18 senza chiarire la convenzione.",
+          "alternative": "",
+          "rir": "1–2",
+          "primaryMuscles": [
+            "biceps",
+            "forearms"
+          ],
+          "secondaryMuscles": [],
+          "group": "Bicipiti",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/slDvUAU.gif"
+        },
+        {
+          "id": "tricep_pushdown",
+          "name": "Pushdown al cavo con corda",
+          "muscle": "TRICIPITI",
+          "sets": 2,
+          "target": "10–15",
+          "restSeconds": 90,
+          "equipment": "Cavo alto + corda",
+          "gifQuery": "rope triceps pushdown",
+          "note": "Riferimento: 15,8 kg × 13; 18 kg × 9. Usa circa 15,8 sulla stessa carrucola finché ottieni 15/15 pulite.",
+          "alternative": "",
+          "rir": "1–2",
+          "primaryMuscles": [
+            "triceps"
+          ],
+          "secondaryMuscles": [],
+          "group": "Tricipiti",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/dU605di.gif"
+        },
+        {
           "id": "reverse_curl_ez",
           "name": "Reverse curl bilanciere EZ",
           "muscle": "AVAMBRACCI",
           "sets": 2,
-          "target": "12–15",
-          "restSeconds": 75,
+          "target": "10–15",
+          "restSeconds": 90,
           "equipment": "Bilanciere EZ",
           "gifQuery": "ez bar reverse curl",
-          "note": "Presa prona, polsi stabili e discesa controllata.",
+          "note": "Riferimento: 17,5 kg × 12 il 26/10. Conta anche la barra; carico e presa stabili, polsi senza dolore.",
           "alternative": "",
           "rir": "1–2",
           "primaryMuscles": [
@@ -245,12 +224,12 @@
           "id": "wrist_curl",
           "name": "Wrist curl (flessione polsi)",
           "muscle": "AVAMBRACCI",
-          "sets": 2,
-          "target": "15–20",
-          "restSeconds": 60,
+          "sets": 1,
+          "target": "12–20",
+          "restSeconds": 75,
           "equipment": "Manubri o bilanciere",
           "gifQuery": "wrist curl",
-          "note": "Movimento controllato, senza forzare i polsi.",
+          "note": "Una serie finale; parti sotto gli 8 kg se non raggiungi 12 ripetizioni controllate. Movimento confortevole, senza forzare i polsi.",
           "alternative": "",
           "rir": "1–2",
           "primaryMuscles": [
@@ -266,9 +245,9 @@
       "id": "wed",
       "weekday": "MERCOLEDÌ",
       "name": "Gambe complete e addominali",
-      "description": "Gambe complete per un fisico proporzionato: quadricipiti, femorali, glutei, polpacci e core.",
-      "duration": "75–90 min",
-      "cooldown": "Tapis roulant: 10–12 minuti tranquilli, senza pendenza impegnativa.",
+      "description": "Gambe complete: hip hinge spostato all’inizio per non lasciarlo sempre fuori. Core essenziale e breve lavoro estensori del polso; 19 serie.",
+      "duration": "75–95 min",
+      "cooldown": "Facoltativo, oltre al tempo dei pesi: 10–15 minuti di camminata facile a ritmo conversazione.",
       "optional": false,
       "exercises": [
         {
@@ -280,9 +259,9 @@
           "restSeconds": 180,
           "equipment": "Hack squat / leg press",
           "gifQuery": "hack squat machine",
-          "note": "Profondità controllata e bacino stabile.",
+          "note": "Mantieni un solo attrezzo: hack squat oppure leg press, senza confrontarne i kg. Se è lo stesso del 21/10, 25 kg è un riferimento da verificare a 2 RIR.",
           "alternative": "Leg press",
-          "rir": "1–2",
+          "rir": "2",
           "primaryMuscles": [
             "quads",
             "glutes"
@@ -290,59 +269,20 @@
           "secondaryMuscles": [
             "hamstrings"
           ],
-          "group": "Quadricipiti e glutei"
-        },
-        {
-          "id": "split_squat",
-          "name": "Bulgarian split squat con manubri",
-          "muscle": "GAMBE",
-          "sets": 2,
-          "target": "8–12 per gamba",
-          "restSeconds": 150,
-          "equipment": "Manubri + panca",
-          "gifQuery": "dumbbell bulgarian split squat",
-          "note": "Conta le ripetizioni di una gamba; completa entrambe prima di registrare la serie.",
-          "alternative": "",
-          "rir": "1–2",
-          "primaryMuscles": [
-            "quads",
-            "glutes"
-          ],
-          "secondaryMuscles": [
-            "hamstrings"
-          ],
-          "group": "Quadricipiti e glutei"
-        },
-        {
-          "id": "leg_extension",
-          "name": "Leg extension",
-          "muscle": "QUADRICIPITI",
-          "sets": 2,
-          "target": "12–15",
-          "restSeconds": 75,
-          "equipment": "Macchina leg extension",
-          "gifQuery": "lever leg extension",
-          "note": "",
-          "alternative": "",
-          "rir": "1–2",
-          "primaryMuscles": [
-            "quads"
-          ],
-          "secondaryMuscles": [],
           "group": "Quadricipiti e glutei"
         },
         {
           "id": "rdl",
           "name": "Romanian deadlift (bilanciere o manubri)",
           "muscle": "FEMORALI",
-          "sets": 3,
-          "target": "8–10",
+          "sets": 2,
+          "target": "8–12",
           "restSeconds": 180,
           "equipment": "Bilanciere / manubri",
           "gifQuery": "romanian deadlift",
-          "note": "Spingi il bacino indietro, schiena stabile e tensione sui femorali.",
+          "note": "Non risultano serie confermate nello storico. Due serie tecniche con carico leggero e 3 RIR nelle prime due esposizioni; poi 2 RIR. Se non conosci il movimento, fatti controllare la tecnica; non forzare la zona lombare.",
           "alternative": "RDL con manubri",
-          "rir": "1–2",
+          "rir": "2–3",
           "primaryMuscles": [
             "hamstrings",
             "glutes"
@@ -354,15 +294,36 @@
           "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/rR0LJzx.gif"
         },
         {
+          "id": "split_squat",
+          "name": "Bulgarian split squat con manubri",
+          "muscle": "GAMBE",
+          "sets": 2,
+          "target": "8–12 per gamba",
+          "restSeconds": 150,
+          "equipment": "Manubri + panca",
+          "gifQuery": "dumbbell bulgarian split squat",
+          "note": "Ultimo dato 20 × 10/8, convenzione del carico da chiarire. Completa entrambe le gambe per serie; registra da ora il peso di un solo manubrio.",
+          "alternative": "",
+          "rir": "2",
+          "primaryMuscles": [
+            "quads",
+            "glutes"
+          ],
+          "secondaryMuscles": [
+            "hamstrings"
+          ],
+          "group": "Quadricipiti e glutei"
+        },
+        {
           "id": "leg_curl",
           "name": "Leg curl seduto",
           "muscle": "FEMORALI",
           "sets": 3,
           "target": "10–15",
-          "restSeconds": 90,
+          "restSeconds": 120,
           "equipment": "Macchina leg curl seduto",
           "gifQuery": "seated leg curl",
-          "note": "",
+          "note": "Riferimento: 32 kg × 15/14 dopo 25 × 12 il 21/10. Calibra 25–32 sulla stessa macchina per tre serie a 1–2 RIR, senza aumentare subito.",
           "alternative": "",
           "rir": "1–2",
           "primaryMuscles": [
@@ -372,15 +333,33 @@
           "group": "Femorali"
         },
         {
+          "id": "leg_extension",
+          "name": "Leg extension",
+          "muscle": "QUADRICIPITI",
+          "sets": 2,
+          "target": "10–15",
+          "restSeconds": 90,
+          "equipment": "Macchina leg extension",
+          "gifQuery": "lever leg extension",
+          "note": "Riferimento: 70 kg × 10/9. Riduci leggermente rispetto a 70 per completare entrambe le serie da almeno 10, con stessa macchina e ROM.",
+          "alternative": "",
+          "rir": "1–2",
+          "primaryMuscles": [
+            "quads"
+          ],
+          "secondaryMuscles": [],
+          "group": "Quadricipiti e glutei"
+        },
+        {
           "id": "calf_raise",
           "name": "Calf raise macchina",
           "muscle": "POLPACCI",
           "sets": 3,
           "target": "10–15",
-          "restSeconds": 75,
+          "restSeconds": 90,
           "equipment": "Macchina calf raise",
           "gifQuery": "lever calf raise",
-          "note": "",
+          "note": "Riferimento recente 40 kg × 10. Usa un carico stabile che consenta pausa e allungamento controllato: 35–40 solo sulla stessa macchina.",
           "alternative": "",
           "rir": "1–2",
           "primaryMuscles": [
@@ -394,12 +373,12 @@
           "id": "crunch",
           "name": "Cable crunch",
           "muscle": "ADDOME",
-          "sets": 3,
-          "target": "12–15",
-          "restSeconds": 75,
+          "sets": 2,
+          "target": "12–20",
+          "restSeconds": 90,
           "equipment": "Cavo alto + corda",
           "gifQuery": "cable crunch",
-          "note": "",
+          "note": "Riferimento: 20,3 kg × 15. Mantieni la stessa carrucola; muovi il tronco senza tirare con le braccia.",
           "alternative": "",
           "rir": "1–2",
           "primaryMuscles": [
@@ -412,25 +391,23 @@
           "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/WW95auq.gif"
         },
         {
-          "id": "hanging_knee",
-          "name": "Hanging knee raises",
-          "muscle": "ADDOME",
+          "id": "reverse_wrist_curl",
+          "name": "Reverse wrist curl (estensione polsi)",
+          "muscle": "AVAMBRACCI",
           "sets": 2,
-          "target": "10–15",
+          "target": "12–20",
           "restSeconds": 75,
-          "equipment": "Sbarra trazioni o supporto gomiti",
-          "gifQuery": "hanging knee raise",
-          "note": "Solleva le ginocchia controllando il bacino; evita oscillazioni.",
+          "equipment": "Bilanciere o manubri",
+          "gifQuery": "reverse wrist curl",
+          "note": "Spostato dal venerdì, quando non veniva sempre confermato. Il dato confermato è 9 kg × 10/9 del 16/10: parti più leggero per 12 ripetizioni controllate.",
           "alternative": "",
           "rir": "1–2",
           "primaryMuscles": [
-            "abs"
+            "forearms"
           ],
-          "secondaryMuscles": [
-            "obliques"
-          ],
-          "group": "Addominali",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/03lzqwk.gif"
+          "secondaryMuscles": [],
+          "group": "Avambracci",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/Ezpnw9d.gif"
         }
       ]
     },
@@ -438,9 +415,9 @@
       "id": "fri",
       "weekday": "VENERDÌ",
       "name": "Petto, schiena, richiami e avambracci",
-      "description": "Stimolo principale petto/schiena; seconda esposizione settimanale per deltoidi e gambe; presa e avambracci alla fine.",
-      "duration": "85–105 min",
-      "cooldown": "Tapis roulant: 10–15 minuti a 4,5–5,5 km/h, ritmo conversazione.",
+      "description": "Petto alto e dorsali, poi richiami gambe prima degli ultimi isolamenti. Rimossa la chest press piana ridondante; 19 serie.",
+      "duration": "75–95 min",
+      "cooldown": "Facoltativo, oltre al tempo dei pesi: 10–15 minuti di camminata facile a ritmo conversazione.",
       "optional": false,
       "exercises": [
         {
@@ -448,13 +425,13 @@
           "name": "Incline chest press macchina",
           "muscle": "PETTO",
           "sets": 3,
-          "target": "6–10",
+          "target": "8–12",
           "restSeconds": 150,
           "equipment": "Chest press inclinata",
           "gifQuery": "incline chest press machine",
-          "note": "",
+          "note": "Il 23/10 sono confermate 45 kg × 10/8: la terza serie non è confermata. Calibra circa 40–45 sulla stessa macchina per 3 serie nel range a 2 RIR; non aumentare finché non ottieni 12/12/12.",
           "alternative": "Panca inclinata con manubri",
-          "rir": "1–2",
+          "rir": "2",
           "primaryMuscles": [
             "chest"
           ],
@@ -466,46 +443,6 @@
           "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/wDN97Ca.gif"
         },
         {
-          "id": "bench",
-          "name": "Chest press piana macchina",
-          "muscle": "PETTO",
-          "sets": 2,
-          "target": "8–12",
-          "restSeconds": 150,
-          "equipment": "Macchina chest press piana",
-          "gifQuery": "lever chest press",
-          "note": "",
-          "alternative": "",
-          "rir": "1–2",
-          "primaryMuscles": [
-            "chest"
-          ],
-          "secondaryMuscles": [
-            "triceps",
-            "shoulders"
-          ],
-          "group": "Petto",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/wDN97Ca.gif"
-        },
-        {
-          "id": "pec_deck",
-          "name": "Pec deck / Butterfly",
-          "muscle": "PETTO",
-          "sets": 2,
-          "target": "12–15",
-          "restSeconds": 75,
-          "equipment": "Pec deck",
-          "gifQuery": "lever pec deck fly",
-          "note": "",
-          "alternative": "Croci ai cavi",
-          "rir": "1–2",
-          "primaryMuscles": [
-            "chest"
-          ],
-          "secondaryMuscles": [],
-          "group": "Petto"
-        },
-        {
           "id": "pulldown",
           "name": "Lat machine presa media o larga",
           "muscle": "SCHIENA",
@@ -514,9 +451,9 @@
           "restSeconds": 150,
           "equipment": "Lat machine",
           "gifQuery": "wide grip lat pulldown",
-          "note": "",
+          "note": "Riferimento: 52 kg × 10/10 dopo 45 × 12. Prova tre serie a 52 solo se rimani almeno a 8 con 2 RIR; altrimenti riduci. Niente strappi.",
           "alternative": "",
-          "rir": "1–2",
+          "rir": "2",
           "primaryMuscles": [
             "lats"
           ],
@@ -536,9 +473,9 @@
           "restSeconds": 150,
           "equipment": "Rematore macchina petto supportato",
           "gifQuery": "chest supported machine row",
-          "note": "",
+          "note": "Riferimento: 32 kg × 10/10. Mantieni 32 sulla stessa macchina e cerca 11/10/10 senza accorciare il movimento.",
           "alternative": "",
-          "rir": "1–2",
+          "rir": "2",
           "primaryMuscles": [
             "upper_back",
             "lats"
@@ -550,39 +487,17 @@
           "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/7I6LNUG.gif"
         },
         {
-          "id": "fri_lateral_recall",
-          "name": "Alzate laterali ai cavi — richiamo spalle",
-          "muscle": "SPALLE",
-          "sets": 2,
-          "target": "12–18",
-          "restSeconds": 75,
-          "equipment": "Cavi",
-          "gifQuery": "cable lateral raise",
-          "note": "Richiamo obbligatorio dei deltoidi laterali, 1–3 RIR; evita slanci.",
-          "alternative": "",
-          "rir": "1–3",
-          "primaryMuscles": [
-            "shoulders"
-          ],
-          "secondaryMuscles": [
-            "traps"
-          ],
-          "optional": false,
-          "group": "Richiamo spalle",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/goJ6ezq.gif"
-        },
-        {
           "id": "fri_leg_press_recall",
           "name": "Leg press — richiamo quadricipiti",
           "muscle": "QUADRICIPITI",
           "sets": 2,
           "target": "10–15",
-          "restSeconds": 120,
+          "restSeconds": 150,
           "equipment": "Leg press",
           "gifQuery": "sled leg press",
-          "note": "Secondo stimolo settimanale: 2 serie moderate, 2–3 RIR; tecnica piena, non replicare lo sforzo pesante di mercoledì.",
+          "note": "Richiamo prima degli isolamenti. Non risultano serie confermate: parti leggero per 2 RIR, scegli un modello stabile, registra sedile e convenzione dei dischi.",
           "alternative": "",
-          "rir": "2–3",
+          "rir": "2",
           "primaryMuscles": [
             "quads",
             "glutes"
@@ -600,12 +515,12 @@
           "muscle": "FEMORALI",
           "sets": 2,
           "target": "10–15",
-          "restSeconds": 90,
+          "restSeconds": 120,
           "equipment": "Leg curl seduto",
           "gifQuery": "seated leg curl",
-          "note": "Secondo stimolo settimanale con eccentrica controllata e 2–3 RIR.",
+          "note": "Richiamo prima degli isolamenti. Nessuna serie confermata: ricalibra il carico. I 32 kg del mercoledì valgono solo se macchina e regolazioni coincidono.",
           "alternative": "",
-          "rir": "2–3",
+          "rir": "2",
           "primaryMuscles": [
             "hamstrings"
           ],
@@ -615,44 +530,65 @@
           "optional": false
         },
         {
-          "id": "reverse_wrist_curl",
-          "name": "Reverse wrist curl (estensione polsi)",
-          "muscle": "AVAMBRACCI",
+          "id": "pec_deck",
+          "name": "Pec deck / Butterfly",
+          "muscle": "PETTO",
           "sets": 2,
-          "target": "15–20",
-          "restSeconds": 60,
-          "equipment": "Bilanciere o manubri",
-          "gifQuery": "reverse wrist curl",
-          "note": "Polsi in estensione, evita carichi eccessivi.",
-          "alternative": "",
+          "target": "10–15",
+          "restSeconds": 90,
+          "equipment": "Pec deck",
+          "gifQuery": "lever pec deck fly",
+          "note": "Riferimento: 39 kg × 9/10. Riduci leggermente per avere almeno 10 in entrambe le serie a 1–2 RIR; controlla apertura e ritorno.",
+          "alternative": "Croci ai cavi",
           "rir": "1–2",
           "primaryMuscles": [
-            "forearms"
+            "chest"
           ],
           "secondaryMuscles": [],
-          "group": "Avambracci",
-          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/Ezpnw9d.gif"
+          "group": "Petto"
         },
         {
-          "id": "farmers_walk",
-          "name": "Farmer's walk con manubri",
-          "muscle": "AVAMBRACCI",
+          "id": "fri_lateral_recall",
+          "name": "Alzate laterali ai cavi — richiamo spalle",
+          "muscle": "SPALLE",
           "sets": 2,
-          "target": "30–45 sec",
+          "target": "10–15",
           "restSeconds": 90,
-          "equipment": "Manubri pesanti",
-          "gifQuery": "dumbbell farmers walk",
-          "note": "Trasporta i manubri per 30–45 secondi con postura eretta; registra i secondi nel campo dedicato.",
+          "equipment": "Cavi",
+          "gifQuery": "cable lateral raise",
+          "note": "Mantieni esecuzione uguale al lunedì. Il 23/10: 2,3 × 12 e 3,2 × 11; scegli un carico stabile senza slancio.",
           "alternative": "",
           "rir": "1–2",
           "primaryMuscles": [
-            "forearms"
+            "shoulders"
           ],
           "secondaryMuscles": [
             "traps"
           ],
-          "timeBased": true,
-          "group": "Avambracci"
+          "optional": false,
+          "group": "Richiamo spalle",
+          "gifUrl": "https://raw.githubusercontent.com/mohamedatef90/exercise-library/main/gifs/goJ6ezq.gif"
+        },
+        {
+          "id": "reverse_fly",
+          "name": "Reverse pec deck (deltoidi posteriori)",
+          "muscle": "SPALLE POSTERIORI",
+          "sets": 2,
+          "target": "10–15",
+          "restSeconds": 90,
+          "equipment": "Reverse pec deck",
+          "gifQuery": "reverse fly machine",
+          "note": "Spostato dal lunedì. Ultimo dato 39 kg × 10/10: mantieni lo stesso attrezzo e cerca 11/10 con controllo.",
+          "alternative": "Alzate posteriori con manubri",
+          "rir": "1–2",
+          "primaryMuscles": [
+            "rear_delts"
+          ],
+          "secondaryMuscles": [
+            "upper_back",
+            "traps"
+          ],
+          "group": "Spalle"
         }
       ]
     },
@@ -660,9 +596,9 @@
       "id": "bonus",
       "weekday": "DOMENICA (FACOLTATIVO, SE RECUPERATO)",
       "name": "Bonus · gambe leggere, core o recupero attivo",
-      "description": "Solo se recuperato dalla seduta del venerdì; se senti fatica residua, scegli soltanto camminata e mobilità.",
+      "description": "Solo se recuperato, preferibilmente domenica e almeno 48 ore dopo venerdì. Nessun obbligo: non serve per completare il volume principale.",
       "duration": "30–55 min",
-      "cooldown": "Camminata: 15–20 minuti tranquilli; se necessario, soltanto mobilità e recupero attivo.",
+      "cooldown": "Facoltativo, oltre al tempo dei pesi: 10–15 minuti di camminata facile a ritmo conversazione.",
       "optional": true,
       "exercises": [
         {
